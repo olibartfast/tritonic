@@ -1,4 +1,4 @@
-## C++ Triton YoloV5 and YoloV7 client 
+## C++ Triton client to infer YoloV4/V5 and YoloV7 models 
 
 
 ## Build client libraries
