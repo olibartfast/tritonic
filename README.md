@@ -1,17 +1,19 @@
-## C++ Triton client to infer YoloV4/V5 and YoloV7 models 
+## C++ Triton client to infer YoloV5 and YoloV7 models 
 
 ## Work in progress
 
 ## Build client libraries
-https://github.com/triton-inference-server/client/tree/r22.06
+https://github.com/triton-inference-server/client/tree/r22.08
 
 
 ## Dependencies
-* Nvidia Triton Inference Server container pulled from NGC(Tested Release 22.06)
-* Triton client libraries
-* Protobuf, Grpc++, Rapidjson(versions according to the ones used within Triton server project. I used libraries built inside Triton Client third party folder)
-* Cuda(Tested 11.7)
+* Nvidia Triton Inference Server container pulled from NGC (docker pull nvcr.io/nvidia/tritonserver:22.07-py3)
+* Triton client libraries (Tested Release 22.08)
+* Protobuf, Grpc++(versions according to the ones used within Triton server project. I used libraries built inside Triton Client third party folder)
+* rapidjson (on ubuntu sudo apt install rapidjson-dev)
 * Opencv4(Tested 4.6.0)
+
+
 
 ## Build and compile
 * Set environment variables TritonClientThirdParty_DIR(path/to/client/build/third-party) and TritonClientBuild_DIR(path/to/client/build/install)
@@ -20,18 +22,17 @@ https://github.com/triton-inference-server/client/tree/r22.06
 * cmake -DCMAKE_BUILD_TYPE=Release .. 
 * make
 
-## YoloV7
-* go to repo
-* export to onnx the model python export.py --weights <yolo_version>.pt --grid  --simplify --topk-all 100 --iou-thres 0.65 --conf-thres 0.35 --img-size 640 640 --max-wh 640
+## YoloV7 Onnx export
+* Run from yolov7 repo export script i.e.: python export.py --weights <yolov7_version>.pt --grid  --simplify --topk-all 100 --iou-thres 0.65 --conf-thres 0.35 --img-size 640 640 --max-wh 640 (Don't use end-to-end parameter)
 
 ### YoloV7 TensorRT export
 * To Do
 
 
-## YoloV5
-* To Do
+## YoloV5 Onnx export
+* Run from yolov5 repo export script:  python export.py  --weights <yolov5_version>.pt  --include onnx
 
-## YoloV4
+### YoloV5 TensorRT export
 * To Do
 
 ### Notes
@@ -44,3 +45,8 @@ When you export your model to tensorrt your version MUST match the one supported
 
 ### Realtime inference test on video
 
+
+### References
+https://github.com/triton-inference-server/client/blob/r21.08/src/c%2B%2B/examples/image_client.cc
+https://github.com/itsnine/yolov5-onnxruntime
+https://github.com/wang-xinyu/tensorrtx

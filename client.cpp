@@ -4,7 +4,7 @@
 
 
 static const std::string keys = 
-    "{ model m | yolov7x_onnx | model name of folder in triton }"
+    "{ model m | yolov7-tiny_onnx | model name of folder in triton }"
     "{ help h   | | Print help message. }"
     "{ video v | video.mp4 | video name}"
     "{ serverAddress  s  | localhost:8001 | Path to server address}"
@@ -22,6 +22,7 @@ int main(int argc, const char* argv[])
         return 0;  
     }
 
+    std::cout << "Current path is " << std::filesystem::current_path() << '\n';
     std::string serverAddress = parser.get<std::string>("serverAddress");
     bool verbose = parser.get<bool>("verbose");
     std::string videoName;
@@ -29,7 +30,7 @@ int main(int argc, const char* argv[])
     Triton::ProtocolType protocol = parser.get<std::string>("protocol") == "grpc" ? Triton::ProtocolType::GRPC : Triton::ProtocolType::HTTP;
     const size_t batch_size = parser.get<size_t>("batch");
 
-    // Triton::ScaleType scale = Triton::ScaleType::YOLOV4;
+    Triton::TritonModelInfo model_info;
     std::string preprocess_output_filename;
     std::string modelName = parser.get<std::string>("model");
     std::string modelVersion = "";
@@ -101,8 +102,6 @@ int main(int argc, const char* argv[])
     cv::Mat frame;
     std::vector<uint8_t> input_data;
     std::vector<cv::Mat> frameBatch;
-    std::vector<std::vector<uint8_t>> input_data_raw;
-
     cv::VideoCapture cap(videoName);
 
     Yolo::coco_names = Yolo::readLabelNames(fileName);
@@ -112,79 +111,60 @@ int main(int argc, const char* argv[])
         exit(1);
     }
 
-    // while (cap.read(frame))
-    // {
-    //     frameBatch.push_back(frame.clone());
-    //     if (frameBatch.size() < batch_size)
-    //     {
-    //         continue;
-    //     }
+    while (cap.read(frame))
+    {
+        // Reset the input for new request.
+        err = input_ptr->Reset();
+        if (!err.IsOk())
+        {
+            std::cerr << "failed resetting input: " << err << std::endl;
+            exit(1);
+        }
 
-    //     // Reset the input for new request.
-    //     err = input_ptr->Reset();
-    //     if (!err.IsOk())
-    //     {
-    //         std::cerr << "failed resetting input: " << err << std::endl;
-    //         exit(1);
-    //     }
-
-    //     for (size_t batchId = 0; batchId < batch_size; batchId++)
-    //     {
-    //         input_data_raw.push_back(Triton::Preprocess(
-    //             frameBatch[batchId], yoloModelInfo.input_format_, yoloModelInfo.type1_, yoloModelInfo.type3_,
-    //             yoloModelInfo.input_c_ , cv::Size(yoloModelInfo.input_w_, yoloModelInfo.input_h_), scale));
-    //         err = input_ptr->AppendRaw(input_data_raw[batchId]);
-    //         if (!err.IsOk())
-    //         {
-    //             std::cerr << "failed setting input: " << err << std::endl;
-    //             exit(1);
-    //         }
-    //     }
-
-    //     nic::InferResult *result;
-    //     std::unique_ptr<nic::InferResult> result_ptr;
-    //     if (protocol == Triton::ProtocolType::HTTP)
-    //     {
-    //         err = tritonClient.httpClient->Infer(
-    //             &result, options, inputs, outputs);
-    //     }
-    //     else
-    //     {
-    //         err = tritonClient.grpcClient->Infer(
-    //             &result, options, inputs, outputs);
-    //     }
-    //     if (!err.IsOk())
-    //     {
-    //         std::cerr << "failed sending synchronous infer request: " << err
-    //                   << std::endl;
-    //         exit(1);
-    //     }
+        input_data = Yolo::Preprocess(
+            frame, yoloModelInfo.input_format_, yoloModelInfo.type1_, yoloModelInfo.type3_,
+            yoloModelInfo.input_c_ , cv::Size(yoloModelInfo.input_w_, yoloModelInfo.input_h_));
         
-    //     const int DETECTION_SIZE = sizeof(Yolo::Detection) / sizeof(float);
-    //     const int OUTPUT_SIZE = Yolo::MAX_OUTPUT_BBOX_COUNT * DETECTION_SIZE + 1;
-    //     auto [detections, shape] = Triton::PostprocessYoloV4(result, batch_size, yoloModelInfo.output_names_, yoloModelInfo.max_batch_size_ != 0);
-    //     std::vector<std::vector<Yolo::Detection>> batch_res(batch_size);    
-    //     const float *prob = detections.data();        
-    //     for (size_t batchId = 0; batchId < batch_size; batchId++) 
-    //     {
-    //         auto& res = batch_res[batchId];
-    //         Yolo::nms(res, &prob[batchId * OUTPUT_SIZE]);
-    //     }
-    //     for (size_t batchId = 0; batchId < batch_size; batchId++) 
-    //     {
-    //         auto& res = batch_res[batchId];
-    //         cv::Mat img = frameBatch.at(batchId);
-    //         for (size_t j = 0; j < res.size(); j++) {
-    //             cv::Rect r = Yolo::get_rect(img, res[j].bbox);
-    //             cv::rectangle(img, r, cv::Scalar(0x27, 0xC1, 0x36), 2);
-    //             cv::putText(img, Yolo::coco_names[(int)res[j].class_id], cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
-    //         }
-    //         cv::imshow("video feed " + std::to_string(batchId), img);
-    //         cv::waitKey(1);
-    //     }
-    //     frameBatch.clear();
-    //     input_data_raw.clear();
-    // }
+        err = input_ptr->AppendRaw(input_data);
+        if (!err.IsOk())
+        {
+            std::cerr << "failed setting input: " << err << std::endl;
+            exit(1);
+        }
+        tc::InferResult *result;
+        std::unique_ptr<tc::InferResult> result_ptr;
+        if (protocol == Triton::ProtocolType::HTTP)
+        {
+                err = tritonClient.httpClient->Infer(
+            &result, options, inputs, outputs);
+        }
+        else
+        {
+            err = tritonClient.grpcClient->Infer(
+                &result, options, inputs, outputs);
+        }
+        if (!err.IsOk())
+        {
+            std::cerr << "failed sending synchronous infer request: " << err
+                    << std::endl;
+            exit(1);
+        }
+
+        auto [infer_results, infer_shape] = Triton::Infer(result, batch_size, yoloModelInfo.output_names_, yoloModelInfo.max_batch_size_ != 0);
+
+        std::vector<Yolo::Detection> detections = Yolo::postprocess(cv::Size(frame.cols, frame.rows),
+            infer_results, infer_shape);
+
+        for (auto&& detection : detections)
+        {
+            cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0,0), 2);
+            cv::putText(frame, Yolo::coco_names[detection.class_id], 
+                cv::Point(detection.bbox.x, detection.bbox.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
+        }
+            
+        cv::imshow("video feed ", frame);
+        cv::waitKey(1);  
+    }
 
     return 0;
 }
