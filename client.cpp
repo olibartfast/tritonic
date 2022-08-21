@@ -10,9 +10,9 @@ static const std::string keys =
     "{ model m | yolov7-tiny_onnx | model name of folder in triton }"
     "{ help h   | | Print help message. }"
     "{ video v | video.mp4 | video name}"
-    "{ serverAddress  s  | localhost:8001 | Path to server address}"
+    "{ serverAddress  s  | localhost:8000 | Path to server address}"
     "{ verbose vb | false | Verbose mode, true or false}"
-    "{ protocol p | grpc | Protocol type, grpc or http}"
+    "{ protocol p | http | Protocol type, grpc or http}"
     "{ labelsFile l | ../coco.names | path to  coco labels names}"
     "{ batch b | 1 | Batch size}";
 
@@ -167,6 +167,7 @@ int main(int argc, const char* argv[])
             exit(1);
         }
 
+        result_ptr.reset(result);
         auto [infer_results, infer_shape] = Triton::Infer(result, batch_size, yoloModelInfo.output_names_, yoloModelInfo.max_batch_size_ != 0);
 
         std::vector<Yolo::Detection> detections = Yolo::postprocess(cv::Size(frame.cols, frame.rows),
@@ -176,7 +177,7 @@ int main(int argc, const char* argv[])
 #if defined(SHOW_FRAME) || defined(WRITE_FRAME)
         for (auto&& detection : detections)
         {
-            cv::rectangle(frame, detection.bbox, cv::Scalar(detection.class_id*4, 0,0), 2);
+            cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0,0), 2);
             cv::putText(frame, Yolo::coco_names[detection.class_id], 
                 cv::Point(detection.bbox.x, detection.bbox.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
         }           
