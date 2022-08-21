@@ -1,9 +1,5 @@
 #include "Yolo.hpp"
 #include "Triton.hpp"
-#ifdef WRITE_FRAME
-#include <opencv2/videoio.hpp>
-#endif
-
 
 
 static const std::string keys = 
@@ -104,7 +100,6 @@ int main(int argc, const char* argv[])
 
     cv::Mat frame;
     std::vector<uint8_t> input_data;
-    std::vector<cv::Mat> frameBatch;
     cv::VideoCapture cap(videoName);
 
 #ifdef WRITE_FRAME
