@@ -22,25 +22,40 @@ https://github.com/triton-inference-server/client/tree/r22.08
 * cmake -DCMAKE_BUILD_TYPE=Release .. 
 * make
 
-## YoloV7 Onnx export
-* Run from yolov7 repo export script i.e.: python export.py --weights <yolov7_version>.pt --grid  --simplify --topk-all 100 --iou-thres 0.65 --conf-thres 0.35 --img-size 640 640 --max-wh 640 (Don't use end-to-end parameter)
+## YoloV7 export
+* Run from [yolov7 repo](https://github.com/WongKinYiu/yolov7#export) export script(i.e. to onnx) : ```python export.py --weights <yolov7_version>.pt --grid  --simplify --topk-all 100 --iou-thres 0.65 --conf-thres 0.35 --img-size 640 640 --max-wh 640``` (Don't use end-to-end parameter)
 
-### YoloV7 TensorRT export
-* To Do
-
-
-## YoloV5 Onnx export
-* Run from yolov5 repo export script:  python export.py  --weights <yolov5_version>.pt  --include onnx
-
-### YoloV5 TensorRT export
-* To Do
+## YoloV5 export
+* Run from [yolov5 repo](https://github.com/ultralytics/yolov5/issues/251) export script:  ```python export.py  --weights <yolov5_version>.pt  --include onnx```
 
 ### Notes
-When you export your model to tensorrt your version MUST match the one supported by your Triton version
+When you export your model to tensorrt your version MUST match the one supported by your Triton version inside its container
 
+### Deploy to Triton
+Set a model repository folder to map to Triton following this [schema](https://github.com/triton-inference-server/server/blob/main/docs/model_repository.md):
+```
+<model_repository> 
+    -> 
+        <model_name> 
+            -> 
+                <model_version>
+                    ->
+                         <model_binary>
+```
+
+then [run](https://github.com/triton-inference-server/server/blob/main/docs/quickstart.md) the server
+```
+#!/bin/bash
+$ docker run --gpus=1 --rm \
+-p8000:8000 -p8001:8001 -p8002:8002 \
+-v/full/path/to/docs/examples/model_repository:/models \
+nvcr.io/nvidia/tritonserver:<xx.yy>-py3 tritonserver \
+--model-repository=/models
+```
+If you plan to run on CPU omit --gpus parameter
 
 ## How to run
-* ./yolo-triton-cpp-client  --video=/path/to/video/videoname.format
+* ./yolo-triton-cpp-client  --video=/path/to/video/videoname.format  --model=model_name_folder_on_triton
 * ./yolo-triton-cpp-client  --help for all available parameters
 
 ### Realtime inference test on video

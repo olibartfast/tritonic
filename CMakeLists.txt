@@ -7,6 +7,18 @@ message(STATUS $ENV{TritonClientBuild_DIR})
 set(CMAKE_CXX_STANDARD 17)
 
 
+option(WITH_SHOW_FRAME "Option description" OFF)
+option(WITH_WRITE_FRAME "Option description" OFF)
+
+if(WITH_SHOW_FRAME)
+  add_definitions(-DSHOW_FRAME)
+  message(STATUS "Show frame enabled") 
+endif()
+if(WITH_WRITE_FRAME)
+  add_definitions(-DWRITE_FRAME)
+  message(STATUS "Write frame enabled") 
+endif()
+
 
 set(CURL_DIR "$ENV{TritonClientThirdParty_DIR}/curl/lib/cmake/CURL")
 set(Protobuf_DIR "$ENV{TritonClientThirdParty_DIR}/protobuf/lib/cmake/protobuf")

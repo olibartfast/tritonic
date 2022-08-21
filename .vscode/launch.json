@@ -9,7 +9,9 @@
         "type": "cppdbg",
         "request": "launch",
         "program": "${workspaceFolder}/build/yolo-triton-cpp-client",
-        "args": ["arg1", "arg2"],
+        "args": ["--video=$HOME/Videos/out.mp4", 
+        "--labelsFile=coco.names",
+        "--model=yolov7-tiny_onnx"],
         "environment": [{ "name": "config", "value": "Debug" }],
         "cwd": "${workspaceFolder}" 
         }

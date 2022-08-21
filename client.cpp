@@ -1,5 +1,8 @@
 #include "Yolo.hpp"
 #include "Triton.hpp"
+#ifdef WRITE_FRAME
+#include <opencv2/videoio.hpp>
+#endif
 
 
 
@@ -104,6 +107,20 @@ int main(int argc, const char* argv[])
     std::vector<cv::Mat> frameBatch;
     cv::VideoCapture cap(videoName);
 
+#ifdef WRITE_FRAME
+    cv::VideoWriter outputVideo; 
+    cv::Size S = cv::Size((int) cap.get(cv::CAP_PROP_FRAME_WIDTH),    // Acquire input size
+                (int) cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+    int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
+    outputVideo.open("out.avi", codec, 30, S, true);    
+    if (!outputVideo.isOpened())
+    {
+        std::cout  << "Could not open the output video for write: " << videoName << std::endl;
+        return -1;
+    }    
+#endif       
+
+
     Yolo::coco_names = Yolo::readLabelNames(fileName);
 
     if(Yolo::coco_names.size() != Yolo::CLASS_NUM){
@@ -155,15 +172,23 @@ int main(int argc, const char* argv[])
         std::vector<Yolo::Detection> detections = Yolo::postprocess(cv::Size(frame.cols, frame.rows),
             infer_results, infer_shape);
 
+
+#if defined(SHOW_FRAME) || defined(WRITE_FRAME)
         for (auto&& detection : detections)
         {
-            cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0,0), 2);
+            cv::rectangle(frame, detection.bbox, cv::Scalar(detection.class_id*4, 0,0), 2);
             cv::putText(frame, Yolo::coco_names[detection.class_id], 
                 cv::Point(detection.bbox.x, detection.bbox.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
-        }
-            
+        }           
+#endif
+#ifdef SHOW_FRAME
         cv::imshow("video feed ", frame);
         cv::waitKey(1);  
+#endif      
+#ifdef WRITE_FRAME
+        outputVideo.write(frame);
+#endif  
+
     }
 
     return 0;
