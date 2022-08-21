@@ -60,6 +60,6 @@ If you plan to run on CPU omit --gpus parameter
 
 
 ### References
-https://github.com/triton-inference-server/client/blob/r21.08/src/c%2B%2B/examples/image_client.cc
-https://github.com/itsnine/yolov5-onnxruntime
-https://github.com/wang-xinyu/tensorrtx
+* https://github.com/triton-inference-server/client/blob/r21.08/src/c%2B%2B/examples/image_client.cc
+* https://github.com/itsnine/yolov5-onnxruntime
+* https://github.com/wang-xinyu/tensorrtx
