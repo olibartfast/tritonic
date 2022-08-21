@@ -26,8 +26,8 @@ https://github.com/triton-inference-server/client/tree/r22.08
 ## YoloV5 export
 * Run from [yolov5 repo](https://github.com/ultralytics/yolov5/issues/251) export script(always onnx case example):  ```python export.py  --weights <yolov5_version>.pt  --include onnx```
 
-### Notes
-*  If you try to export the model to TensorRT or OpenVino your installed version of previous libraries MUST match the ones supported in Triton release you are using, check [server releases here](https://github.com/triton-inference-server/server/releases) 
+## Notes
+*  If you try to export the model to TensorRT or OpenVino. your installed version of previous libraries MUST match the ones supported in Triton release you are using, check [server releases here](https://github.com/triton-inference-server/server/releases) 
 
 ### Deploy to Triton
 Set a model repository folder following this [schema](https://github.com/triton-inference-server/server/blob/main/docs/model_repository.md), usually config.pbtxt file is optional except in case of use of OpenVino backend:
