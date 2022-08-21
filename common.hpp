@@ -4,11 +4,13 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/utility.hpp>
+#ifdef WRITE_FRAME
+#include <opencv2/videoio.hpp>
+#endif
 #include <fstream>
 #include <filesystem>
+#include <chrono>
 
 #include "grpc_client.h"
 #include "http_client.h"
-#include <rapidjson/document.h>
-#include <rapidjson/rapidjson.h>
 namespace tc = triton::client;

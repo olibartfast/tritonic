@@ -1,7 +1,5 @@
 ## C++ Triton client to infer YoloV5 and YoloV7 models 
 
-## Work in progress
-
 ## Build client libraries
 https://github.com/triton-inference-server/client/tree/r22.08
 
@@ -11,7 +9,7 @@ https://github.com/triton-inference-server/client/tree/r22.08
 * Triton client libraries (Tested Release 22.08)
 * Protobuf, Grpc++(versions according to the ones used within Triton server project. I used libraries built inside Triton Client third party folder)
 * rapidjson (on ubuntu sudo apt install rapidjson-dev)
-* Opencv4(Tested 4.6.0)
+* Opencv4(Tested 4.5.4)
 
 
 
@@ -32,7 +30,7 @@ https://github.com/triton-inference-server/client/tree/r22.08
 When you export your model to tensorrt your version MUST match the one supported by your Triton version inside its container
 
 ### Deploy to Triton
-Set a model repository folder to map to Triton following this [schema](https://github.com/triton-inference-server/server/blob/main/docs/model_repository.md):
+Set a model repository folder following this [schema](https://github.com/triton-inference-server/server/blob/main/docs/model_repository.md):
 ```
 <model_repository> 
     -> 
@@ -55,7 +53,7 @@ nvcr.io/nvidia/tritonserver:<xx.yy>-py3 tritonserver \
 If you plan to run on CPU omit --gpus parameter
 
 ## How to run
-* ./yolo-triton-cpp-client  --video=/path/to/video/videoname.format  --model=model_name_folder_on_triton
+* ./yolo-triton-cpp-client  --video=/path/to/video/videoname.format  --model=model_name_folder_on_triton --labelsFile=/path/to/labels/coco.names
 * ./yolo-triton-cpp-client  --help for all available parameters
 
 ### Realtime inference test on video

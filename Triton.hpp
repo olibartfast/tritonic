@@ -74,8 +74,8 @@ namespace Triton{
             exit(1);
         }
 
-        std::vector<float> detections;
-        std::vector<int64_t> shape;
+        std::vector<float> infer_results;
+        std::vector<int64_t> infer_shape;
 
 
         float* outputData;
@@ -87,9 +87,9 @@ namespace Triton{
                 result->RawData(
                     outputName, (const uint8_t**)&outputData, &outputByteSize);
 
-                tc::Error err = result->Shape(outputName, &shape);
-                detections = std::vector<float>(outputByteSize / sizeof(float));
-                std::memcpy(detections.data(), outputData, outputByteSize);
+                tc::Error err = result->Shape(outputName, &infer_shape);
+                infer_results = std::vector<float>(outputByteSize / sizeof(float));
+                std::memcpy(infer_results.data(), outputData, outputByteSize);
                 if (!err.IsOk())
                 {
                     std::cerr << "unable to get data for " << outputName << std::endl;
@@ -99,7 +99,7 @@ namespace Triton{
 
         }
 
-        return make_tuple(detections, shape);
+        return make_tuple(infer_results, infer_shape);
     }
 
 

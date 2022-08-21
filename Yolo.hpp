@@ -74,24 +74,6 @@ namespace Yolo
         return std::make_tuple(maxConf, idxMax);
     }    
 
-
-    float iou(float lbox[4], float rbox[4]) 
-    {
-        float interBox[] = {
-            std::max(lbox[0] - lbox[2]/2.f , rbox[0] - rbox[2]/2.f), //left
-            std::min(lbox[0] + lbox[2]/2.f , rbox[0] + rbox[2]/2.f), //right
-            std::max(lbox[1] - lbox[3]/2.f , rbox[1] - rbox[3]/2.f), //top
-            std::min(lbox[1] + lbox[3]/2.f , rbox[1] + rbox[3]/2.f), //bottom
-        };
-
-        if(interBox[2] > interBox[3] || interBox[0] > interBox[1])
-            return 0.0f;
-
-        float interBoxS =(interBox[1]-interBox[0])*(interBox[3]-interBox[2]);
-        return interBoxS/(lbox[2]*lbox[3] + rbox[2]*rbox[3] -interBoxS);
-    }
-
-
     std::vector<Yolo::Detection> postprocess(const cv::Size& frame_size, std::vector<float>& infer_results, const std::vector<int64_t>& infer_shape)
     {
         int numClasses =  infer_shape[2] - 5;
