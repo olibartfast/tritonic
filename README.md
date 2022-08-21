@@ -21,10 +21,10 @@ https://github.com/triton-inference-server/client/tree/r22.08
 * make
 
 ## YoloV7 export
-* Run from [yolov7 repo](https://github.com/WongKinYiu/yolov7#export) export script(i.e. to onnx) : ```python export.py --weights <yolov7_version>.pt --grid  --simplify --topk-all 100 --iou-thres 0.65 --conf-thres 0.35 --img-size 640 640 --max-wh 640``` (Don't use end-to-end parameter)
+* Run from [yolov7 repo](https://github.com/WongKinYiu/yolov7#export) export script(e.g. to onnx) : ```python export.py --weights <yolov7_version>.pt --grid  --simplify --topk-all 100 --iou-thres 0.65 --conf-thres 0.35 --img-size 640 640 --max-wh 640``` (Don't use end-to-end parameter)
 
 ## YoloV5 export
-* Run from [yolov5 repo](https://github.com/ultralytics/yolov5/issues/251) export script:  ```python export.py  --weights <yolov5_version>.pt  --include onnx```
+* Run from [yolov5 repo](https://github.com/ultralytics/yolov5/issues/251) export script(always onnx case example):  ```python export.py  --weights <yolov5_version>.pt  --include onnx```
 
 ### Notes
 When you export your model to tensorrt your version MUST match the one supported by your Triton version inside its container
