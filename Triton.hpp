@@ -62,7 +62,7 @@ namespace Triton{
 
 
     auto
-    Infer(
+    getInferResults(
         tc::InferResult* result,
         const size_t batch_size,
         const std::vector<std::string>& output_names, const bool batching)

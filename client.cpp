@@ -112,7 +112,7 @@ int main(int argc, const char* argv[])
     cv::Size S = cv::Size((int) cap.get(cv::CAP_PROP_FRAME_WIDTH),    // Acquire input size
                 (int) cap.get(cv::CAP_PROP_FRAME_HEIGHT));
     int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
-    outputVideo.open("out.avi", codec, 30, S, true);    
+    outputVideo.open("processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);    
     if (!outputVideo.isOpened())
     {
         std::cout  << "Could not open the output video for write: " << videoName << std::endl;
@@ -137,7 +137,7 @@ int main(int argc, const char* argv[])
             std::cerr << "failed resetting input: " << err << std::endl;
             exit(1);
         }
-
+        auto start = std::chrono::steady_clock::now();
         input_data = Yolo::Preprocess(
             frame, yoloModelInfo.input_format_, yoloModelInfo.type1_, yoloModelInfo.type3_,
             yoloModelInfo.input_c_ , cv::Size(yoloModelInfo.input_w_, yoloModelInfo.input_h_));
@@ -166,9 +166,11 @@ int main(int argc, const char* argv[])
                     << std::endl;
             exit(1);
         }
-
+        auto [infer_results, infer_shape] = Triton::getInferResults(result, batch_size, yoloModelInfo.output_names_, yoloModelInfo.max_batch_size_ != 0);
         result_ptr.reset(result);
-        auto [infer_results, infer_shape] = Triton::Infer(result, batch_size, yoloModelInfo.output_names_, yoloModelInfo.max_batch_size_ != 0);
+        auto end = std::chrono::steady_clock::now();
+        auto diff = end - start;
+        std::cout << "Infer time: " << std::chrono::duration<double, std::milli>(diff).count() << " ms" << std::endl;
 
         std::vector<Yolo::Detection> detections = Yolo::postprocess(cv::Size(frame.cols, frame.rows),
             infer_results, infer_shape);
