@@ -57,6 +57,8 @@ If you plan to run on CPU omit --gpus parameter
 * ./yolo-triton-cpp-client  --help for all available parameters
 
 ### Realtime inference test on video
+Testing yolov7-tiny exported to onnx  
+https://youtu.be/lke5TcbP2a0
 
 
 ### References
