@@ -27,25 +27,37 @@ namespace Triton{
     };
 
 
-    TritonModelInfo setModel(const int batch_size){
-        TritonModelInfo yoloModelInfo;
-        yoloModelInfo.output_names_ = std::vector<std::string>{"output"};
-        yoloModelInfo.input_name_ = "images";
-        yoloModelInfo.input_datatype_ = std::string("FP32");
+    TritonModelInfo setModel(const int batch_size, const std::string& modelType ){
+        TritonModelInfo info;
+        info.input_name_ = "images";
+        if(modelType.find("yolov5") != std::string::npos)
+        {
+            info.output_names_ = std::vector<std::string>{"output0"};
+        }        
+        else if(modelType.find("yolov6") != std::string::npos)
+        {
+            info.output_names_ = std::vector<std::string>{"outputs"};
+        }
+        else if(modelType.find("yolov7") != std::string::npos)
+        {
+            info.output_names_ = std::vector<std::string>{"output"};
+        }        
+
+        info.input_datatype_ = std::string("FP32");
         // The shape of the input
-        yoloModelInfo.input_c_ = Yolo::INPUT_C;
-        yoloModelInfo.input_w_ = Yolo::INPUT_W;
-        yoloModelInfo.input_h_ = Yolo::INPUT_H;
+        info.input_c_ = Yolo::INPUT_C;
+        info.input_w_ = Yolo::INPUT_W;
+        info.input_h_ = Yolo::INPUT_H;
         // The format of the input
-        yoloModelInfo.input_format_ = "FORMAT_NCHW";
-        yoloModelInfo.type1_ = CV_32FC1;
-        yoloModelInfo.type3_ = CV_32FC3;
-        yoloModelInfo.max_batch_size_ = 32;
-        yoloModelInfo.shape_.push_back(batch_size);
-        yoloModelInfo.shape_.push_back(yoloModelInfo.input_c_);
-        yoloModelInfo.shape_.push_back(yoloModelInfo.input_h_);
-        yoloModelInfo.shape_.push_back(yoloModelInfo.input_w_);
-        return yoloModelInfo;
+        info.input_format_ = "FORMAT_NCHW";
+        info.type1_ = CV_32FC1;
+        info.type3_ = CV_32FC3;
+        info.max_batch_size_ = 32;
+        info.shape_.push_back(batch_size);
+        info.shape_.push_back(info.input_c_);
+        info.shape_.push_back(info.input_h_);
+        info.shape_.push_back(info.input_w_);
+        return info;
     }
 
     union TritonClient
@@ -82,19 +94,16 @@ namespace Triton{
         size_t outputByteSize;
         for (auto outputName : output_names)
         {
-            if (outputName == "output")
-            { 
-                result->RawData(
-                    outputName, (const uint8_t**)&outputData, &outputByteSize);
+            result->RawData(
+                outputName, (const uint8_t**)&outputData, &outputByteSize);
 
-                tc::Error err = result->Shape(outputName, &infer_shape);
-                infer_results = std::vector<float>(outputByteSize / sizeof(float));
-                std::memcpy(infer_results.data(), outputData, outputByteSize);
-                if (!err.IsOk())
-                {
-                    std::cerr << "unable to get data for " << outputName << std::endl;
-                    exit(1);
-                }
+            tc::Error err = result->Shape(outputName, &infer_shape);
+            infer_results = std::vector<float>(outputByteSize / sizeof(float));
+            std::memcpy(infer_results.data(), outputData, outputByteSize);
+            if (!err.IsOk())
+            {
+                std::cerr << "unable to get data for " << outputName << std::endl;
+                exit(1);
             }
 
         }

@@ -1,5 +1,5 @@
-## C++ Triton client to infer YoloV5 and YoloV7 models 
-
+## C++ Triton client to infer Yolo series models 
+* Currently YoloV5/V6/V7
 ## Build client libraries
 https://github.com/triton-inference-server/client/tree/r22.08
 
@@ -17,14 +17,20 @@ https://github.com/triton-inference-server/client/tree/r22.08
 * Set environment variables TritonClientThirdParty_DIR(path/to/client/build/third-party) and TritonClientBuild_DIR(path/to/client/build/install)
 * mkdir build 
 * cd build 
-* cmake -DCMAKE_BUILD_TYPE=Release .. 
+* cmake -DCMAKE_BUILD_TYPE=Release (or optional -DSHOW_FRAME -DWRITE_FRAME if you want show or write processed frame after inference) .. 
 * make
+
+## YoloV5 export
+* Run from [yolov5 repo](https://github.com/ultralytics/yolov5/issues/251) export script(always onnx case example):  ```python export.py  --weights <yolov5_version>.pt  --include onnx```
+
+## YoloV6 export
+Weights to export in ONNX format or download from [yolov6 repo](https://github.com/meituan/YOLOv6/tree/main/deploy/ONNX). Posteprocessing code is identical to yolov5-v7.
 
 ## YoloV7 export
 * Run from [yolov7 repo](https://github.com/WongKinYiu/yolov7#export) export script(e.g. to onnx) : ```python export.py --weights <yolov7_version>.pt --grid  --simplify --topk-all 100 --iou-thres 0.65 --conf-thres 0.35 --img-size 640 640 --max-wh 640``` (Don't use end-to-end parameter)
 
-## YoloV5 export
-* Run from [yolov5 repo](https://github.com/ultralytics/yolov5/issues/251) export script(always onnx case example):  ```python export.py  --weights <yolov5_version>.pt  --include onnx```
+## YoloV8 
+* Incoming ...
 
 ## Notes
 *  If you trying to export the model to TensorRT or OpenVino, your installed version of previous libraries MUST match the ones supported in Triton release you are using, check [server releases here](https://github.com/triton-inference-server/server/releases) 
@@ -54,7 +60,7 @@ nvcr.io/nvidia/tritonserver:<xx.yy>-py3 tritonserver \
 If you plan to run on CPU omit --gpus parameter
 
 ## How to run
-* ./yolo-triton-cpp-client  --video=/path/to/video/videoname.format  --model=model_name_folder_on_triton --labelsFile=/path/to/labels/coco.names
+* ./yolo-triton-cpp-client  --video=/path/to/video/videoname.format  --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names
 * ./yolo-triton-cpp-client  --help for all available parameters
 
 ### Realtime inference test on video

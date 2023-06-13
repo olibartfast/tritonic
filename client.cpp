@@ -3,8 +3,9 @@
 
 
 static const std::string keys = 
-    "{ model m | yolov7-tiny_onnx | model name of folder in triton }"
     "{ help h   | | Print help message. }"
+    "{ model_type t | yolov7 | yolo version used i.e yolov5, yolov6 or yolov7}"
+    "{ model m | yolov7-tiny_onnx | model name of folder in triton }"
     "{ video v | video.mp4 | video name}"
     "{ serverAddress  s  | localhost:8000 | Path to server address}"
     "{ verbose vb | false | Verbose mode, true or false}"
@@ -33,6 +34,7 @@ int main(int argc, const char* argv[])
     std::string preprocess_output_filename;
     std::string modelName = parser.get<std::string>("model");
     std::string modelVersion = "";
+    std::string modelType = parser.get<std::string>("model_type");
     std::string url(serverAddress);
     
     tc::Headers httpHeaders;
@@ -44,6 +46,7 @@ int main(int argc, const char* argv[])
     std::cout << "Protocol:  " << parser.get<std::string>("protocol") << std::endl;
     std::cout << "Path to labels name:  " << fileName << std::endl;
     std::cout << "Model name:  " << modelName << std::endl;
+    std::cout << "Model type:  " << modelType << std::endl;
 
     Triton::TritonClient tritonClient;
     tc::Error err;
@@ -64,7 +67,7 @@ int main(int argc, const char* argv[])
         exit(1);
     }
 
-    Triton::TritonModelInfo yoloModelInfo = Triton::setModel(batch_size);
+    Triton::TritonModelInfo yoloModelInfo = Triton::setModel(batch_size, modelType);
 
     tc::InferInput *input;
     err = tc::InferInput::Create(
@@ -176,7 +179,7 @@ int main(int argc, const char* argv[])
         {
             cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0,0), 2);
             cv::putText(frame, Yolo::coco_names[detection.class_id], 
-                cv::Point(detection.bbox.x, detection.bbox.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
+            cv::Point(detection.bbox.x, detection.bbox.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
         }           
 #endif
 #ifdef SHOW_FRAME
