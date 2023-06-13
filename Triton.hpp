@@ -30,7 +30,7 @@ namespace Triton{
     TritonModelInfo setModel(const int batch_size, const std::string& modelType ){
         TritonModelInfo info;
         info.input_name_ = "images";
-        if(modelType.find("yolov5") != std::string::npos)
+        if(modelType.find("yolov5") != std::string::npos || modelType.find("yolov8") != std::string::npos)
         {
             info.output_names_ = std::vector<std::string>{"output0"};
         }        

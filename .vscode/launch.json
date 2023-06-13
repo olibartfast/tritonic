@@ -11,8 +11,8 @@
         "program": "${workspaceFolder}/build/yolo-triton-cpp-client",
         "args": ["--video=$HOME/Videos/out.mp4", 
         "--labelsFile=coco.names",
-        "--model=yolov7-tiny_onnx",
-        "--model_type=yolov7"],
+        "--model=yolov8s_onnx",
+        "--model_type=yolov8"],
         "environment": [{ "name": "config", "value": "Debug" }],
         "cwd": "${workspaceFolder}" 
         }

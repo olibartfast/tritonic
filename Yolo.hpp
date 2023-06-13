@@ -76,25 +76,68 @@ namespace Yolo
 
     std::vector<Yolo::Detection> postprocess(const cv::Size& frame_size, std::vector<float>& infer_results, const std::vector<int64_t>& infer_shape)
     {
-        int numClasses =  infer_shape[2] - 5;
+        
         std::vector<Yolo::Detection> detections;
         std::vector<cv::Rect> boxes;
         std::vector<float> confs;
         std::vector<int> classIds;  
         const auto confThreshold = 0.5f;
-        const auto iouThreshold = 0.4f;      
-        for (auto it = infer_results.begin(); it != infer_results.end(); it += (numClasses + 5))
+        const auto iouThreshold = 0.4f; 
+
+        if(infer_shape[2]  < infer_shape[1])
         {
-            float clsConf = it[4];
-            if (clsConf > 0.5)
+            const int numClasses =  infer_shape[2] - 5;
+            for (auto it = infer_results.begin(); it != infer_results.end(); it += (numClasses + 5))
             {
-                auto[objConf, classId] = Yolo::getBestClassInfo(it, numClasses);
-                boxes.emplace_back(Yolo::get_rect(frame_size, std::vector<float>(it, it + 4)));
-                float confidence = clsConf * objConf;
-                confs.emplace_back(confidence);
-                classIds.emplace_back(classId);              
+                float clsConf = it[4];
+                if (clsConf > confThreshold)
+                {
+                    auto[objConf, classId] = Yolo::getBestClassInfo(it, numClasses);
+                    boxes.emplace_back(Yolo::get_rect(frame_size, std::vector<float>(it, it + 4)));
+                    float confidence = clsConf * objConf;
+                    confs.emplace_back(confidence);
+                    classIds.emplace_back(classId);              
+                }
             }
+
         }
+        else
+        {
+            const int numClasses =  infer_shape[1] - 4;
+            std::vector<std::vector<float>> output(infer_shape[1], std::vector<float>(infer_shape[2]));
+
+            // Construct output matrix
+            for (int i = 0; i < infer_shape[1]; i++) {
+                for (int j = 0; j < infer_shape[2]; j++) {
+                    output[i][j] = infer_results[i * infer_shape[2] + j];
+                }
+            }
+
+            // Transpose output matrix
+            std::vector<std::vector<float>> transposedOutput(infer_shape[2], std::vector<float>(infer_shape[1]));
+            for (int i = 0; i < infer_shape[1]; i++) {
+                for (int j = 0; j < infer_shape[2]; j++) {
+                    transposedOutput[j][i] = output[i][j];
+                }
+            }
+
+            // Get all the YOLO proposals
+            for (int i = 0; i < infer_shape[2]; i++) {
+                const auto& row = transposedOutput[i];
+                const float* bboxesPtr = row.data();
+                const float* scoresPtr = bboxesPtr + 4;
+                auto maxSPtr = std::max_element(scoresPtr, scoresPtr + numClasses);
+                float score = *maxSPtr;
+                if (score > confThreshold) {
+                    boxes.emplace_back(Yolo::get_rect(frame_size, std::vector<float>(bboxesPtr, bboxesPtr + 4)));
+                    int label = maxSPtr - scoresPtr;
+                    confs.emplace_back(score);
+                    classIds.emplace_back(label);
+                }
+            }
+
+        }
+
         std::vector<int> indices;
         cv::dnn::NMSBoxes(boxes, confs, confThreshold, iouThreshold, indices);
 

@@ -1,5 +1,5 @@
 ## C++ Triton client to infer Yolo series models 
-* Currently YoloV5/V6/V7
+* Currently YoloV5/V6/V7/V8
 ## Build client libraries
 https://github.com/triton-inference-server/client/tree/r22.08
 
@@ -29,8 +29,8 @@ Weights to export in ONNX format or download from [yolov6 repo](https://github.c
 ## YoloV7 export
 * Run from [yolov7 repo](https://github.com/WongKinYiu/yolov7#export) export script(e.g. to onnx) : ```python export.py --weights <yolov7_version>.pt --grid  --simplify --topk-all 100 --iou-thres 0.65 --conf-thres 0.35 --img-size 640 640 --max-wh 640``` (Don't use end-to-end parameter)
 
-## YoloV8 
-* Incoming ...
+## YoloV8 export 
+* Weights to export in ONNX format, [same way as yolov5](https://github.com/ultralytics/ultralytics/tree/main/examples/YOLOv8-CPP-Inference).
 
 ## Notes
 *  If you trying to export the model to TensorRT or OpenVino, your installed version of previous libraries MUST match the ones supported in Triton release you are using, check [server releases here](https://github.com/triton-inference-server/server/releases) 
