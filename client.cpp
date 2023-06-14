@@ -157,7 +157,7 @@ int main(int argc, const char* argv[])
         {
             err = tritonClient.grpcClient->Infer(
                 &result, options, inputs, outputs);
-        }
+        }        
         if (!err.IsOk())
         {
             std::cerr << "failed sending synchronous infer request: " << err
@@ -167,14 +167,17 @@ int main(int argc, const char* argv[])
         auto [infer_results, infer_shape] = Triton::getInferResults(result, batch_size, yoloModelInfo.output_names_, yoloModelInfo.max_batch_size_ != 0);
         result_ptr.reset(result);
         auto end = std::chrono::steady_clock::now();
-        auto diff = end - start;
-        std::cout << "Infer time: " << std::chrono::duration<double, std::milli>(diff).count() << " ms" << std::endl;
+        auto diff =  std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "Infer time: " << diff << " ms" << std::endl;
 
         std::vector<Yolo::Detection> detections = Yolo::postprocess(cv::Size(frame.cols, frame.rows),
             infer_results, infer_shape);
 
 
 #if defined(SHOW_FRAME) || defined(WRITE_FRAME)
+        double fps = 1000.0 /  static_cast<double>(diff);
+        std::string fpsText = "FPS: " + std::to_string(fps);
+        cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
         for (auto&& detection : detections)
         {
             cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0,0), 2);
