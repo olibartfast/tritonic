@@ -3,8 +3,6 @@
 
 namespace Yolo
 {
-
-    const int CLASS_NUM = 80;
     const int INPUT_C = 3;
     const int INPUT_H = 640;
     const int INPUT_W = 640;

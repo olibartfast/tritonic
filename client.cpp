@@ -121,11 +121,6 @@ int main(int argc, const char* argv[])
 
     Yolo::coco_names = Yolo::readLabelNames(fileName);
 
-    if(Yolo::coco_names.size() != Yolo::CLASS_NUM){
-        std::cerr << "Wrong labels filename or wrong path to file: " << fileName << std::endl;
-        exit(1);
-    }
-
     while (cap.read(frame))
     {
         // Reset the input for new request.
