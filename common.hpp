@@ -10,6 +10,7 @@
 #include <fstream>
 #include <filesystem>
 #include <chrono>
+#include  <algorithm> 
 
 #include "grpc_client.h"
 #include "http_client.h"

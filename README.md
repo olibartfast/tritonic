@@ -60,8 +60,12 @@ nvcr.io/nvidia/tritonserver:<xx.yy>-py3 tritonserver \
 If you plan to run on CPU omit --gpus parameter
 
 ## How to run
-* ./yolo-triton-cpp-client  --video=/path/to/video/videoname.format  --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names
-* ./yolo-triton-cpp-client  --help for all available parameters
+```
+ ./yolo-triton-cpp-client  --video=/path/to/video/videoname.format  --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names --serverAddress=<address:port> --inputSize <width>,<height>
+```
+```
+ ./yolo-triton-cpp-client  --help for all available parameters
+```
 
 ### Realtime inference test on video
 Testing yolov7-tiny exported to onnx  

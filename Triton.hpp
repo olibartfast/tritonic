@@ -27,7 +27,7 @@ namespace Triton{
     };
 
 
-    TritonModelInfo setModel(const int batch_size, const std::string& modelType ){
+    TritonModelInfo setModel(const int batch_size, const int input_width, const int input_height, const std::string& modelType ){
         TritonModelInfo info;
         info.input_name_ = "images";
         if(modelType.find("yolov5") != std::string::npos || modelType.find("yolov8") != std::string::npos)
@@ -41,13 +41,17 @@ namespace Triton{
         else if(modelType.find("yolov7") != std::string::npos)
         {
             info.output_names_ = std::vector<std::string>{"output"};
-        }        
+        }   
+        else if(modelType.find("yolonas") != std::string::npos)
+        {
+            info.output_names_ = std::vector<std::string>{"913", "904"};
+        }                 
 
         info.input_datatype_ = std::string("FP32");
         // The shape of the input
-        info.input_c_ = Yolo::INPUT_C;
-        info.input_w_ = Yolo::INPUT_W;
-        info.input_h_ = Yolo::INPUT_H;
+        info.input_c_ = 3;
+        info.input_w_ = input_width;
+        info.input_h_ = input_height;
         // The format of the input
         info.input_format_ = "FORMAT_NCHW";
         info.type1_ = CV_32FC1;

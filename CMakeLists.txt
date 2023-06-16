@@ -4,7 +4,7 @@ project(yolo-triton-cpp-client)
 message(STATUS ${PROJECT_NAME}) 
 message(STATUS $ENV{TritonClientThirdParty_DIR})
 message(STATUS $ENV{TritonClientBuild_DIR})
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 
 option(WITH_SHOW_FRAME "Option description" OFF)

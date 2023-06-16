@@ -1,21 +1,19 @@
 #pragma once
 #include "common.hpp"
 
-namespace Yolo
+class Yolo
 {
+public:
     const int INPUT_C = 3;
     const int INPUT_H = 640;
     const int INPUT_W = 640;
 
-    struct Detection{
-        //x y w h
+    struct Detection {
         cv::Rect bbox;
         float det_confidence;
         float class_id;
         float class_confidence;
     };
-
-    std::vector<std::string> coco_names;
 
     std::vector<std::string> readLabelNames(const std::string& fileName)
     {
@@ -23,38 +21,37 @@ namespace Yolo
         std::ifstream ifs(fileName.c_str());
         std::string line;
         while (getline(ifs, line))
-        classes.push_back(line);
-        return classes;   
+            classes.push_back(line);
+        return classes;
     }
 
-
-    cv::Rect get_rect(const cv::Size& imgSz, const std::vector<float>& bbox) 
+    cv::Rect get_rect(const cv::Size& imgSz, const std::vector<float>& bbox)
     {
         int l, r, t, b;
         float r_w = INPUT_W / (imgSz.width * 1.0);
         float r_h = INPUT_H / (imgSz.height * 1.0);
         if (r_h > r_w) {
-            l = bbox[0] - bbox[2]/2.f;
-            r = bbox[0] + bbox[2]/2.f;
-            t = bbox[1] - bbox[3]/2.f - (INPUT_H - r_w * imgSz.height) / 2;
-            b = bbox[1] + bbox[3]/2.f - (INPUT_H - r_w * imgSz.height) / 2;
+            l = bbox[0] - bbox[2] / 2.f;
+            r = bbox[0] + bbox[2] / 2.f;
+            t = bbox[1] - bbox[3] / 2.f - (INPUT_H - r_w * imgSz.height) / 2;
+            b = bbox[1] + bbox[3] / 2.f - (INPUT_H - r_w * imgSz.height) / 2;
             l = l / r_w;
             r = r / r_w;
             t = t / r_w;
             b = b / r_w;
-        } else {
-            l = bbox[0] - bbox[2]/2.f - (INPUT_W - r_h * imgSz.width) / 2;
-            r = bbox[0] + bbox[2]/2.f - (INPUT_W - r_h * imgSz.width) / 2;
-            t = bbox[1] - bbox[3]/2.f;
-            b = bbox[1] + bbox[3]/2.f;
+        }
+        else {
+            l = bbox[0] - bbox[2] / 2.f - (INPUT_W - r_h * imgSz.width) / 2;
+            r = bbox[0] + bbox[2] / 2.f - (INPUT_W - r_h * imgSz.width) / 2;
+            t = bbox[1] - bbox[3] / 2.f;
+            b = bbox[1] + bbox[3] / 2.f;
             l = l / r_h;
             r = r / r_h;
             t = t / r_h;
             b = b / r_h;
         }
-        return cv::Rect(l, t, r-l, b-t);
+        return cv::Rect(l, t, r - l, b - t);
     }
-
 
     auto getBestClassInfo(std::vector<float>::iterator it, const size_t& numClasses)
     {
@@ -70,17 +67,17 @@ namespace Yolo
             }
         }
         return std::make_tuple(maxConf, idxMax);
-    }    
+    }
 
-    std::vector<Yolo::Detection> postprocess(const cv::Size& frame_size, std::vector<float>& infer_results, const std::vector<int64_t>& infer_shape)
+    std::vector<Detection> postprocess(const cv::Size& frame_size, std::vector<float>& infer_results, const std::vector<int64_t>& infer_shape)
     {
         
-        std::vector<Yolo::Detection> detections;
+        std::vector<Detection> detections;
         std::vector<cv::Rect> boxes;
         std::vector<float> confs;
-        std::vector<int> classIds;  
+        std::vector<int> classIds;
         const auto confThreshold = 0.5f;
-        const auto iouThreshold = 0.4f; 
+        const auto iouThreshold = 0.4f;
 
         if(infer_shape[2]  < infer_shape[1])
         {
@@ -117,7 +114,7 @@ namespace Yolo
                 for (int j = 0; j < infer_shape[2]; j++) {
                     transposedOutput[j][i] = output[i][j];
                 }
-            }
+                    }
 
             // Get all the YOLO proposals
             for (int i = 0; i < infer_shape[2]; i++) {
@@ -133,15 +130,14 @@ namespace Yolo
                     classIds.emplace_back(label);
                 }
             }
-
         }
 
         std::vector<int> indices;
         cv::dnn::NMSBoxes(boxes, confs, confThreshold, iouThreshold, indices);
 
-        for (auto&& idx : indices)
+        for (int idx : indices)
         {
-            Yolo::Detection d;
+            Detection d;
             d.bbox = cv::Rect(boxes[idx]);
             d.class_confidence = confs[idx];
             d.class_id = classIds[idx];
@@ -151,7 +147,7 @@ namespace Yolo
     }
 
 
-    std::vector<uint8_t> Preprocess(
+    std::vector<uint8_t> preprocess(
         const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
         size_t img_channels, const cv::Size& img_size)
     {
@@ -223,9 +219,4 @@ namespace Yolo
 
         return input_data;
     }
-
-
-}
-
-
-
+};
