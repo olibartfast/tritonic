@@ -1,5 +1,5 @@
 ## C++ Triton client to infer Yolo series models 
-* Currently YoloV5/V6/V7/V8, object detection, 640p models
+* Currently YoloV5/V6/V7/V8, object detection
 ## Build client libraries
 https://github.com/triton-inference-server/client/tree/r22.08
 
