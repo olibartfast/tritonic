@@ -76,6 +76,31 @@ namespace Triton{
         std::unique_ptr<tc::InferenceServerGrpcClient> grpcClient;
     };
 
+    // Function to create Triton client based on the protocol
+    void createTritonClient(Triton::TritonClient& tritonClient, const std::string& url, bool verbose, Triton::ProtocolType protocol)
+    {
+        tc::Error err;
+        if (protocol == Triton::ProtocolType::HTTP) {
+            err = tc::InferenceServerHttpClient::Create(
+                &tritonClient.httpClient, url, verbose);
+        }
+        else {
+            err = tc::InferenceServerGrpcClient::Create(
+                &tritonClient.grpcClient, url, verbose);
+        }
+        if (!err.IsOk()) {
+            std::cerr << "error: unable to create client for inference: " << err
+                << std::endl;
+            exit(1);
+        }
+    }
+
+    // Function to create Triton infer options
+    tc::InferOptions createInferOptions(const std::string& modelName, const std::string& modelVersion) {
+        tc::InferOptions options(modelName);
+        options.model_version_ = modelVersion;
+        return options;
+    }
 
     auto
     getInferResults(

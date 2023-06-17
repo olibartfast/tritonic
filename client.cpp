@@ -55,27 +55,18 @@ int main(int argc, const char* argv[])
     std::string labelsFile = parser.get<std::string>("labelsFile");
     auto [input_width, input_height] = parseInputSize( parser.get<std::string>("inputSize"));
 
+    // Create Triton client
     Triton::TritonClient tritonClient;
-    tc::Error err;
-    if (protocol == Triton::ProtocolType::HTTP) {
-        err = tc::InferenceServerHttpClient::Create(
-            &tritonClient.httpClient, url, verbose);
-    }
-    else {
-        err = tc::InferenceServerGrpcClient::Create(
-            &tritonClient.grpcClient, url, verbose);
-    }
-    if (!err.IsOk()) {
-        std::cerr << "error: unable to create client for inference: " << err
-            << std::endl;
-        exit(1);
-    }
+    Triton::createTritonClient(tritonClient, url, verbose, protocol);
 
     Triton::TritonModelInfo yoloModelInfo = Triton::setModel(batch_size, input_width, input_height, modelType);
+    Yolo yolo(input_width, input_height);
+    const auto coco_names = yolo.readLabelNames(labelsFile);
 
     std::vector<tc::InferInput*> inputs = { nullptr };
     std::vector<const tc::InferRequestedOutput*> outputs;
 
+    tc::Error err;
     for (const auto& output_name : yoloModelInfo.output_names_) {
         tc::InferRequestedOutput* output;
         err = tc::InferRequestedOutput::Create(&output, output_name);
@@ -88,8 +79,7 @@ int main(int argc, const char* argv[])
         outputs.push_back(output);
     }
 
-    tc::InferOptions options(modelName);
-    options.model_version_ = modelVersion;
+    tc::InferOptions options = Triton::createInferOptions(modelName, modelVersion);
 
     cv::Mat frame;
     std::vector<uint8_t> input_data;
@@ -106,9 +96,6 @@ int main(int argc, const char* argv[])
         return -1;
     }
 #endif
-
-    Yolo yolo(input_width, input_height);
-    const auto coco_names = yolo.readLabelNames(labelsFile);
 
     while (cap.read(frame)) {
         auto start = std::chrono::steady_clock::now();
