@@ -1,5 +1,5 @@
 ## C++ Triton client to infer Yolo series models 
-* Currently YoloV5/V6/V7/V8, object detection
+* Currently YoloV5/V6/V7/V8, Yolo-Nas, only object detection. Instance segmentation in to-do list/in progress.
 ## Build client libraries
 https://github.com/triton-inference-server/client/tree/r22.08
 
@@ -31,6 +31,17 @@ Weights to export in ONNX format or download from [yolov6 repo](https://github.c
 
 ## YoloV8 export 
 * Weights to export in ONNX format, [same way as yolov5](https://github.com/ultralytics/ultralytics/tree/main/examples/YOLOv8-CPP-Inference).
+
+## Yolo-Nas export 
+* Weights can be export in ONNX format like in [YoloNAS Quickstart](https://github.com/Deci-AI/super-gradients/blob/master/documentation/source/YoloNASQuickstart.md#export-to-onnx).  
+I export the model specifying input and output layers name, for example here below in the case of yolo_nas_s version:
+```
+from super_gradients.training import models
+
+net = models.get("yolo_nas_s", pretrained_weights="coco")
+models.convert_to_onnx(model=net, input_shape=(3,640,640), out_path="yolo_nas_s.onnx", torch_onnx_export_kwargs={"input_names": ['input'], "output_names": ['output0', 'output1']})
+```
+
 
 ## Notes
 *  If you trying to export the model to TensorRT or OpenVino, your installed version of previous libraries MUST match the ones supported in Triton release you are using, check [server releases here](https://github.com/triton-inference-server/server/releases) 
@@ -79,4 +90,5 @@ https://youtu.be/lke5TcbP2a0
 
 
 ### TO DO
+* Nms on gpu
 * Instance segmentation

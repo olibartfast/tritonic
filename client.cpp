@@ -72,6 +72,17 @@ int main(int argc, const char* argv[])
     std::string labelsFile = parser.get<std::string>("labelsFile");
     auto [input_width, input_height] = parseInputSize( parser.get<std::string>("inputSize"));
 
+    std::cout << "Chosen Parameters:" << std::endl;
+    std::cout << "model_type (t): " << parser.get<std::string>("model_type") << std::endl;
+    std::cout << "model (m): " << parser.get<std::string>("model") << std::endl;
+    std::cout << "video (v): " << parser.get<std::string>("video") << std::endl;
+    std::cout << "serverAddress (s): " << parser.get<std::string>("serverAddress") << std::endl;
+    std::cout << "verbose (vb): " << parser.get<bool>("verbose") << std::endl;
+    std::cout << "protocol (p): " << parser.get<std::string>("protocol") << std::endl;
+    std::cout << "labelsFile (l): " << parser.get<std::string>("labelsFile") << std::endl;
+    std::cout << "batch (b): " << parser.get<size_t>("batch") << std::endl;
+    std::cout << "inputSize (i): " << parser.get<std::string>("inputSize") << std::endl;
+
     // Create Triton client
     Triton::TritonClient tritonClient;
     Triton::createTritonClient(tritonClient, url, verbose, protocol);

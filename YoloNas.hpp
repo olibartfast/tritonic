@@ -17,7 +17,7 @@ public:
         sample.convertTo(
             sample, (img_channels == 3) ? img_type3 : img_type1);
         sample.convertTo(sample, CV_32FC3, 1.f / 255.f);
-
+        cv::resize(sample, sample, cv::Size(img_size.width, img_size.height));
 
         // Allocate a buffer to hold all image elements.
         size_t img_byte_size = sample.total() * sample.elemSize();
@@ -71,7 +71,6 @@ public:
         const int numClasses =  scores_shape[2];
         const auto rows = detection_shape[1];
         const auto boxes_size =  detection_shape[2];
-        std::cout << boxes_size << " " << rows << " " << numClasses << std::endl;
         for (int i = 0; i < rows; ++i) 
         {
             cv::Mat scores(1, numClasses, CV_32FC1, scores_result);
@@ -96,6 +95,18 @@ public:
             scores_result += numClasses;
             detection_result += boxes_size;
         }      
+
+        std::vector<int> indices;
+        cv::dnn::NMSBoxes(boxes, confs, confThreshold, iouThreshold, indices);
+
+        for (int idx : indices)
+        {
+            Detection d;
+            d.bbox = cv::Rect(boxes[idx]);
+            d.class_confidence = confs[idx];
+            d.class_id = classIds[idx];
+            detections.emplace_back(d);
+        }        
         return detections;
     }
 

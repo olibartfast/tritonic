@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 
 option(WITH_SHOW_FRAME "Option description" OFF)
-option(WITH_WRITE_FRAME "Option description" OFF)
+option(WITH_WRITE_FRAME "Option description" ON)
 
 if(WITH_SHOW_FRAME)
   add_definitions(-DSHOW_FRAME)

@@ -1,13 +1,12 @@
 #pragma once
 #include "common.hpp"
 #include "Yolo.hpp"
+#include <curl/curl.h>
+
 
 namespace Triton{
 
-    enum ProtocolType { HTTP = 0, GRPC = 1 };
-
-
-    struct TritonModelInfo {
+   struct TritonModelInfo {
         std::string output_name_;
         std::vector<std::string> output_names_;
         std::string input_name_;
@@ -24,9 +23,10 @@ namespace Triton{
 
         std::vector<int64_t> shape_;
 
-    };
+    };  
 
-
+    enum ProtocolType { HTTP = 0, GRPC = 1 };
+ 
     TritonModelInfo setModel(const int batch_size, const int input_width, const int input_height, const std::string& modelType ){
         TritonModelInfo info;
         info.input_name_ = "images";
@@ -44,8 +44,8 @@ namespace Triton{
         }   
         else if(modelType.find("yolonas") != std::string::npos)
         {
-            info.input_name_ = "input.1";
-            info.output_names_ = std::vector<std::string>{"913", "904"};
+            info.input_name_ = "input";
+            info.output_names_ = std::vector<std::string>{"output0", "output1"};
         }                 
 
         info.input_datatype_ = std::string("FP32");
