@@ -1,12 +1,16 @@
+
 #pragma once
 #include "common.hpp"
 
 class Yolo
 {
 public:
-    const int INPUT_C = 3;
-    const int INPUT_H = 640;
-    const int INPUT_W = 640;
+    Yolo(const int input_width, const int input_height) : 
+    input_width_{input_width},
+    input_height_{input_height}
+    {
+    }
+
 
     struct Detection {
         cv::Rect bbox;
@@ -28,21 +32,21 @@ public:
     cv::Rect get_rect(const cv::Size& imgSz, const std::vector<float>& bbox)
     {
         int l, r, t, b;
-        float r_w = INPUT_W / (imgSz.width * 1.0);
-        float r_h = INPUT_H / (imgSz.height * 1.0);
+        float r_w = input_width_ / (imgSz.width * 1.0);
+        float r_h = input_height_ / (imgSz.height * 1.0);
         if (r_h > r_w) {
             l = bbox[0] - bbox[2] / 2.f;
             r = bbox[0] + bbox[2] / 2.f;
-            t = bbox[1] - bbox[3] / 2.f - (INPUT_H - r_w * imgSz.height) / 2;
-            b = bbox[1] + bbox[3] / 2.f - (INPUT_H - r_w * imgSz.height) / 2;
+            t = bbox[1] - bbox[3] / 2.f - (input_height_ - r_w * imgSz.height) / 2;
+            b = bbox[1] + bbox[3] / 2.f - (input_height_ - r_w * imgSz.height) / 2;
             l = l / r_w;
             r = r / r_w;
             t = t / r_w;
             b = b / r_w;
         }
         else {
-            l = bbox[0] - bbox[2] / 2.f - (INPUT_W - r_h * imgSz.width) / 2;
-            r = bbox[0] + bbox[2] / 2.f - (INPUT_W - r_h * imgSz.width) / 2;
+            l = bbox[0] - bbox[2] / 2.f - (input_width_ - r_h * imgSz.width) / 2;
+            r = bbox[0] + bbox[2] / 2.f - (input_width_ - r_h * imgSz.width) / 2;
             t = bbox[1] - bbox[3] / 2.f;
             b = bbox[1] + bbox[3] / 2.f;
             l = l / r_h;
@@ -160,29 +164,26 @@ public:
         cv::cvtColor(img, sample,  cv::COLOR_BGR2RGB);
         sample.convertTo(
             sample, (img_channels == 3) ? img_type3 : img_type1);
-
-        const int INPUT_W = Yolo::INPUT_W;
-        const int INPUT_H = Yolo::INPUT_H;
         int w, h, x, y;
-        float r_w = INPUT_W / (sample.cols * 1.0);
-        float r_h = INPUT_H / (sample.rows * 1.0);
+        float r_w = input_width_ / (sample.cols * 1.0);
+        float r_h = input_height_ / (sample.rows * 1.0);
         if (r_h > r_w)
         {
-            w = INPUT_W;
+            w = input_width_;
             h = r_w * sample.rows;
             x = 0;
-            y = (INPUT_H - h) / 2;
+            y = (input_height_ - h) / 2;
         }
         else
         {
             w = r_h * sample.cols;
-            h = INPUT_H;
-            x = (INPUT_W - w) / 2;
+            h = input_height_;
+            x = (input_width_ - w) / 2;
             y = 0;
         }
         cv::Mat re(h, w, CV_8UC3);
         cv::resize(sample, re, re.size(), 0, 0, cv::INTER_CUBIC);
-        cv::Mat out(INPUT_H, INPUT_W, CV_8UC3, cv::Scalar(128, 128, 128));
+        cv::Mat out(input_height_, input_width_, CV_8UC3, cv::Scalar(128, 128, 128));
         re.copyTo(out(cv::Rect(x, y, re.cols, re.rows)));
         out.convertTo(sample, CV_32FC3, 1.f / 255.f);
 
@@ -219,4 +220,9 @@ public:
 
         return input_data;
     }
+
+    private:
+        int input_width_;
+        int input_height_;
+        int channels_{3};
 };
