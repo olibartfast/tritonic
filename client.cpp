@@ -1,6 +1,26 @@
 #include "Yolo.hpp"
 #include "Triton.hpp"
 
+// Function to parse input size string and validate the format
+std::pair<int, int> parseInputSize(const std::string& input_size_str) {
+    std::istringstream iss(input_size_str);
+    std::vector<std::string> input_size_values;
+    std::string token;
+    while (std::getline(iss, token, ',')) {
+        input_size_values.push_back(token);
+    }
+
+    if (input_size_values.size() != 2) {
+        throw std::runtime_error("Invalid input size format. Please provide width and height values separated by a comma.");
+    }
+
+    const int input_width = std::stoi(input_size_values[0]);
+    const int input_height = std::stoi(input_size_values[1]);
+
+    return std::make_pair(input_width, input_height);
+}
+
+
 static const std::string keys =
     "{ help h   | | Print help message. }"
     "{ model_type t | yolov7 | yolo version used i.e yolov5, yolov6 or yolov7}"
@@ -33,22 +53,7 @@ int main(int argc, const char* argv[])
     std::string modelType = parser.get<std::string>("model_type");
     std::string url(serverAddress);
     std::string labelsFile = parser.get<std::string>("labelsFile");
-    const std::string input_size_str = parser.get<std::string>("inputSize");
-    std::vector<std::string> input_size_values;
-    std::istringstream iss(input_size_str);
-    std::string token;
-    while (std::getline(iss, token, ',')) {
-        input_size_values.push_back(token);
-    }
-
-    if (input_size_values.size() != 2) {
-        std::cerr << "Invalid input size format. Please provide width and height values separated by a comma." << std::endl;
-        return 1;
-    }
-    
-    const int input_width = std::stoi(input_size_values[0]);
-    const int input_height = std::stoi(input_size_values[1]);
-
+    auto [input_width, input_height] = parseInputSize( parser.get<std::string>("inputSize"));
 
     Triton::TritonClient tritonClient;
     tc::Error err;
@@ -102,7 +107,7 @@ int main(int argc, const char* argv[])
     }
 #endif
 
-    Yolo yolo;
+    Yolo yolo(input_width, input_height);
     const auto coco_names = yolo.readLabelNames(labelsFile);
 
     while (cap.read(frame)) {
