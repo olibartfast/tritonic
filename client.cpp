@@ -2,7 +2,7 @@
 #include "YoloNas.hpp"
 #include "Triton.hpp"
 
-std::unique_ptr<Yolo> createYoloInstance(const std::string& modelType, const int input_width, const int input_height)
+std::unique_ptr<YoloInterface> createYoloInstance(const std::string& modelType, const int input_width, const int input_height)
 {
     if (modelType == "yolonas")
     {
@@ -77,7 +77,7 @@ int main(int argc, const char* argv[])
     Triton::createTritonClient(tritonClient, url, verbose, protocol);
 
     Triton::TritonModelInfo yoloModelInfo = Triton::setModel(batch_size, input_width, input_height, modelType);
-    std::unique_ptr<Yolo>  yolo = createYoloInstance(modelType, input_width, input_height);
+    std::unique_ptr<YoloInterface>  yolo = createYoloInstance(modelType, input_width, input_height);
     const auto coco_names = yolo->readLabelNames(labelsFile);
 
     std::vector<tc::InferInput*> inputs = { nullptr };

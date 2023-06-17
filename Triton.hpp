@@ -44,6 +44,7 @@ namespace Triton{
         }   
         else if(modelType.find("yolonas") != std::string::npos)
         {
+            info.input_name_ = "input.1";
             info.output_names_ = std::vector<std::string>{"913", "904"};
         }                 
 

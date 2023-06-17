@@ -1,17 +1,15 @@
-#include "Yolo.hpp"
-class YoloNas : public Yolo
+#include "YoloInterface.hpp"
+class YoloNas : public YoloInterface
 {
 public:
-    YoloNas(const int input_width, const int input_height) :
-        Yolo(input_width, input_height)
-    {
-        // Additional constructor code for YoloNas if needed
+    YoloNas(int input_width, int input_height)
+        : YoloInterface(input_width, input_height) {
     }
 
     // Override the preprocess function
     std::vector<uint8_t> preprocess(
         const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
-        size_t img_channels, const cv::Size& img_size) 
+        size_t img_channels, const cv::Size& img_size) override
     {
         std::vector<uint8_t> input_data;
         cv::Mat sample;
@@ -55,8 +53,8 @@ public:
     }
 
     // Override the postprocess function
-    std::vector<Detection> postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_result, 
-    const std::vector<std::vector<int64_t>>& infer_shapes)
+    std::vector<Detection> postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
+    const std::vector<std::vector<int64_t>>& infer_shapes) override
     {
     
         std::vector<Detection> detections;
@@ -65,32 +63,39 @@ public:
         std::vector<int> classIds;
         const auto confThreshold = 0.5f;
         const auto iouThreshold = 0.4f;
+        float* detection_result = infer_results[0].data();
+        float* scores_result = infer_results[1].data();
+        const auto detection_shape = infer_shapes[0];
+        const auto scores_shape = infer_shapes[1];
 
-        // const int numClasses =  infer_shape[1] - 4;
-        // for (auto it = infer_results.begin(); it != infer_results.end(); it += (numClasses + 5))
-        // {
-        //     float clsConf = it[4];
-        //     if (clsConf > confThreshold)
-        //     {
-        //         auto[objConf, classId] = Yolo::getBestClassInfo(it, numClasses);
-        //         boxes.emplace_back(Yolo::get_rect(frame_size, std::vector<float>(it, it + 4)));
-        //         float confidence = clsConf * objConf;
-        //         confs.emplace_back(confidence);
-        //         classIds.emplace_back(classId);              
-        //     }
-        // }
+        const int numClasses =  scores_shape[2];
+        const auto rows = detection_shape[1];
+        const auto boxes_size =  detection_shape[2];
+        std::cout << boxes_size << " " << rows << " " << numClasses << std::endl;
+        for (int i = 0; i < rows; ++i) 
+        {
+            cv::Mat scores(1, numClasses, CV_32FC1, scores_result);
+            cv::Point class_id;
+            double maxClassScore;
+            minMaxLoc(scores, 0, &maxClassScore, 0, &class_id);
+            if (maxClassScore >= confThreshold) 
+            {
+                confs.push_back(maxClassScore);
+                classIds.push_back(class_id.x);
+                float r_w = (frame_size.width * 1.0) / input_width_;
+                float r_h = (frame_size.height * 1.0) / input_height_ ;
+                std::vector<float> bbox(&detection_result[0], &detection_result[4]);
 
-        // std::vector<int> indices;
-        // cv::dnn::NMSBoxes(boxes, confs, confThreshold, iouThreshold, indices);
-
-        // for (int idx : indices)
-        // {
-        //     Detection d;
-        //     d.bbox = cv::Rect(boxes[idx]);
-        //     d.class_confidence = confs[idx];
-        //     d.class_id = classIds[idx];
-        //     detections.emplace_back(d);
-        // }        
+                int left = (int)(bbox[0] * r_w);
+                int top = (int)(bbox[1] * r_h);
+                int width = (int)((bbox[2] - bbox[0]) * r_w);
+                int height = (int)((bbox[3] - bbox[1]) * r_h);
+                boxes.push_back(cv::Rect(left, top, width, height));
+            }
+            // Jump to the next column.
+            scores_result += numClasses;
+            detection_result += boxes_size;
+        }      
         return detections;
     }
 

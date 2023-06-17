@@ -1,32 +1,12 @@
 
 #pragma once
 #include "common.hpp"
+#include "YoloInterface.hpp"
 
-class Yolo
-{
+class Yolo : public YoloInterface {
 public:
-    Yolo(const int input_width, const int input_height) : 
-    input_width_{input_width},
-    input_height_{input_height}
-    {
-    }
-
-
-    struct Detection {
-        cv::Rect bbox;
-        float det_confidence;
-        float class_id;
-        float class_confidence;
-    };
-
-    std::vector<std::string> readLabelNames(const std::string& fileName)
-    {
-        std::vector<std::string> classes;
-        std::ifstream ifs(fileName.c_str());
-        std::string line;
-        while (getline(ifs, line))
-            classes.push_back(line);
-        return classes;
+    Yolo(int input_width, int input_height)
+        : YoloInterface(input_width, input_height){
     }
 
     cv::Rect get_rect(const cv::Size& imgSz, const std::vector<float>& bbox)
@@ -74,7 +54,7 @@ public:
     }
 
     std::vector<Detection> postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
-    const std::vector<std::vector<int64_t>>& infer_shapes)
+    const std::vector<std::vector<int64_t>>& infer_shapes) override
     {
         
         std::vector<Detection> detections;
@@ -156,7 +136,7 @@ public:
 
     std::vector<uint8_t> preprocess(
         const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
-        size_t img_channels, const cv::Size& img_size)
+        size_t img_channels, const cv::Size& img_size) override
     {
         // Image channels are in BGR order. Currently model configuration
         // data doesn't provide any information as to the expected channel
@@ -224,8 +204,4 @@ public:
         return input_data;
     }
 
-    protected:
-        int input_width_;
-        int input_height_;
-        int channels_{3};
 };
