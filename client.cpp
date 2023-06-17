@@ -64,21 +64,7 @@ int main(int argc, const char* argv[])
     const auto coco_names = yolo.readLabelNames(labelsFile);
 
     std::vector<tc::InferInput*> inputs = { nullptr };
-    std::vector<const tc::InferRequestedOutput*> outputs;
-
-    tc::Error err;
-    for (const auto& output_name : yoloModelInfo.output_names_) {
-        tc::InferRequestedOutput* output;
-        err = tc::InferRequestedOutput::Create(&output, output_name);
-        if (!err.IsOk()) {
-            std::cerr << "unable to get output: " << err << std::endl;
-            exit(1);
-        }
-        else
-            std::cout << "Created output " << output_name << std::endl;
-        outputs.push_back(output);
-    }
-
+    std::vector<const tc::InferRequestedOutput*> outputs = Triton::createInferRequestedOutput(yoloModelInfo.output_names_);
     tc::InferOptions options = Triton::createInferOptions(modelName, modelVersion);
 
     cv::Mat frame;
@@ -97,6 +83,7 @@ int main(int argc, const char* argv[])
     }
 #endif
 
+    tc::Error err;
     while (cap.read(frame)) {
         auto start = std::chrono::steady_clock::now();
         input_data = yolo.preprocess(frame, yoloModelInfo.input_format_, yoloModelInfo.type1_, yoloModelInfo.type3_,

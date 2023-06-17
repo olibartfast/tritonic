@@ -95,8 +95,27 @@ namespace Triton{
         }
     }
 
+    std::vector<const tc::InferRequestedOutput*> createInferRequestedOutput(const std::vector<std::string>& output_names_)
+    {
+        std::vector<const tc::InferRequestedOutput*> outputs;
+        tc::Error err;
+        for (const auto& output_name : output_names_) {
+            tc::InferRequestedOutput* output;
+            err = tc::InferRequestedOutput::Create(&output, output_name);
+            if (!err.IsOk()) {
+                std::cerr << "unable to get output: " << err << std::endl;
+                exit(1);
+            }
+            else
+                std::cout << "Created output " << output_name << std::endl;
+            outputs.push_back(output);
+        }
+        return outputs;    
+    }
+
     // Function to create Triton infer options
-    tc::InferOptions createInferOptions(const std::string& modelName, const std::string& modelVersion) {
+    tc::InferOptions createInferOptions(const std::string& modelName, const std::string& modelVersion) 
+    {
         tc::InferOptions options(modelName);
         options.model_version_ = modelVersion;
         return options;
