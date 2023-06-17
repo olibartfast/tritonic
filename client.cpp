@@ -1,5 +1,22 @@
 #include "Yolo.hpp"
+#include "YoloNas.hpp"
 #include "Triton.hpp"
+
+std::unique_ptr<Yolo> createYoloInstance(const std::string& modelType, const int input_width, const int input_height)
+{
+    if (modelType == "yolonas")
+    {
+        return std::make_unique<YoloNas>(input_width, input_height);
+    }
+    else if (modelType.find("yolov") != std::string::npos )
+    {
+        return std::make_unique<Yolo>(input_width, input_height);
+    }
+    else
+    {
+        return nullptr;
+    }
+}
 
 // Function to parse input size string and validate the format
 std::pair<int, int> parseInputSize(const std::string& input_size_str) {
@@ -60,8 +77,8 @@ int main(int argc, const char* argv[])
     Triton::createTritonClient(tritonClient, url, verbose, protocol);
 
     Triton::TritonModelInfo yoloModelInfo = Triton::setModel(batch_size, input_width, input_height, modelType);
-    Yolo yolo(input_width, input_height);
-    const auto coco_names = yolo.readLabelNames(labelsFile);
+    std::unique_ptr<Yolo>  yolo = createYoloInstance(modelType, input_width, input_height);
+    const auto coco_names = yolo->readLabelNames(labelsFile);
 
     std::vector<tc::InferInput*> inputs = { nullptr };
     std::vector<const tc::InferRequestedOutput*> outputs = Triton::createInferRequestedOutput(yoloModelInfo.output_names_);
@@ -86,7 +103,7 @@ int main(int argc, const char* argv[])
     tc::Error err;
     while (cap.read(frame)) {
         auto start = std::chrono::steady_clock::now();
-        input_data = yolo.preprocess(frame, yoloModelInfo.input_format_, yoloModelInfo.type1_, yoloModelInfo.type3_,
+        input_data = yolo->preprocess(frame, yoloModelInfo.input_format_, yoloModelInfo.type1_, yoloModelInfo.type3_,
             yoloModelInfo.input_c_, cv::Size(yoloModelInfo.input_w_, yoloModelInfo.input_h_));
 
         if (inputs[0] != nullptr) {
@@ -127,14 +144,14 @@ int main(int argc, const char* argv[])
             exit(1);
         }
 
-        auto [infer_results, infer_shape] = Triton::getInferResults(result, batch_size, yoloModelInfo.output_names_, yoloModelInfo.max_batch_size_ != 0);
+        auto [infer_results, infer_shapes] = Triton::getInferResults(result, batch_size, yoloModelInfo.output_names_, yoloModelInfo.max_batch_size_ != 0);
         result_ptr.reset(result);
         auto end = std::chrono::steady_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         std::cout << "Infer time: " << diff << " ms" << std::endl;
 
-        std::vector<Yolo::Detection> detections = yolo.postprocess(cv::Size(frame.cols, frame.rows),
-            infer_results, infer_shape);
+        std::vector<Yolo::Detection> detections = yolo->postprocess(cv::Size(frame.cols, frame.rows),
+            infer_results, infer_shapes);
 
 #if defined(SHOW_FRAME) || defined(WRITE_FRAME)
         double fps = 1000.0 / static_cast<double>(diff);

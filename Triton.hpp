@@ -134,29 +134,33 @@ namespace Triton{
             exit(1);
         }
 
-        std::vector<float> infer_results;
-        std::vector<int64_t> infer_shape;
+        std::vector<std::vector<float>> infer_results;
+        std::vector<std::vector<int64_t> > infer_shapes;
 
 
         float* outputData;
         size_t outputByteSize;
         for (auto outputName : output_names)
         {
+            std::vector<int64_t> infer_shape;
+            std::vector<float> infer_result;
+
             result->RawData(
                 outputName, (const uint8_t**)&outputData, &outputByteSize);
 
             tc::Error err = result->Shape(outputName, &infer_shape);
-            infer_results = std::vector<float>(outputByteSize / sizeof(float));
-            std::memcpy(infer_results.data(), outputData, outputByteSize);
+            infer_result = std::vector<float>(outputByteSize / sizeof(float));
+            std::memcpy(infer_result.data(), outputData, outputByteSize);
             if (!err.IsOk())
             {
                 std::cerr << "unable to get data for " << outputName << std::endl;
                 exit(1);
             }
-
+            infer_results.push_back(infer_result);
+            infer_shapes.push_back(infer_shape);
         }
 
-        return make_tuple(infer_results, infer_shape);
+        return make_tuple(infer_results, infer_shapes);
     }
 
 

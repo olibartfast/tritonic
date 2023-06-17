@@ -73,7 +73,8 @@ public:
         return std::make_tuple(maxConf, idxMax);
     }
 
-    std::vector<Detection> postprocess(const cv::Size& frame_size, std::vector<float>& infer_results, const std::vector<int64_t>& infer_shape)
+    std::vector<Detection> postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
+    const std::vector<std::vector<int64_t>>& infer_shapes)
     {
         
         std::vector<Detection> detections;
@@ -82,11 +83,13 @@ public:
         std::vector<int> classIds;
         const auto confThreshold = 0.5f;
         const auto iouThreshold = 0.4f;
+        const auto infer_shape = infer_shapes.front(); 
+        auto infer_result = infer_results.front(); 
 
         if(infer_shape[2]  < infer_shape[1])
         {
             const int numClasses =  infer_shape[2] - 5;
-            for (auto it = infer_results.begin(); it != infer_results.end(); it += (numClasses + 5))
+            for (auto it = infer_result.begin(); it != infer_result.end(); it += (numClasses + 5))
             {
                 float clsConf = it[4];
                 if (clsConf > confThreshold)
@@ -108,7 +111,7 @@ public:
             // Construct output matrix
             for (int i = 0; i < infer_shape[1]; i++) {
                 for (int j = 0; j < infer_shape[2]; j++) {
-                    output[i][j] = infer_results[i * infer_shape[2] + j];
+                    output[i][j] = infer_result[i * infer_shape[2] + j];
                 }
             }
 
@@ -221,7 +224,7 @@ public:
         return input_data;
     }
 
-    private:
+    protected:
         int input_width_;
         int input_height_;
         int channels_{3};
