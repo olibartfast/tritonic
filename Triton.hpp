@@ -2,7 +2,7 @@
 #include "common.hpp"
 #include "Yolo.hpp"
 #include <curl/curl.h>
-
+#include <rapidjson/document.h>
 
 namespace Triton{
 
@@ -17,8 +17,8 @@ namespace Triton{
         int input_w_;
         // The format of the input
         std::string input_format_;
-        int type1_;
-        int type3_;
+        int type1_{CV_32FC1};
+        int type3_{CV_32FC3};
         int max_batch_size_;
 
         std::vector<int64_t> shape_;
@@ -27,41 +27,105 @@ namespace Triton{
 
     enum ProtocolType { HTTP = 0, GRPC = 1 };
  
-    TritonModelInfo setModel(const int batch_size, const int input_width, const int input_height, const std::string& modelType ){
-        TritonModelInfo info;
-        info.input_name_ = "images";
-        if(modelType.find("yolov5") != std::string::npos || modelType.find("yolov8") != std::string::npos)
-        {
-            info.output_names_ = std::vector<std::string>{"output0"};
-        }        
-        else if(modelType.find("yolov6") != std::string::npos)
-        {
-            info.output_names_ = std::vector<std::string>{"outputs"};
-        }
-        else if(modelType.find("yolov7") != std::string::npos)
-        {
-            info.output_names_ = std::vector<std::string>{"output"};
-        }   
-        else if(modelType.find("yolonas") != std::string::npos)
-        {
-            info.input_name_ = "input";
-            info.output_names_ = std::vector<std::string>{"output0", "output1"};
-        }                 
+    // Callback function to handle the response data
+    size_t WriteCallback(char* ptr, size_t size, size_t nmemb, std::string& data) {
+        size_t totalSize = size * nmemb;
+        data.append(ptr, totalSize);
+        return totalSize;
+    }
 
-        info.input_datatype_ = std::string("FP32");
-        // The shape of the input
-        info.input_c_ = 3;
-        info.input_w_ = input_width;
-        info.input_h_ = input_height;
-        // The format of the input
-        info.input_format_ = "FORMAT_NCHW";
-        info.type1_ = CV_32FC1;
-        info.type3_ = CV_32FC3;
-        info.max_batch_size_ = 32;
-        info.shape_.push_back(batch_size);
-        info.shape_.push_back(info.input_c_);
-        info.shape_.push_back(info.input_h_);
-        info.shape_.push_back(info.input_w_);
+    TritonModelInfo setModel(const std::string& modelName, const std::string& url) {
+        TritonModelInfo info;
+
+        CURL* curl = curl_easy_init();
+        if (!curl)
+        {
+            std::cerr << "Failed to initialize libcurl." << std::endl;
+            std::exit(1);
+        } 
+        
+        const auto modelConfigUrl = "http://" + url + ":8000/v2/models/" + modelName + "/config";
+
+        // Set the URL and callback function
+        curl_easy_setopt(curl, CURLOPT_URL, modelConfigUrl.c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+
+        // Response data will be stored in this string
+        std::string responseData;
+
+        // Set the pointer to the response data string
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseData);
+
+        // Perform the request
+        CURLcode res = curl_easy_perform(curl);
+        if (res != CURLE_OK) 
+        {
+            std::cerr << "Failed to perform request: " << curl_easy_strerror(res) << std::endl;
+            std::exit(1);
+        }
+        if (responseData.find("Request for unknown model") != std::string::npos) 
+        {
+            std::cerr << "Unknown model: " << modelName << std::endl;
+            std::exit(1);
+        }  
+        
+        // Response was successful, responseData contains the model configuration
+        // Parse the JSON response
+        rapidjson::Document responseJson;
+        responseJson.Parse(responseData.c_str());
+
+        // Fill the TritonModelInfo parameters from the parsed JSON
+        info.input_name_ = responseJson["input"][0]["name"].GetString();
+        
+        info.input_c_ = responseJson["input"][0]["dims"][1].GetInt();
+        info.input_h_ = responseJson["input"][0]["dims"][2].GetInt();
+        info.input_w_ = responseJson["input"][0]["dims"][3].GetInt();
+        info.input_format_ = responseJson["input"][0]["format"].GetString();
+        
+        // Fix the input format if it is "FORMAT_NONE"
+        // https://github.com/triton-inference-server/server/issues/1240
+        if (info.input_format_ == "FORMAT_NONE") {
+            info.input_format_ = "FORMAT_NCHW";
+        }
+
+        // After retrieving the input dimensions from the model configuration
+        const auto& inputDims = responseJson["input"][0]["dims"].GetArray();
+        for (const auto& dim : inputDims) {
+            info.shape_.push_back(dim.GetInt64());
+        }
+        
+        info.max_batch_size_ = responseJson["max_batch_size"].GetInt();
+
+        for (const auto& output : responseJson["output"].GetArray()) {
+            info.output_names_.push_back(output["name"].GetString());
+        }
+
+        info.input_datatype_ = responseJson["input"][0]["data_type"].GetString();
+        
+        // After retrieving the input data type from the model configuration
+        // Remove the "TYPE_" prefix from the input data type
+        info.input_datatype_.erase(0, 5);                
+
+        // Other parameter assignments can be added based on the JSON structure
+
+        // Cleanup
+        curl_easy_cleanup(curl);
+
+        // Print the retrieved model information
+        std::cout << "Retrieved  model information: " << std::endl;
+        std::cout << "Input Name: " << info.input_name_ << std::endl;
+        std::cout << "Input Data Type: " << info.input_datatype_ << std::endl;
+        std::cout << "Input Channels: " << info.input_c_ << std::endl;
+        std::cout << "Input Height: " << info.input_h_ << std::endl;
+        std::cout << "Input Width: " << info.input_w_ << std::endl;
+        std::cout << "Input Format: " << info.input_format_ << std::endl;
+        std::cout << "Max Batch Size: " << info.max_batch_size_ << std::endl;
+
+        std::cout << "Output Names: ";
+        for (const auto& outputName : info.output_names_) {
+            std::cout << outputName << " ";
+        }
+        std::cout << std::endl;      
         return info;
     }
 

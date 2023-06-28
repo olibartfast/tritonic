@@ -9,6 +9,7 @@ https://github.com/triton-inference-server/client/tree/r22.08
 * Triton client libraries (Tested Release 22.08)
 * Protobuf, Grpc++(versions according to the ones used within Triton server project. I used libraries built inside Triton Client third party folder)
 * rapidjson (on ubuntu sudo apt install rapidjson-dev)
+* libcurl
 * Opencv4(Tested 4.5.4)
 
 
@@ -72,7 +73,7 @@ If you plan to run on CPU omit --gpus parameter
 
 ## How to run
 ```
- ./yolo-triton-cpp-client  --video=/path/to/video/videoname.format  --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names --serverAddress=<address:port> --inputSize <width>,<height>
+ ./yolo-triton-cpp-client  --video=/path/to/video/videoname.format  --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names --serverAddress=<address:port>
 ```
 ```
  ./yolo-triton-cpp-client  --help for all available parameters
@@ -90,5 +91,6 @@ https://youtu.be/lke5TcbP2a0
 
 
 ### TO DO
+* Manage models with dynamic axis(i.e. input layer -1, -1, -1, -1)
 * Nms on gpu
 * Instance segmentation

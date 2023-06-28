@@ -43,13 +43,12 @@ static const std::string keys =
     "{ model_type t | yolov7 | yolo version used i.e yolov5, yolov6 or yolov7}"
     "{ model m | yolov7-tiny_onnx | model name of folder in triton }"
     "{ video v | video.mp4 | video name}"
-    "{ serverAddress  s  | localhost:8000 | Path to server address}"
+    "{ serverAddress  ip  | localhost | server address ip, default localhost}"
+    "{ port  p  | 8001 | Port number(Grpc 8001, Http 8000)}"
     "{ verbose vb | false | Verbose mode, true or false}"
-    "{ protocol p | http | Protocol type, grpc or http}"
-    "{ labelsFile l | ../coco.names | path to  coco labels names}"
-    "{ batch b | 1 | Batch size}"
-    "{ inputSize i | 640,640 | Input size of the model}";
-
+    "{ protocol pt | grpc | Protocol type, grpc or http}"
+    "{ labelsFile l | ../coco.names | path to coco labels names}"
+    "{ batch b | 1 | Batch size}";
 int main(int argc, const char* argv[])
 {
     cv::CommandLineParser parser(argc, argv, keys);
@@ -60,6 +59,7 @@ int main(int argc, const char* argv[])
 
     std::cout << "Current path is " << std::filesystem::current_path() << '\n';
     std::string serverAddress = parser.get<std::string>("serverAddress");
+    std::string port = parser.get<std::string>("port");
     bool verbose = parser.get<bool>("verbose");
     std::string videoName = parser.get<std::string>("video");
     Triton::ProtocolType protocol = parser.get<std::string>("protocol") == "grpc" ? Triton::ProtocolType::GRPC : Triton::ProtocolType::HTTP;
@@ -68,9 +68,8 @@ int main(int argc, const char* argv[])
     std::string modelName = parser.get<std::string>("model");
     std::string modelVersion = "";
     std::string modelType = parser.get<std::string>("model_type");
-    std::string url(serverAddress);
+    std::string url(serverAddress + ":" + port);
     std::string labelsFile = parser.get<std::string>("labelsFile");
-    auto [input_width, input_height] = parseInputSize( parser.get<std::string>("inputSize"));
 
     std::cout << "Chosen Parameters:" << std::endl;
     std::cout << "model_type (t): " << parser.get<std::string>("model_type") << std::endl;
@@ -81,14 +80,14 @@ int main(int argc, const char* argv[])
     std::cout << "protocol (p): " << parser.get<std::string>("protocol") << std::endl;
     std::cout << "labelsFile (l): " << parser.get<std::string>("labelsFile") << std::endl;
     std::cout << "batch (b): " << parser.get<size_t>("batch") << std::endl;
-    std::cout << "inputSize (i): " << parser.get<std::string>("inputSize") << std::endl;
+
 
     // Create Triton client
     Triton::TritonClient tritonClient;
     Triton::createTritonClient(tritonClient, url, verbose, protocol);
 
-    Triton::TritonModelInfo yoloModelInfo = Triton::setModel(batch_size, input_width, input_height, modelType);
-    std::unique_ptr<YoloInterface>  yolo = createYoloInstance(modelType, input_width, input_height);
+    Triton::TritonModelInfo yoloModelInfo = Triton::setModel(modelName, serverAddress);
+    std::unique_ptr<YoloInterface>  yolo = createYoloInstance(modelType, yoloModelInfo.input_w_, yoloModelInfo.input_h_);
     const auto coco_names = yolo->readLabelNames(labelsFile);
 
     std::vector<tc::InferInput*> inputs = { nullptr };

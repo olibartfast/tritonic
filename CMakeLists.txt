@@ -6,7 +6,6 @@ message(STATUS $ENV{TritonClientThirdParty_DIR})
 message(STATUS $ENV{TritonClientBuild_DIR})
 set(CMAKE_CXX_STANDARD 20)
 
-
 option(WITH_SHOW_FRAME "Option description" OFF)
 option(WITH_WRITE_FRAME "Option description" ON)
 
@@ -19,7 +18,6 @@ if(WITH_WRITE_FRAME)
   message(STATUS "Write frame enabled") 
 endif()
 
-
 set(CURL_DIR "$ENV{TritonClientThirdParty_DIR}/curl/lib/cmake/CURL")
 set(Protobuf_DIR "$ENV{TritonClientThirdParty_DIR}/protobuf/lib/cmake/protobuf")
 set(gRPC_DIR "$ENV{TritonClientThirdParty_DIR}/grpc/lib/cmake/grpc")
@@ -28,11 +26,11 @@ set(absl_DIR "$ENV{TritonClientThirdParty_DIR}/absl/lib/cmake/absl")
 set(TritonClient_DIR "$ENV{TritonClientBuild_DIR}/lib/cmake/TritonClient")
 set(TritonCommon_DIR "$ENV{TritonClientBuild_DIR}/lib/cmake/TritonCommon")
 
-
 find_package(OpenCV REQUIRED)
 find_package(TritonCommon REQUIRED)
 find_package(TritonClient REQUIRED)
-
+find_package(CURL REQUIRED)
+find_package(RapidJSON REQUIRED)
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/client.cpp)
 target_include_directories(
@@ -45,4 +43,5 @@ PRIVATE
 grpcclient
 httpclient
 ${OpenCV_LIBS}
+CURL::libcurl
 )

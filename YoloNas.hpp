@@ -63,11 +63,11 @@ public:
         std::vector<int> classIds;
         const auto confThreshold = 0.5f;
         const auto iouThreshold = 0.4f;
-        float* detection_result = infer_results[0].data();
-        float* scores_result = infer_results[1].data();
-        const auto detection_shape = infer_shapes[0];
-        const auto scores_shape = infer_shapes[1];
-
+        float* scores_result = infer_results[0].data();
+        float* detection_result = infer_results[1].data();
+        const auto scores_shape = infer_shapes[0];
+        const auto detection_shape = infer_shapes[1];
+        
         const int numClasses =  scores_shape[2];
         const auto rows = detection_shape[1];
         const auto boxes_size =  detection_shape[2];
