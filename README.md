@@ -73,7 +73,8 @@ If you plan to run on CPU omit --gpus parameter
 
 ## How to run
 ```
- ./yolo-triton-cpp-client  --video=/path/to/video/videoname.format  --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names --serverAddress=<address:port>
+ ./yolo-triton-cpp-client  --video=/path/to/video/videoname.format  --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names
+--protocol=<http or grpc> --serverAddress=<triton-ip> --port<8000 for http, 8001 for grpc>
 ```
 ```
  ./yolo-triton-cpp-client  --help for all available parameters
