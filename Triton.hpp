@@ -4,6 +4,7 @@
 #include <curl/curl.h>
 #include <rapidjson/document.h>
 
+
 namespace Triton{
 
    struct TritonModelInfo {
@@ -34,16 +35,15 @@ namespace Triton{
         return totalSize;
     }
 
-    TritonModelInfo setModel(const std::string& modelName, const std::string& url) {
+    TritonModelInfo parseModelHttp(const std::string& modelName, const std::string& url) {
         TritonModelInfo info;
 
         CURL* curl = curl_easy_init();
-        if (!curl)
-        {
+        if (!curl) {
             std::cerr << "Failed to initialize libcurl." << std::endl;
             std::exit(1);
-        } 
-        
+        }
+
         const auto modelConfigUrl = "http://" + url + ":8000/v2/models/" + modelName + "/config";
 
         // Set the URL and callback function
@@ -58,17 +58,15 @@ namespace Triton{
 
         // Perform the request
         CURLcode res = curl_easy_perform(curl);
-        if (res != CURLE_OK) 
-        {
+        if (res != CURLE_OK) {
             std::cerr << "Failed to perform request: " << curl_easy_strerror(res) << std::endl;
             std::exit(1);
         }
-        if (responseData.find("Request for unknown model") != std::string::npos) 
-        {
+        if (responseData.find("Request for unknown model") != std::string::npos) {
             std::cerr << "Unknown model: " << modelName << std::endl;
             std::exit(1);
-        }  
-        
+        }
+
         // Response was successful, responseData contains the model configuration
         // Parse the JSON response
         rapidjson::Document responseJson;
@@ -76,12 +74,12 @@ namespace Triton{
 
         // Fill the TritonModelInfo parameters from the parsed JSON
         info.input_name_ = responseJson["input"][0]["name"].GetString();
-        
+
         info.input_c_ = responseJson["input"][0]["dims"][1].GetInt();
         info.input_h_ = responseJson["input"][0]["dims"][2].GetInt();
         info.input_w_ = responseJson["input"][0]["dims"][3].GetInt();
         info.input_format_ = responseJson["input"][0]["format"].GetString();
-        
+
         // Fix the input format if it is "FORMAT_NONE"
         // https://github.com/triton-inference-server/server/issues/1240
         if (info.input_format_ == "FORMAT_NONE") {
@@ -93,7 +91,7 @@ namespace Triton{
         for (const auto& dim : inputDims) {
             info.shape_.push_back(dim.GetInt64());
         }
-        
+
         info.max_batch_size_ = responseJson["max_batch_size"].GetInt();
 
         for (const auto& output : responseJson["output"].GetArray()) {
@@ -101,18 +99,24 @@ namespace Triton{
         }
 
         info.input_datatype_ = responseJson["input"][0]["data_type"].GetString();
-        
+
         // After retrieving the input data type from the model configuration
         // Remove the "TYPE_" prefix from the input data type
-        info.input_datatype_.erase(0, 5);                
+        info.input_datatype_.erase(0, 5);
 
         // Other parameter assignments can be added based on the JSON structure
 
         // Cleanup
         curl_easy_cleanup(curl);
 
+        return info;
+    }
+
+    TritonModelInfo setModel(const std::string& modelName, const std::string& url) {
+        TritonModelInfo info = parseModelHttp(modelName, url);
+
         // Print the retrieved model information
-        std::cout << "Retrieved  model information: " << std::endl;
+        std::cout << "Retrieved model information: " << std::endl;
         std::cout << "Input Name: " << info.input_name_ << std::endl;
         std::cout << "Input Data Type: " << info.input_datatype_ << std::endl;
         std::cout << "Input Channels: " << info.input_c_ << std::endl;
@@ -125,7 +129,8 @@ namespace Triton{
         for (const auto& outputName : info.output_names_) {
             std::cout << outputName << " ";
         }
-        std::cout << std::endl;      
+        std::cout << std::endl;
+
         return info;
     }
 
