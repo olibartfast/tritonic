@@ -95,4 +95,3 @@ https://youtu.be/lke5TcbP2a0
 ### TO DO
 * Manage models with dynamic axis(i.e. input layer -1, -1, -1, -1)
 * Nms on gpu
-* Instance segmentation
