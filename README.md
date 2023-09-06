@@ -1,5 +1,6 @@
-## C++ Triton client to infer Yolo series models 
-* Currently YoloV5/V6/V7/V8, Yolo-Nas, only object detection. Instance segmentation in to-do list/in progress.
+## C++ Triton client to infer object detection  models
+* Infer object detection models in a similar way to repo [object-detection-inference](https://github.com/olibartfast/object-detection-inference) but using exclusively Triton Server to manage multiple framework backends. 
+* Currently implemented inference for YoloV5/V6/V7/V8, Yolo-Nas. 
 ## Build client libraries
 https://github.com/triton-inference-server/client/tree/r22.08
 
