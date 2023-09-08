@@ -71,6 +71,7 @@ nvcr.io/nvidia/tritonserver:<xx.yy>-py3 tritonserver \
 --model-repository=/models
 ```
 If you plan to run on CPU omit --gpus parameter
+* For more info and examples check [triton inference-server tutorials](https://github.com/triton-inference-server/tutorials)
 
 ## How to run
 ```
