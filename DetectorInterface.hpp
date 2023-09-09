@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 
-class YoloInterface {
+class DetectorInterface {
 public:
     struct Detection {
         cv::Rect bbox;
@@ -12,7 +12,7 @@ public:
         float class_confidence;
     };
 
-    YoloInterface(int input_width = 0, int input_height = 0, int channels = 3)
+    DetectorInterface(int input_width = 0, int input_height = 0, int channels = 3)
         : input_width_(input_width), input_height_(input_height), channels_(channels) {}
 
 
@@ -32,7 +32,7 @@ public:
         const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
         size_t img_channels, const cv::Size& img_size) = 0;
 
-    virtual ~YoloInterface() {}
+    virtual ~DetectorInterface() {}
 
     protected:
         int input_width_;

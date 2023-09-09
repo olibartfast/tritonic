@@ -1,12 +1,12 @@
 
 #pragma once
 #include "common.hpp"
-#include "YoloInterface.hpp"
+#include "DetectorInterface.hpp"
 
-class Yolo : public YoloInterface {
+class Yolo : public DetectorInterface{
 public:
     Yolo(int input_width, int input_height)
-        : YoloInterface(input_width, input_height){
+        : DetectorInterface(input_width, input_height){
     }
 
     cv::Rect get_rect(const cv::Size& imgSz, const std::vector<float>& bbox)

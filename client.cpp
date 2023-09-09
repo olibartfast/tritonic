@@ -2,7 +2,7 @@
 #include "YoloNas.hpp"
 #include "Triton.hpp"
 
-std::unique_ptr<YoloInterface> createYoloInstance(const std::string& modelType, const int input_width, const int input_height)
+std::unique_ptr<DetectorInterface> createDetectorInstance(const std::string& modelType, const int input_width, const int input_height)
 {
     if (modelType == "yolonas")
     {
@@ -86,12 +86,12 @@ int main(int argc, const char* argv[])
     Triton::TritonClient tritonClient;
     Triton::createTritonClient(tritonClient, url, verbose, protocol);
 
-    Triton::TritonModelInfo yoloModelInfo = Triton::setModel(modelName, serverAddress);
-    std::unique_ptr<YoloInterface>  yolo = createYoloInstance(modelType, yoloModelInfo.input_w_, yoloModelInfo.input_h_);
-    const auto coco_names = yolo->readLabelNames(labelsFile);
+    Triton::TritonModelInfo detectorModelInfo = Triton::setModel(modelName, serverAddress);
+    std::unique_ptr<DetectorInterface>  detector = createDetectorInstance(modelType, detectorModelInfo.input_w_, detectorModelInfo.input_h_);
+    const auto coco_names = detector->readLabelNames(labelsFile);
 
     std::vector<tc::InferInput*> inputs = { nullptr };
-    std::vector<const tc::InferRequestedOutput*> outputs = Triton::createInferRequestedOutput(yoloModelInfo.output_names_);
+    std::vector<const tc::InferRequestedOutput*> outputs = Triton::createInferRequestedOutput(detectorModelInfo.output_names_);
     tc::InferOptions options = Triton::createInferOptions(modelName, modelVersion);
 
     cv::Mat frame;
@@ -113,8 +113,8 @@ int main(int argc, const char* argv[])
     tc::Error err;
     while (cap.read(frame)) {
         auto start = std::chrono::steady_clock::now();
-        input_data = yolo->preprocess(frame, yoloModelInfo.input_format_, yoloModelInfo.type1_, yoloModelInfo.type3_,
-            yoloModelInfo.input_c_, cv::Size(yoloModelInfo.input_w_, yoloModelInfo.input_h_));
+        input_data = detector->preprocess(frame, detectorModelInfo.input_format_, detectorModelInfo.type1_, detectorModelInfo.type3_,
+            detectorModelInfo.input_c_, cv::Size(detectorModelInfo.input_w_, detectorModelInfo.input_h_));
 
         if (inputs[0] != nullptr) {
             err = inputs[0]->Reset();
@@ -125,7 +125,7 @@ int main(int argc, const char* argv[])
         }
         else {
             err = tc::InferInput::Create(
-                &inputs[0], yoloModelInfo.input_name_, yoloModelInfo.shape_, yoloModelInfo.input_datatype_);
+                &inputs[0], detectorModelInfo.input_name_, detectorModelInfo.shape_, detectorModelInfo.input_datatype_);
             if (!err.IsOk()) {
                 std::cerr << "unable to get input: " << err << std::endl;
                 exit(1);
@@ -154,13 +154,13 @@ int main(int argc, const char* argv[])
             exit(1);
         }
 
-        auto [infer_results, infer_shapes] = Triton::getInferResults(result, batch_size, yoloModelInfo.output_names_, yoloModelInfo.max_batch_size_ != 0);
+        auto [infer_results, infer_shapes] = Triton::getInferResults(result, batch_size, detectorModelInfo.output_names_, detectorModelInfo.max_batch_size_ != 0);
         result_ptr.reset(result);
         auto end = std::chrono::steady_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         std::cout << "Infer time: " << diff << " ms" << std::endl;
 
-        std::vector<Yolo::Detection> detections = yolo->postprocess(cv::Size(frame.cols, frame.rows),
+        std::vector<Yolo::Detection> detections = detector->postprocess(cv::Size(frame.cols, frame.rows),
             infer_results, infer_shapes);
 
 #if defined(SHOW_FRAME) || defined(WRITE_FRAME)

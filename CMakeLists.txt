@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-project(yolo-triton-cpp-client)
+project(object-detection-triton-cpp-client)
 message(STATUS ${PROJECT_NAME}) 
 message(STATUS $ENV{TritonClientThirdParty_DIR})
 message(STATUS $ENV{TritonClientBuild_DIR})

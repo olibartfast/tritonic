@@ -1,9 +1,9 @@
-#include "YoloInterface.hpp"
-class YoloNas : public YoloInterface
+#include "DetectorInterface.hpp"
+class YoloNas : public DetectorInterface
 {
 public:
     YoloNas(int input_width, int input_height)
-        : YoloInterface(input_width, input_height) {
+        : DetectorInterface(input_width, input_height) {
     }
 
     // Override the preprocess function
