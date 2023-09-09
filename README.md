@@ -1,5 +1,6 @@
-## C++ Triton client to infer Yolo series models 
-* Currently YoloV5/V6/V7/V8, Yolo-Nas, only object detection. Instance segmentation in to-do list/in progress.
+## C++ Triton client to infer object detection  models
+* Infer object detection models in a similar way to repo [object-detection-inference](https://github.com/olibartfast/object-detection-inference) but using exclusively Nvidia Triton Server to manage multiple framework backends. 
+* Currently implemented inference for YoloV5/V6/V7/V8, Yolo-Nas. 
 ## Build client libraries
 https://github.com/triton-inference-server/client/tree/r22.08
 
@@ -70,6 +71,7 @@ nvcr.io/nvidia/tritonserver:<xx.yy>-py3 tritonserver \
 --model-repository=/models
 ```
 If you plan to run on CPU omit --gpus parameter
+* For more info and examples check [triton inference-server tutorials](https://github.com/triton-inference-server/tutorials)
 
 ## How to run
 ```
@@ -94,4 +96,4 @@ https://youtu.be/lke5TcbP2a0
 ### TO DO
 * Manage models with dynamic axis(i.e. input layer -1, -1, -1, -1)
 * Nms on gpu
-* Instance segmentation
+* Run the app in a docker container using an image containing all the dependencies

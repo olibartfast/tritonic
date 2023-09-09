@@ -40,7 +40,7 @@ std::pair<int, int> parseInputSize(const std::string& input_size_str) {
 
 static const std::string keys =
     "{ help h   | | Print help message. }"
-    "{ model_type t | yolov7 | yolo version used i.e yolov5, yolov6 or yolov7}"
+    "{ model_type t | yolov7 | yolo version used i.e yolov5, yolov6, yolov7, yolov8}"
     "{ model m | yolov7-tiny_onnx | model name of folder in triton }"
     "{ video v | video.mp4 | video name}"
     "{ serverAddress  ip  | localhost | server address ip, default localhost}"
