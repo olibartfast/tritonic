@@ -93,37 +93,15 @@ If you plan to run on CPU, omit the `--gpus` parameter.
 For more information and examples, refer to the [Triton Inference Server tutorials](https://github.com/triton-inference-server/tutorials).
 
 ## How to Run
-
+### Performing Inference on a Video or image source
 By using the `--source` parameter with the path to either a video or an image, you can perform object detection on your chosen input type. Follow these instructions:
 
-
-### Performing Inference on a Video
-
-To perform inference on a video, use the `--source` parameter with the path to the video file. The application will process each frame of the video and perform object detection. Here's the command:
-
 ```shell
-./object-detection-triton-cpp-client --source=/path/to/video/videoname.format --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names --protocol=<http or grpc> --serverAddress=<triton-ip> --port=<8000 for http, 8001 for grpc>
+./object-detection-triton-cpp-client --source=/path/to/source.format --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names --protocol=<http or grpc> --serverAddress=<triton-ip> --port=<8000 for http, 8001 for grpc>
 ```
 
 Replace the following placeholders:
-- `/path/to/video/videoname.format`: The path to your video file.
-- `<yolo_version>`: The YOLO version you want to use (e.g., yolov5, yolov6, yolov7, yolov8).
-- `<model_name_folder_on_triton>`: The name of the model folder in the Triton server where your chosen YOLO model is deployed.
-- `/path/to/labels/coco.names`: The path to the file containing label names (e.g., COCO labels).
-- `<http or grpc>`: Choose either `http` or `grpc` as the protocol based on your Triton server setup.
-- `<triton-ip>`: The IP address of your Triton server.
-- `<8000 for http, 8001 for grpc>`: The port number, which is usually `8000` for HTTP or `8001` for gRPC, depending on your Triton server configuration.
-
-### Performing Inference on an Image
-
-To perform inference on an image, use the `--source` parameter with the path to the image file. The application will process the image and perform object detection. Here's the command:
-
-```shell
-./object-detection-triton-cpp-client --source=/path/to/image/image.png --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names --protocol=<http or grpc> --serverAddress=<triton-ip> --port=<8000 for http, 8001 for grpc>
-```
-
-Replace the following placeholders:
-- `/path/to/image/image.png`: The path to your image file.
+- `/path/to/source.format`: The path to your video or image file.
 - `<yolo_version>`: The YOLO version you want to use (e.g., yolov5, yolov6, yolov7, yolov8).
 - `<model_name_folder_on_triton>`: The name of the model folder in the Triton server where your chosen YOLO model is deployed.
 - `/path/to/labels/coco.names`: The path to the file containing label names (e.g., COCO labels).
