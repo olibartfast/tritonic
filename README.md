@@ -13,15 +13,15 @@ Ensure you have the following dependencies installed:
 - Nvidia Triton Inference Server container pulled from NGC (docker pull nvcr.io/nvidia/tritonserver:22.07-py3)
 - Triton client libraries (Tested Release 22.08)
 - Protobuf, Grpc++ (versions compatible with Triton Server)
-- RapidJSON (on Ubuntu: sudo apt install rapidjson-dev)
-- libcurl
+- RapidJSON (apt install rapidjson-dev)
+- libcurl (apt install libcurl4-openssl-dev)
 - OpenCV 4 (Tested version: 4.5.4)
 
 ## Build and Compile
 
 Follow these steps to build and compile the application:
 
-1. Set environment variables `TritonClientThirdParty_DIR` (path/to/client/build/third-party) and `TritonClientBuild_DIR` (path/to/client/build/install).
+1. Set environment variable `TritonClientBuild_DIR` (path/to/client/build/install), or however find a way to link the folder where you have installed triton client libraries, or triton client libraries directly, edit CMakeLists accordingly.
 2. Create a build directory: `mkdir build`
 3. Navigate to the build directory: `cd build`
 4. Run CMake to configure the build:
@@ -34,7 +34,7 @@ Follow these steps to build and compile the application:
    - `-DSHOW_FRAME`: Enable to show processed frames after inference.
    - `-DWRITE_FRAME`: Enable to write processed frames after inference.
    
-5. Build the application: `make`
+5. Build the application: `cmake --build .`
 
 ## YoloV5 Export
 

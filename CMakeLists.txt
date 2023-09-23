@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.0)
 
 project(object-detection-triton-cpp-client)
 message(STATUS ${PROJECT_NAME}) 
-message(STATUS $ENV{TritonClientThirdParty_DIR})
 message(STATUS $ENV{TritonClientBuild_DIR})
 set(CMAKE_CXX_STANDARD 20)
 
@@ -18,13 +17,9 @@ if(WITH_WRITE_FRAME)
   message(STATUS "Write frame enabled") 
 endif()
 
-set(CURL_DIR "$ENV{TritonClientThirdParty_DIR}/curl/lib/cmake/CURL")
-set(Protobuf_DIR "$ENV{TritonClientThirdParty_DIR}/protobuf/lib/cmake/protobuf")
-set(gRPC_DIR "$ENV{TritonClientThirdParty_DIR}/grpc/lib/cmake/grpc")
-set(c-ares_DIR "$ENV{TritonClientThirdParty_DIR}/c-ares/lib/cmake/c-ares")
-set(absl_DIR "$ENV{TritonClientThirdParty_DIR}/absl/lib/cmake/absl")
 set(TritonClient_DIR "$ENV{TritonClientBuild_DIR}/lib/cmake/TritonClient")
 set(TritonCommon_DIR "$ENV{TritonClientBuild_DIR}/lib/cmake/TritonCommon")
+set(TritonCore_DIR "$ENV{TritonClientBuild_DIR}/lib/cmake/TritonCore")
 
 find_package(OpenCV REQUIRED)
 find_package(TritonCommon REQUIRED)
