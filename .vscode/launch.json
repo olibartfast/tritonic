@@ -8,11 +8,12 @@
         "name": "C++ Launch",
         "type": "cppdbg",
         "request": "launch",
-        "program": "${workspaceFolder}/build/yolo-triton-cpp-client",
-        "args": ["--video=$HOME/Videos/out.mp4", 
+        "program": "${workspaceFolder}/build/object-detection-triton-cpp-client",
+        "args": ["--source=data/dog.jpg", 
+        "--serverAddress=localhost",
         "--labelsFile=coco.names",
-        "--model=yolo-nas-s_onnx",
-        "--model_type=yolonas"],
+        "--model=yolov8s_onnx",
+        "--model_type=yolov8"],
         "environment": [{ "name": "config", "value": "Debug" }],
         "cwd": "${workspaceFolder}" 
         }
