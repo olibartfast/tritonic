@@ -20,7 +20,7 @@ COPY . /app
 WORKDIR /app
 
 # Build your C++ application
-RUN mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && cmake --build .
+RUN rm -rf build && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && cmake --build .
 
 # Set the entry point for the container
 ENTRYPOINT ["/app/build/object-detection-triton-cpp-client"]
