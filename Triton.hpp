@@ -177,8 +177,7 @@ namespace Triton{
                 exit(1);
             }
             else
-                std::cout << "Created output " << output_name << std::endl;
-            outputs.push_back(output);
+             outputs.push_back(output);
         }
         return outputs;    
     }
@@ -235,3 +234,5 @@ namespace Triton{
 
 
 }
+
+

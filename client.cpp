@@ -156,6 +156,9 @@ int main(int argc, const char* argv[])
 
     tc::InferOptions options = Triton::createInferOptions(modelName, modelVersion);
 
+    // Get the directory of the source file
+    std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
+
     if (sourceName.find(".jpg") != std::string::npos || sourceName.find(".png") != std::string::npos) 
     {
         // Inference on an image
@@ -173,7 +176,10 @@ int main(int argc, const char* argv[])
         {
             cv::rectangle(image, detection.bbox, cv::Scalar(255, 0, 0), 2);
         }
-        cv::imwrite("processed_frame.png", image);
+
+        // Create a new filename for the processed frame
+        std::string processedFrameFilename = sourceDir + "/processed_frame.jpg";
+        cv::imwrite(processedFrameFilename, image);
     }
     else 
     {
@@ -185,7 +191,7 @@ int main(int argc, const char* argv[])
         cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH),    // Acquire input size
             (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
         int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
-        outputVideo.open("processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
+        outputVideo.open(sourceDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
         if (!outputVideo.isOpened()) {
             std::cout << "Could not open the output video for write: " << sourceName << std::endl;
             return -1;

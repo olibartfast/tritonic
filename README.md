@@ -97,7 +97,7 @@ For more information and examples, refer to the [Triton Inference Server tutoria
 By using the `--source` parameter with the path to either a video or an image, you can perform object detection on your chosen input type. Follow these instructions:
 
 ```shell
-./object-detection-triton-cpp-client --source=/path/to/source.format --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names --protocol=<http or grpc> --serverAddress=<triton-ip> --port=<8000 for http, 8001 for grpc>
+./object-detection-triton-cpp-client --source=/path/to/source.format --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names --protocol=<http or grpc> --serverAddress=<triton-ip> --port=<8000 for http, 8001 for grpc> --output_folder=<output folder>
 ```
 
 Replace the following placeholders:
@@ -108,10 +108,47 @@ Replace the following placeholders:
 - `<http or grpc>`: Choose either `http` or `grpc` as the protocol based on your Triton server setup.
 - `<triton-ip>`: The IP address of your Triton server.
 - `<8000 for http, 8001 for grpc>`: The port number, which is usually `8000` for HTTP or `8001` for gRPC, depending on your Triton server configuration.
+- `output folder`: The folder where to save processed images or videos
 
 Use `./object-detection-triton-cpp-client --help` to view all available parameters.
 
-## Realtime Inference Test on Video
+
+## How to Run with Docker
+
+### Build the Docker Image
+
+```bash
+docker build --rm -t object-detection-triton-cpp-client .
+```
+
+This command will create a Docker image based on the provided Dockerfile.
+
+### Run the Docker Container
+
+Replace the placeholders with your desired options and paths:
+
+```bash
+docker run --rm \
+  -v /path/to/host/data:/app/data \
+  object-detection-triton-cpp-client \
+   --network host \
+  --video=/app/data/videoname.format \
+  --model_type=<yolo_version> \
+  --model=<model_name_folder_on_triton> \
+  --labelsFile=/app/coco.names \
+  --protocol=<http or grpc> \
+  --serverAddress=<triton-ip> \
+  --port<8000 for http, 8001 for grpc>
+```
+
+- `-v /path/to/host/data:/app/data`: Map a host directory to `/app/data` inside the container, allowing you to access input and output data.
+- Adjust the rest of the parameters to match your specific setup.
+
+### View Output
+
+The program will process the specified video or image based on your options. You can find the processed output in the `/path/to/host/data` directory on your host machine.
+
+## Demo Video: Realtime Inference Test
 
 Watch a test of YoloV7-tiny exported to ONNX [here](https://youtu.be/lke5TcbP2a0).
 
