@@ -4,7 +4,7 @@ This C++ application allows you to perform object detection inference using Nvid
 
 ## Build Client Libraries
 
-To build the client libraries, refer to the Triton Inference Server client libraries located [here](https://github.com/triton-inference-server/client/tree/r22.08).
+To build the client libraries, refer to the Triton Inference Server client libraries located [here](https://github.com/triton-inference-server/client/tree/r23.08).
 
 ## Dependencies
 
