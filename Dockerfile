@@ -1,5 +1,5 @@
 # Use an official Nvidia Triton Inference Server image as the base image
-FROM nvcr.io/nvidia/tritonserver:22.07-py3-sdk
+FROM nvcr.io/nvidia/tritonserver:23.08-py3-sdk
 
 # Install any additional dependencies if needed
 RUN apt-get update && apt-get install -y \

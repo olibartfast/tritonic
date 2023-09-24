@@ -179,6 +179,7 @@ int main(int argc, const char* argv[])
 
         // Create a new filename for the processed frame
         std::string processedFrameFilename = sourceDir + "/processed_frame.jpg";
+        std::cout << "Saving frame to: " << processedFrameFilename << std::endl;
         cv::imwrite(processedFrameFilename, image);
     }
     else 
