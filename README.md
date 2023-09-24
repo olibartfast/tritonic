@@ -131,7 +131,7 @@ docker run --rm \
   -v /path/to/host/data:/app/data \
   object-detection-triton-cpp-client \
    --network host \
-  --video=/app/data/videoname.format \
+  --source=/app/data/source.format \
   --model_type=<yolo_version> \
   --model=<model_name_folder_on_triton> \
   --labelsFile=/app/coco.names \
