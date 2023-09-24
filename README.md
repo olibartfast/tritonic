@@ -168,7 +168,6 @@ Watch a test of YoloV7-tiny exported to ONNX [here](https://youtu.be/lke5TcbP2a0
 
 - Manage models with dynamic axis (i.e., input layer -1, -1, -1, -1)
 - NMS (Non-Maximum Suppression) on GPU
-- Dockerize the application with an image containing all dependencies
 
 - The project tree is currently organised according to the structure below, in the long term I plan to add other computer vision tasks (and rename the repo accordingly).
 ```
