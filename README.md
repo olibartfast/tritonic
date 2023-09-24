@@ -97,7 +97,7 @@ For more information and examples, refer to the [Triton Inference Server tutoria
 By using the `--source` parameter with the path to either a video or an image, you can perform object detection on your chosen input type. Follow these instructions:
 
 ```shell
-./object-detection-triton-cpp-client --source=/path/to/source.format --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names --protocol=<http or grpc> --serverAddress=<triton-ip> --port=<8000 for http, 8001 for grpc> --output_folder=<output folder>
+./object-detection-triton-cpp-client --source=/path/to/source.format --model_type=<yolo_version> --model=<model_name_folder_on_triton> --labelsFile=/path/to/labels/coco.names --protocol=<http or grpc> --serverAddress=<triton-ip> --port=<8000 for http, 8001 for grpc>
 ```
 
 Replace the following placeholders:
@@ -108,7 +108,6 @@ Replace the following placeholders:
 - `<http or grpc>`: Choose either `http` or `grpc` as the protocol based on your Triton server setup.
 - `<triton-ip>`: The IP address of your Triton server.
 - `<8000 for http, 8001 for grpc>`: The port number, which is usually `8000` for HTTP or `8001` for gRPC, depending on your Triton server configuration.
-- `output folder`: The folder where to save processed images or videos
 
 Use `./object-detection-triton-cpp-client --help` to view all available parameters.
 
