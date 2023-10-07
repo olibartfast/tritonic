@@ -21,7 +21,7 @@ namespace Triton{
         int type1_{CV_32FC1};
         int type3_{CV_32FC3};
         int max_batch_size_;
-
+        int batch_size_{1};
         std::vector<int64_t> shape_;
 
     };  
@@ -75,23 +75,39 @@ namespace Triton{
         // Fill the TritonModelInfo parameters from the parsed JSON
         info.input_name_ = responseJson["input"][0]["name"].GetString();
 
+        // After retrieving the input dimensions from the model configuration
+        const auto& inputDims = responseJson["input"][0]["dims"].GetArray();
 
-        info.input_c_ = responseJson["input"][0]["dims"][1].GetInt();
-        info.input_h_ = responseJson["input"][0]["dims"][2].GetInt();
-        info.input_w_ = responseJson["input"][0]["dims"][3].GetInt();
         info.input_format_ = responseJson["input"][0]["format"].GetString();
 
         // Fix the input format if it is "FORMAT_NONE"
         // https://github.com/triton-inference-server/server/issues/1240
         if (info.input_format_ == "FORMAT_NONE") {
-            info.input_format_ = "FORMAT_NCHW";
-        }
+            info.input_format_ = "FORMAT_NCHW"; // or hardcode the string you know
+        }        
 
-        // After retrieving the input dimensions from the model configuration
-        const auto& inputDims = responseJson["input"][0]["dims"].GetArray();
+        if (inputDims.Size() == 4) {
+            // Batch size is included, and it's the first dimension    
+            info.input_c_ = responseJson["input"][0]["dims"][1].GetInt();
+            info.input_h_ = responseJson["input"][0]["dims"][2].GetInt();
+            info.input_w_ = responseJson["input"][0]["dims"][3].GetInt();
+
+        } else if (inputDims.Size() == 3) {
+            // Batch size is not included, and you can treat it as 1
+            info.input_c_ = responseJson["input"][0]["dims"][0].GetInt();
+            info.input_h_ = responseJson["input"][0]["dims"][1].GetInt();
+            info.input_w_ = responseJson["input"][0]["dims"][2].GetInt();
+            info.shape_.push_back(info.batch_size_);
+        } else {
+            // Handle unexpected dimension size
+            // You might want to throw an exception or handle this case based on your requirements
+        }
         for (const auto& dim : inputDims) {
             info.shape_.push_back(dim.GetInt64());
         }
+
+
+
 
 
         info.max_batch_size_ = responseJson["max_batch_size"].GetInt();
