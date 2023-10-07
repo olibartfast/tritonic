@@ -75,9 +75,9 @@ namespace Triton{
         // Fill the TritonModelInfo parameters from the parsed JSON
         info.input_name_ = responseJson["input"][0]["name"].GetString();
 
-        info.input_c_ = responseJson["input"][0]["dims"][1].GetInt();
-        info.input_h_ = responseJson["input"][0]["dims"][2].GetInt();
-        info.input_w_ = responseJson["input"][0]["dims"][3].GetInt();
+        info.input_c_ = responseJson["input"][0]["dims"][0].GetInt();
+        info.input_h_ = responseJson["input"][0]["dims"][1].GetInt();
+        info.input_w_ = responseJson["input"][0]["dims"][2].GetInt();
         info.input_format_ = responseJson["input"][0]["format"].GetString();
 
         // Fix the input format if it is "FORMAT_NONE"
@@ -88,6 +88,7 @@ namespace Triton{
 
         // After retrieving the input dimensions from the model configuration
         const auto& inputDims = responseJson["input"][0]["dims"].GetArray();
+        info.shape_.push_back(1);
         for (const auto& dim : inputDims) {
             info.shape_.push_back(dim.GetInt64());
         }

@@ -1,9 +1,9 @@
-#include "DetectorInterface.hpp"
-class YoloNas : public DetectorInterface
+#include "TaskInterface.hpp"
+class YoloNas : public TaskInterface
 {
 public:
     YoloNas(int input_width, int input_height)
-        : DetectorInterface(input_width, input_height) {
+        : TaskInterface(input_width, input_height) {
     }
 
     // Override the preprocess function
@@ -53,11 +53,11 @@ public:
     }
 
     // Override the postprocess function
-    std::vector<Detection> postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
+    std::vector<Result> postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
     const std::vector<std::vector<int64_t>>& infer_shapes) override
     {
     
-        std::vector<Detection> detections;
+        std::vector<Result> detections;
         std::vector<cv::Rect> boxes;
         std::vector<float> confs;
         std::vector<int> classIds;

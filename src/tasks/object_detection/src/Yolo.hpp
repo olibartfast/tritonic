@@ -1,12 +1,12 @@
 
 #pragma once
 #include "common.hpp"
-#include "DetectorInterface.hpp"
+#include "TaskInterface.hpp"
 
-class Yolo : public DetectorInterface{
+class Yolo : public TaskInterface{
 public:
     Yolo(int input_width, int input_height)
-        : DetectorInterface(input_width, input_height){
+        : TaskInterface(input_width, input_height){
     }
 
     cv::Rect get_rect(const cv::Size& imgSz, const std::vector<float>& bbox)
@@ -53,11 +53,11 @@ public:
         return std::make_tuple(maxConf, idxMax);
     }
 
-    std::vector<Detection> postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
+    std::vector<Result> postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
     const std::vector<std::vector<int64_t>>& infer_shapes) override
     {
         
-        std::vector<Detection> detections;
+        std::vector<Result> detections;
         std::vector<cv::Rect> boxes;
         std::vector<float> confs;
         std::vector<int> classIds;
@@ -129,6 +129,7 @@ public:
             d.class_confidence = confs[idx];
             d.class_id = classIds[idx];
             detections.emplace_back(d);
+
         }        
         return detections; 
     }
