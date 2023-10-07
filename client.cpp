@@ -1,12 +1,31 @@
 #include "Yolo.hpp"
 #include "YoloNas.hpp"
+#include "YOLOv7_NMS.hpp"
 #include "Triton.hpp"
+#include "TorchvisionClassifier.hpp"
 
-std::unique_ptr<DetectorInterface> createDetectorInstance(const std::string& modelType, const int input_width, const int input_height)
+std::unique_ptr<TaskInterface> createClassifierInstance(const std::string& modelType, const int input_width, const int input_height, const int channels)
 {
-    if (modelType == "yolonas")
+    if (modelType == "torchvision")
     {
-        return std::make_unique<YoloNas>(input_width, input_height);
+        //return std::make_unique<TorchvisionClassifier>(input_width, input_height, channels);
+        std::cout << "Work in progress..." << std::endl;
+        return nullptr;
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+
+std::unique_ptr<TaskInterface> createDetectorInstance(const std::string& modelType, const int input_width, const int input_height)
+{
+    if (modelType == "yolov7nms")
+    {
+        //return std::make_unique<YOLOv7_NMS>(input_width, input_height);
+        std::cout << "Work in progress..." << std::endl;
+        return nullptr;
     }
     else if (modelType.find("yolov") != std::string::npos )
     {
@@ -18,19 +37,19 @@ std::unique_ptr<DetectorInterface> createDetectorInstance(const std::string& mod
     }
 }
 
-std::vector<Yolo::Detection> processSource(const cv::Mat& source, 
-    const std::unique_ptr<DetectorInterface>& detector, 
+std::vector<Result> processSource(const cv::Mat& source, 
+    const std::unique_ptr<TaskInterface>& task, 
     tc::InferOptions& options, 
     Triton::TritonClient& tritonClient, 
-    const Triton::TritonModelInfo& detectorModelInfo, 
+    const Triton::TritonModelInfo& modelInfo, 
     Triton::ProtocolType protocol, size_t batch_size)
 {
     tc::Error err;
-    std::vector<uint8_t> input_data = detector->preprocess(source, detectorModelInfo.input_format_, detectorModelInfo.type1_, detectorModelInfo.type3_,
-        detectorModelInfo.input_c_, cv::Size(detectorModelInfo.input_w_, detectorModelInfo.input_h_));
+    std::vector<uint8_t> input_data = task->preprocess(source, modelInfo.input_format_, modelInfo.type1_, modelInfo.type3_,
+        modelInfo.input_c_, cv::Size(modelInfo.input_w_, modelInfo.input_h_));
 
     std::vector<tc::InferInput*> inputs = { nullptr };
-    std::vector<const tc::InferRequestedOutput*> outputs = Triton::createInferRequestedOutput(detectorModelInfo.output_names_);        
+    std::vector<const tc::InferRequestedOutput*> outputs = Triton::createInferRequestedOutput(modelInfo.output_names_);        
 
     if (inputs[0] != nullptr) {
         err = inputs[0]->Reset();
@@ -41,7 +60,7 @@ std::vector<Yolo::Detection> processSource(const cv::Mat& source,
     }
     else {
         err = tc::InferInput::Create(
-            &inputs[0], detectorModelInfo.input_name_, detectorModelInfo.shape_, detectorModelInfo.input_datatype_);
+            &inputs[0], modelInfo.input_name_, modelInfo.shape_, modelInfo.input_datatype_);
         if (!err.IsOk()) {
             std::cerr << "unable to get input: " << err << std::endl;
             exit(1);
@@ -70,42 +89,127 @@ std::vector<Yolo::Detection> processSource(const cv::Mat& source,
         exit(1);
     }
 
-    auto [infer_results, infer_shapes] = Triton::getInferResults(result, batch_size, detectorModelInfo.output_names_, detectorModelInfo.max_batch_size_ != 0);
+    auto [infer_results, infer_shapes] = Triton::getInferResults(result, batch_size, modelInfo.output_names_, modelInfo.max_batch_size_ != 0);
     result_ptr.reset(result);
 
 
-    std::vector<Yolo::Detection> detections = detector->postprocess(cv::Size(source.cols, source.rows),
+    return task->postprocess(cv::Size(source.cols, source.rows),
         infer_results, infer_shapes);
-
-    return detections;
 }
 
 
+// Define a function to perform inference on an image
+void ProcessImage(const std::string& sourceName,
+    const std::unique_ptr<TaskInterface>& task, 
+    tc::InferOptions& options, 
+    Triton::TritonClient& tritonClient, 
+    const Triton::TritonModelInfo& modelInfo, 
+    Triton::ProtocolType protocol, 
+    const std::vector<std::string>& class_names, size_t batch_size) {
+    std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
+    cv::Mat image = cv::imread(sourceName);
 
-// Function to parse input size string and validate the format
-std::pair<int, int> parseInputSize(const std::string& input_size_str) {
-    std::istringstream iss(input_size_str);
-    std::vector<std::string> input_size_values;
-    std::string token;
-    while (std::getline(iss, token, ',')) {
-        input_size_values.push_back(token);
+    if (image.empty()) {
+        std::cerr << "Could not open or read the image: " << sourceName << std::endl;
+        return;
     }
 
-    if (input_size_values.size() != 2) {
-        throw std::runtime_error("Invalid input size format. Please provide width and height values separated by a comma.");
+    auto start = std::chrono::steady_clock::now();
+    // Call your processSource function here
+    std::vector<Result> predictions = processSource(image, task, options, tritonClient, modelInfo, protocol, batch_size);
+    auto end = std::chrono::steady_clock::now();
+    auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "Infer time: " << diff << " ms" << std::endl;
+
+    for (const Result& prediction : predictions) 
+    {
+        if (std::holds_alternative<Classification>(prediction)) {
+        Classification classification = std::get<Classification>(prediction);
+
+        } 
+        else if (std::holds_alternative<Detection>(prediction)) 
+        {
+            Detection detection = std::get<Detection>(prediction);
+            cv::rectangle(image, detection.bbox, cv::Scalar(255, 0, 0), 2);
+        }
+    }    
+
+    std::string processedFrameFilename = sourceDir + "/processed_frame.jpg";
+    std::cout << "Saving frame to: " << processedFrameFilename << std::endl;
+    cv::imwrite(processedFrameFilename, image);
+}
+
+// Define a function to perform inference on a video
+void ProcessVideo(const std::string& sourceName,
+    const std::unique_ptr<TaskInterface>& task, 
+    tc::InferOptions& options, 
+    Triton::TritonClient& tritonClient, 
+    const Triton::TritonModelInfo& modelInfo, 
+    Triton::ProtocolType protocol, 
+     const std::vector<std::string>& class_names, size_t batch_size) {
+    std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
+    cv::VideoCapture cap(sourceName);
+
+    if (!cap.isOpened()) {
+        std::cout << "Could not open the video: " << sourceName << std::endl;
+        return;
     }
 
-    const int input_width = std::stoi(input_size_values[0]);
-    const int input_height = std::stoi(input_size_values[1]);
+#ifdef WRITE_FRAME
+    cv::VideoWriter outputVideo;
+    cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH), (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+    int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
+    outputVideo.open(sourceDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
 
-    return std::make_pair(input_width, input_height);
+    if (!outputVideo.isOpened()) {
+        std::cout << "Could not open the output video for write: " << sourceName << std::endl;
+        return;
+    }
+#endif
+
+    cv::Mat frame;
+    while (cap.read(frame)) {
+        auto start = std::chrono::steady_clock::now();
+        // Call your processSource function here
+        std::vector<Result> predictions = processSource(frame, task, options, tritonClient, modelInfo, protocol, batch_size);
+        auto end = std::chrono::steady_clock::now();
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "Infer time: " << diff << " ms" << std::endl;
+
+#if defined(SHOW_FRAME) || defined(WRITE_FRAME)
+        double fps = 1000.0 / static_cast<double>(diff);
+        std::string fpsText = "FPS: " + std::to_string(fps);
+        cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
+        for (auto&& prediction : predictions) 
+        {
+            if (std::holds_alternative<Detection>(prediction)) 
+            {
+                Detection detection = std::get<Detection>(prediction);
+                cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
+                cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
+                cv::putText(frame, class_names[detection.class_id],
+                cv::Point(detection.bbox.x, detection.bbox.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
+            }
+        }
+#endif
+
+#ifdef SHOW_FRAME
+        cv::imshow("video feed", frame);
+        cv::waitKey(1);
+#endif
+
+#ifdef WRITE_FRAME
+        outputVideo.write(frame);
+#endif
+    }
 }
 
 
 static const std::string keys =
     "{ help h   | | Print help message. }"
-    "{ model_type t | yolov7 | yolo version used i.e yolov5, yolov6, yolov7, yolov8}"
+    "{ model_type mt | yolov7 | yolo version used i.e yolov5, yolov6, yolov7, yolov8}"
     "{ model m | yolov7-tiny_onnx | model name of folder in triton }"
+    "{ task_type tt | detection | detection, classification}"
     "{ source s | data/dog.jpg | path to video or image}"
     "{ serverAddress  ip  | localhost | server address ip, default localhost}"
     "{ port  p  | 8001 | Port number(Grpc 8001, Http 8000)}"
@@ -133,11 +237,13 @@ int main(int argc, const char* argv[])
     std::string modelName = parser.get<std::string>("model");
     std::string modelVersion = "";
     std::string modelType = parser.get<std::string>("model_type");
+    std::string taskType = parser.get<std::string>("task_type");
     std::string url(serverAddress + ":" + port);
     std::string labelsFile = parser.get<std::string>("labelsFile");
 
     std::cout << "Chosen Parameters:" << std::endl;
-    std::cout << "model_type (t): " << parser.get<std::string>("model_type") << std::endl;
+    std::cout << "task_type (tt): " << parser.get<std::string>("task_type") << std::endl;
+    std::cout << "model_type (mt): " << parser.get<std::string>("model_type") << std::endl;
     std::cout << "model (m): " << parser.get<std::string>("model") << std::endl;
     std::cout << "source (s): " << parser.get<std::string>("source") << std::endl;  // Changed from 'video' to 'source'
     std::cout << "serverAddress (ip): " << parser.get<std::string>("serverAddress") << std::endl;
@@ -150,80 +256,29 @@ int main(int argc, const char* argv[])
     Triton::TritonClient tritonClient;
     Triton::createTritonClient(tritonClient, url, verbose, protocol);
 
-    Triton::TritonModelInfo detectorModelInfo = Triton::setModel(modelName, serverAddress);
-    std::unique_ptr<DetectorInterface> detector = createDetectorInstance(modelType, detectorModelInfo.input_w_, detectorModelInfo.input_h_);
-    const auto coco_names = detector->readLabelNames(labelsFile);
+    Triton::TritonModelInfo modelInfo = Triton::setModel(modelName, serverAddress);
+    std::unique_ptr<TaskInterface> task;
+    if (taskType == "detection") {
+        task = createDetectorInstance(modelType, modelInfo.input_w_, modelInfo.input_h_);
+    } 
+    else if (taskType == "classification") {
+        task = createClassifierInstance(modelType, modelInfo.input_w_, modelInfo.input_h_, modelInfo.input_c_);
+    } 
+    else {
+        std::cerr << "Invalid model_type specified." << std::endl;
+        return 1;
+    }
+
+    const auto class_names = task->readLabelNames(labelsFile);
 
     tc::InferOptions options = Triton::createInferOptions(modelName, modelVersion);
 
     // Get the directory of the source file
     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
-
-    if (sourceName.find(".jpg") != std::string::npos || sourceName.find(".png") != std::string::npos) 
-    {
-        // Inference on an image
-        cv::Mat image = cv::imread(sourceName);
-        if (image.empty()) {
-            std::cerr << "Could not open or read the image: " << sourceName << std::endl;
-            return -1;
-        }
-        auto start = std::chrono::steady_clock::now();
-        std::vector<Yolo::Detection> detections = processSource(image, detector, options, tritonClient, detectorModelInfo, protocol, batch_size);
-        auto end = std::chrono::steady_clock::now();
-        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        std::cout << "Infer time: " << diff << " ms" << std::endl;    
-        for (auto&& detection : detections) 
-        {
-            cv::rectangle(image, detection.bbox, cv::Scalar(255, 0, 0), 2);
-        }
-
-        // Create a new filename for the processed frame
-        std::string processedFrameFilename = sourceDir + "/processed_frame.jpg";
-        std::cout << "Saving frame to: " << processedFrameFilename << std::endl;
-        cv::imwrite(processedFrameFilename, image);
-    }
-    else 
-    {
-        // Inference on a video
-        cv::Mat frame;
-        cv::VideoCapture cap(sourceName);
-#ifdef WRITE_FRAME
-        cv::VideoWriter outputVideo;
-        cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH),    // Acquire input size
-            (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
-        int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
-        outputVideo.open(sourceDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
-        if (!outputVideo.isOpened()) {
-            std::cout << "Could not open the output video for write: " << sourceName << std::endl;
-            return -1;
-        }
-#endif
-        while (cap.read(frame)) 
-        {
-            auto start = std::chrono::steady_clock::now();
-            std::vector<Yolo::Detection> detections = processSource(frame, detector, options, tritonClient, detectorModelInfo, protocol, batch_size);
-            auto end = std::chrono::steady_clock::now();
-            auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-            std::cout << "Infer time: " << diff << " ms" << std::endl;            
-
-#if defined(SHOW_FRAME) || defined(WRITE_FRAME)
-            double fps = 1000.0 / static_cast<double>(diff);
-            std::string fpsText = "FPS: " + std::to_string(fps);
-            cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
-            for (auto&& detection : detections) {
-                cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
-                cv::putText(frame, coco_names[detection.class_id],
-                    cv::Point(detection.bbox.x, detection.bbox.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
-            }
-#endif
-#ifdef SHOW_FRAME
-            cv::imshow("video feed ", frame);
-            cv::waitKey(1);
-#endif
-#ifdef WRITE_FRAME
-            outputVideo.write(frame);
-#endif
-        }
+    if (sourceName.find(".jpg") != std::string::npos || sourceName.find(".png") != std::string::npos) {
+         ProcessImage(sourceName, task, options, tritonClient, modelInfo, protocol, class_names, batch_size);
+    } else {
+         ProcessVideo(sourceName, task, options, tritonClient, modelInfo, protocol, class_names, batch_size);
     }
 
     return 0;

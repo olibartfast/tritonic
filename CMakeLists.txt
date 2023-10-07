@@ -45,6 +45,8 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/include
     ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/src
+    ${PROJECT_SOURCE_DIR}/src/tasks/classification/include
+    ${PROJECT_SOURCE_DIR}/src/tasks/classification/src    
     # Add any additional include directories here
 )
 
