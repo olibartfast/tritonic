@@ -33,8 +33,10 @@ set(SOURCES
     # Add any additional source files here
 )
 
+set(DETECTOR_SOURCES ${PROJECT_SOURCE_DIR} src/tasks/object_detection/src/Yolo.cpp src/tasks/object_detection/src/YoloNas.cpp)
+
 # Add an executable target
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCES} ${DETECTOR_SOURCES})
 
 # Set include directories for the target
 target_include_directories(${PROJECT_NAME}
