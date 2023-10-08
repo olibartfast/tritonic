@@ -11,11 +11,9 @@ struct Classification {
     float class_confidence;
 };
 
-struct Detection {
+struct Detection : public Classification{
     // fields specific to Detection
     cv::Rect bbox;
-    float class_id;
-    float class_confidence;
 };
 
 using Result = std::variant<Classification, Detection>;
