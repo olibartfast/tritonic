@@ -4,10 +4,7 @@
 #include <curl/curl.h>
 #include <rapidjson/document.h>
 
-
-namespace Triton{
-
-   struct TritonModelInfo {
+struct TritonModelInfo {
         std::string output_name_;
         std::vector<std::string> output_names_;
         std::string input_name_;
@@ -24,43 +21,60 @@ namespace Triton{
         int batch_size_{1};
         std::vector<int64_t> shape_;
 
-    };  
+};  
 
-    enum ProtocolType { HTTP = 0, GRPC = 1 };
- 
-    // Callback function to handle the response data
-    size_t WriteCallback(char* ptr, size_t size, size_t nmemb, std::string& data);
-
-    TritonModelInfo parseModelHttp(const std::string& modelName, const std::string& url);
-
-
-    TritonModelInfo setModel(const std::string& modelName, const std::string& url);
-
-    union TritonClient
+union TritonClient
+{
+    TritonClient()
     {
-        TritonClient()
+        new (&httpClient) std::unique_ptr<tc::InferenceServerHttpClient>{};
+    }
+    ~TritonClient() {}
+
+    std::unique_ptr<tc::InferenceServerHttpClient> httpClient;
+    std::unique_ptr<tc::InferenceServerGrpcClient> grpcClient;
+};
+
+enum ProtocolType { HTTP = 0, GRPC = 1 };
+
+class Triton{
+    private:
+        TritonClient triton_client_;
+        const std::string& url_; 
+        bool verbose_; 
+        ProtocolType protocol_;
+        std::string model_name_;
+        TritonModelInfo model_info_;
+        std::string model_version_ ="";
+
+
+    public:
+
+        Triton(const std::string& url, ProtocolType protocol, std::string modelName, std::string modelVersion ="", bool verbose = false) : 
+            url_{url}, 
+            verbose_{verbose}, 
+            protocol_{protocol},
+            model_name_{modelName}
         {
-            new (&httpClient) std::unique_ptr<tc::InferenceServerHttpClient>{};
+
         }
-        ~TritonClient() {}
 
-        std::unique_ptr<tc::InferenceServerHttpClient> httpClient;
-        std::unique_ptr<tc::InferenceServerGrpcClient> grpcClient;
-    };
+        // Callback function to handle the response data
+        //size_t WriteCallback(char* ptr, size_t size, size_t nmemb, std::string& data);
+        TritonModelInfo parseModelHttp(const std::string& modelName, const std::string& url);
+        TritonModelInfo parseModelGrpc(const inference::ModelMetadataResponse& model_metadata,const inference::ModelConfigResponse& model_config);
+        TritonModelInfo getModelInfo(const std::string& modelName, const std::string& url);
 
-    // Function to create Triton client based on the protocol
-    void createTritonClient(Triton::TritonClient& tritonClient, const std::string& url, bool verbose, Triton::ProtocolType protocol);
-
-    std::vector<const tc::InferRequestedOutput*> createInferRequestedOutput(const std::vector<std::string>& output_names_);
-    // Function to create Triton infer options
-    tc::InferOptions createInferOptions(const std::string& modelName, const std::string& modelVersion);
+        // Function to create Triton client based on the protocol
+        void createTritonClient();
+        std::tuple<std::vector<std::vector<float>> , std::vector<std::vector<int64_t>>> infer(const std::vector<uint8_t>& input_data);
+        std::vector<const tc::InferRequestedOutput*> createInferRequestedOutput(const std::vector<std::string>& output_names_);
+        std::tuple<std::vector<std::vector<float>> , std::vector<std::vector<int64_t>>> getInferResults(
+            tc::InferResult* result,
+            const size_t batch_size,
+            const std::vector<std::string>& output_names, const bool batching);
     
-    std::tuple<std::vector<std::vector<float>> , std::vector<std::vector<int64_t>>> getInferResults(
-        tc::InferResult* result,
-        const size_t batch_size,
-        const std::vector<std::string>& output_names, const bool batching);
-   
 
-}
+};
 
 

@@ -39,73 +39,24 @@ std::unique_ptr<TaskInterface> createDetectorInstance(const std::string& modelTy
 
 std::vector<Result> processSource(const cv::Mat& source, 
     const std::unique_ptr<TaskInterface>& task, 
-    tc::InferOptions& options, 
-    Triton::TritonClient& tritonClient, 
-    const Triton::TritonModelInfo& modelInfo, 
-    Triton::ProtocolType protocol, size_t batch_size)
+    const std::unique_ptr<Triton>&  tritonClient, 
+    const TritonModelInfo& modelInfo)
 {
-    tc::Error err;
+ 
     std::vector<uint8_t> input_data = task->preprocess(source, modelInfo.input_format_, modelInfo.type1_, modelInfo.type3_,
         modelInfo.input_c_, cv::Size(modelInfo.input_w_, modelInfo.input_h_));
 
-    std::vector<tc::InferInput*> inputs = { nullptr };
-    std::vector<const tc::InferRequestedOutput*> outputs = Triton::createInferRequestedOutput(modelInfo.output_names_);        
-
-    if (inputs[0] != nullptr) {
-        err = inputs[0]->Reset();
-        if (!err.IsOk()) {
-            std::cerr << "failed resetting input: " << err << std::endl;
-            exit(1);
-        }
-    }
-    else {
-        err = tc::InferInput::Create(
-            &inputs[0], modelInfo.input_name_, modelInfo.shape_, modelInfo.input_datatype_);
-        if (!err.IsOk()) {
-            std::cerr << "unable to get input: " << err << std::endl;
-            exit(1);
-        }
-    }
-
-    err = inputs[0]->AppendRaw(input_data);
-    if (!err.IsOk()) {
-        std::cerr << "failed setting input: " << err << std::endl;
-        exit(1);
-    }
-
-    tc::InferResult* result;
-    std::unique_ptr<tc::InferResult> result_ptr;
-    if (protocol == Triton::ProtocolType::HTTP) {
-        err = tritonClient.httpClient->Infer(
-            &result, options, inputs, outputs);
-    }
-    else {
-        err = tritonClient.grpcClient->Infer(
-            &result, options, inputs, outputs);
-    }
-    if (!err.IsOk()) {
-        std::cerr << "failed sending synchronous infer request: " << err
-            << std::endl;
-        exit(1);
-    }
-
-    auto [infer_results, infer_shapes] = Triton::getInferResults(result, batch_size, modelInfo.output_names_, modelInfo.max_batch_size_ != 0);
-    result_ptr.reset(result);
-
-
-    return task->postprocess(cv::Size(source.cols, source.rows),
-        infer_results, infer_shapes);
+    auto [infer_results, infer_shapes] = tritonClient->infer(input_data);
+    return task->postprocess(cv::Size(source.cols, source.rows), infer_results, infer_shapes);
 }
 
 
 // Define a function to perform inference on an image
 void ProcessImage(const std::string& sourceName,
     const std::unique_ptr<TaskInterface>& task, 
-    tc::InferOptions& options, 
-    Triton::TritonClient& tritonClient, 
-    const Triton::TritonModelInfo& modelInfo, 
-    Triton::ProtocolType protocol, 
-    const std::vector<std::string>& class_names, size_t batch_size) {
+     const std::unique_ptr<Triton>&  tritonClient,
+    const TritonModelInfo& modelInfo, 
+    const std::vector<std::string>& class_names) {
     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
     cv::Mat image = cv::imread(sourceName);
 
@@ -116,7 +67,7 @@ void ProcessImage(const std::string& sourceName,
 
     auto start = std::chrono::steady_clock::now();
     // Call your processSource function here
-    std::vector<Result> predictions = processSource(image, task, options, tritonClient, modelInfo, protocol, batch_size);
+    std::vector<Result> predictions = processSource(image, task,  tritonClient, modelInfo);
     auto end = std::chrono::steady_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "Infer time: " << diff << " ms" << std::endl;
@@ -139,70 +90,70 @@ void ProcessImage(const std::string& sourceName,
     cv::imwrite(processedFrameFilename, image);
 }
 
-// Define a function to perform inference on a video
-void ProcessVideo(const std::string& sourceName,
-    const std::unique_ptr<TaskInterface>& task, 
-    tc::InferOptions& options, 
-    Triton::TritonClient& tritonClient, 
-    const Triton::TritonModelInfo& modelInfo, 
-    Triton::ProtocolType protocol, 
-     const std::vector<std::string>& class_names, size_t batch_size) {
-    std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
-    cv::VideoCapture cap(sourceName);
+// // Define a function to perform inference on a video
+// void ProcessVideo(const std::string& sourceName,
+//     const std::unique_ptr<TaskInterface>& task, 
+//     tc::InferOptions& options, 
+//     Triton::TritonClient& tritonClient, 
+//     const Triton::TritonModelInfo& modelInfo, 
+//     Triton::ProtocolType protocol, 
+//      const std::vector<std::string>& class_names, size_t batch_size) {
+//     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
+//     cv::VideoCapture cap(sourceName);
 
-    if (!cap.isOpened()) {
-        std::cout << "Could not open the video: " << sourceName << std::endl;
-        return;
-    }
+//     if (!cap.isOpened()) {
+//         std::cout << "Could not open the video: " << sourceName << std::endl;
+//         return;
+//     }
 
-#ifdef WRITE_FRAME
-    cv::VideoWriter outputVideo;
-    cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH), (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
-    int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
-    outputVideo.open(sourceDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
+// #ifdef WRITE_FRAME
+//     cv::VideoWriter outputVideo;
+//     cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH), (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+//     int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
+//     outputVideo.open(sourceDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
 
-    if (!outputVideo.isOpened()) {
-        std::cout << "Could not open the output video for write: " << sourceName << std::endl;
-        return;
-    }
-#endif
+//     if (!outputVideo.isOpened()) {
+//         std::cout << "Could not open the output video for write: " << sourceName << std::endl;
+//         return;
+//     }
+// #endif
 
-    cv::Mat frame;
-    while (cap.read(frame)) {
-        auto start = std::chrono::steady_clock::now();
-        // Call your processSource function here
-        std::vector<Result> predictions = processSource(frame, task, options, tritonClient, modelInfo, protocol, batch_size);
-        auto end = std::chrono::steady_clock::now();
-        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        std::cout << "Infer time: " << diff << " ms" << std::endl;
+//     cv::Mat frame;
+//     while (cap.read(frame)) {
+//         auto start = std::chrono::steady_clock::now();
+//         // Call your processSource function here
+//         std::vector<Result> predictions = processSource(frame, task, options, tritonClient, modelInfo, protocol, batch_size);
+//         auto end = std::chrono::steady_clock::now();
+//         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+//         std::cout << "Infer time: " << diff << " ms" << std::endl;
 
-#if defined(SHOW_FRAME) || defined(WRITE_FRAME)
-        double fps = 1000.0 / static_cast<double>(diff);
-        std::string fpsText = "FPS: " + std::to_string(fps);
-        cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
-        for (auto&& prediction : predictions) 
-        {
-            if (std::holds_alternative<Detection>(prediction)) 
-            {
-                Detection detection = std::get<Detection>(prediction);
-                cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
-                cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
-                cv::putText(frame, class_names[detection.class_id],
-                cv::Point(detection.bbox.x, detection.bbox.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
-            }
-        }
-#endif
+// #if defined(SHOW_FRAME) || defined(WRITE_FRAME)
+//         double fps = 1000.0 / static_cast<double>(diff);
+//         std::string fpsText = "FPS: " + std::to_string(fps);
+//         cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
+//         for (auto&& prediction : predictions) 
+//         {
+//             if (std::holds_alternative<Detection>(prediction)) 
+//             {
+//                 Detection detection = std::get<Detection>(prediction);
+//                 cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
+//                 cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
+//                 cv::putText(frame, class_names[detection.class_id],
+//                 cv::Point(detection.bbox.x, detection.bbox.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
+//             }
+//         }
+// #endif
 
-#ifdef SHOW_FRAME
-        cv::imshow("video feed", frame);
-        cv::waitKey(1);
-#endif
+// #ifdef SHOW_FRAME
+//         cv::imshow("video feed", frame);
+//         cv::waitKey(1);
+// #endif
 
-#ifdef WRITE_FRAME
-        outputVideo.write(frame);
-#endif
-    }
-}
+// #ifdef WRITE_FRAME
+//         outputVideo.write(frame);
+// #endif
+//     }
+// }
 
 
 static const std::string keys =
@@ -231,7 +182,7 @@ int main(int argc, const char* argv[])
     std::string port = parser.get<std::string>("port");
     bool verbose = parser.get<bool>("verbose");
     std::string sourceName = parser.get<std::string>("source");  // Changed from 'video' to 'source'
-    Triton::ProtocolType protocol = parser.get<std::string>("protocol") == "grpc" ? Triton::ProtocolType::GRPC : Triton::ProtocolType::HTTP;
+    ProtocolType protocol = parser.get<std::string>("protocol") == "grpc" ? ProtocolType::GRPC : ProtocolType::HTTP;
     const size_t batch_size = parser.get<size_t>("batch");
 
     std::string modelName = parser.get<std::string>("model");
@@ -253,10 +204,10 @@ int main(int argc, const char* argv[])
     std::cout << "batch (b): " << parser.get<size_t>("batch") << std::endl;
 
     // Create Triton client
-    Triton::TritonClient tritonClient;
-    Triton::createTritonClient(tritonClient, url, verbose, protocol);
+    std::unique_ptr<Triton> tritonClient = std::make_unique<Triton>(url, protocol, modelName);
+    tritonClient->createTritonClient();
 
-    Triton::TritonModelInfo modelInfo = Triton::setModel(modelName, serverAddress);
+    TritonModelInfo modelInfo = tritonClient->getModelInfo(modelName, serverAddress);
     std::unique_ptr<TaskInterface> task;
     if (taskType == "detection") {
         task = createDetectorInstance(modelType, modelInfo.input_w_, modelInfo.input_h_);
@@ -271,14 +222,14 @@ int main(int argc, const char* argv[])
 
     const auto class_names = task->readLabelNames(labelsFile);
 
-    tc::InferOptions options = Triton::createInferOptions(modelName, modelVersion);
+
 
     // Get the directory of the source file
     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
     if (sourceName.find(".jpg") != std::string::npos || sourceName.find(".png") != std::string::npos) {
-         ProcessImage(sourceName, task, options, tritonClient, modelInfo, protocol, class_names, batch_size);
+         ProcessImage(sourceName, task, tritonClient, modelInfo, class_names);
     } else {
-         ProcessVideo(sourceName, task, options, tritonClient, modelInfo, protocol, class_names, batch_size);
+         //ProcessVideo(sourceName, task, options, tritonClient, modelInfo, protocol, class_names, batch_size);
     }
 
     return 0;
