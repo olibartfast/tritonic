@@ -58,7 +58,7 @@ namespace Triton
         if (info.input_format_ == "FORMAT_NONE") {
             info.input_format_ = "FORMAT_NCHW"; // or hardcode the string you know
         }        
-        else if (info.input_format_ == "FORMAT_NCHW")
+        if (info.input_format_ == "FORMAT_NCHW")
         {
             if (inputDims.Size() == 4) {
                 // Batch size is included, and it's the first dimension    
