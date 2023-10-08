@@ -35,8 +35,11 @@ set(SOURCES
 
 set(DETECTOR_SOURCES ${PROJECT_SOURCE_DIR} src/tasks/object_detection/src/Yolo.cpp src/tasks/object_detection/src/YoloNas.cpp)
 
+# Set the source files
+set(TRITON_SOURCES ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp)
+
 # Add an executable target
-add_executable(${PROJECT_NAME} ${SOURCES} ${DETECTOR_SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCES} ${DETECTOR_SOURCES} ${TRITON_SOURCES})
 
 # Set include directories for the target
 target_include_directories(${PROJECT_NAME}
@@ -49,6 +52,7 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/src
     ${PROJECT_SOURCE_DIR}/src/tasks/classification/include
     ${PROJECT_SOURCE_DIR}/src/tasks/classification/src    
+    ${PROJECT_SOURCE_DIR}/src/triton
     # Add any additional include directories here
 )
 
