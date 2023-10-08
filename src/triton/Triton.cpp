@@ -58,30 +58,56 @@ namespace Triton
         if (info.input_format_ == "FORMAT_NONE") {
             info.input_format_ = "FORMAT_NCHW"; // or hardcode the string you know
         }        
+        else if (info.input_format_ == "FORMAT_NCHW")
+        {
+            if (inputDims.Size() == 4) {
+                // Batch size is included, and it's the first dimension    
+                info.input_c_ = responseJson["input"][0]["dims"][1].GetInt();
+                info.input_h_ = responseJson["input"][0]["dims"][2].GetInt();
+                info.input_w_ = responseJson["input"][0]["dims"][3].GetInt();
 
-        if (inputDims.Size() == 4) {
-            // Batch size is included, and it's the first dimension    
-            info.input_c_ = responseJson["input"][0]["dims"][1].GetInt();
-            info.input_h_ = responseJson["input"][0]["dims"][2].GetInt();
-            info.input_w_ = responseJson["input"][0]["dims"][3].GetInt();
-
-        } else if (inputDims.Size() == 3) {
-            // Batch size is not included, and you can treat it as 1
-            info.input_c_ = responseJson["input"][0]["dims"][0].GetInt();
-            info.input_h_ = responseJson["input"][0]["dims"][1].GetInt();
-            info.input_w_ = responseJson["input"][0]["dims"][2].GetInt();
-            info.shape_.push_back(info.batch_size_);
-        } else {
+            } else if (inputDims.Size() == 3) {
+                // Batch size is not included, and you can treat it as 1
+                info.input_c_ = responseJson["input"][0]["dims"][0].GetInt();
+                info.input_h_ = responseJson["input"][0]["dims"][1].GetInt();
+                info.input_w_ = responseJson["input"][0]["dims"][2].GetInt();
+                info.shape_.push_back(info.batch_size_);
+            } else {
             // Handle unexpected dimension size
             // You might want to throw an exception or handle this case based on your requirements
+                std::cerr << "Can't manage this input size" << std::endl;
+                std::exit(1);
+            }
+
+
         }
-        for (const auto& dim : inputDims) {
+        else if (info.input_format_ == "FORMAT_NHWC")
+        {
+            if (inputDims.Size() == 4) {
+                // Batch size is included, and it's the first dimension    
+                info.input_h_ = responseJson["input"][0]["dims"][1].GetInt();
+                info.input_w_ = responseJson["input"][0]["dims"][2].GetInt();
+                info.input_c_ = responseJson["input"][0]["dims"][3].GetInt();
+
+            } else if (inputDims.Size() == 3) {
+                // Batch size is not included, and you can treat it as 1
+                info.input_h_ = responseJson["input"][0]["dims"][0].GetInt();
+                info.input_w_ = responseJson["input"][0]["dims"][1].GetInt();
+                info.input_c_ = responseJson["input"][0]["dims"][2].GetInt();
+                info.shape_.push_back(info.batch_size_);
+            } else {
+            // Handle unexpected dimension size
+            // You might want to throw an exception or handle this case based on your requirements
+                std::cerr << "Can't manage this input size" << std::endl;
+                std::exit(1);
+            }            
+        }
+ 
+
+        for (const auto& dim : inputDims) 
+        {
             info.shape_.push_back(dim.GetInt64());
         }
-
-
-
-
 
         info.max_batch_size_ = responseJson["max_batch_size"].GetInt();
 
