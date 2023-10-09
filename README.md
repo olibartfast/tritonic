@@ -105,7 +105,7 @@ Replace the following placeholders:
 
 - `/path/to/source.format`: The path to your video or image file.
 - `<task_type>`: Choose the computer vision task type (e.g., `detection` or `classification`).
-- `<model_type>`: Specify the model type (e.g., YOLO version (`yolov5`, `yolov6`, `yolov7`, `yolov8`, `yolonas` ) or classification model).
+- `<model_type>`: Specify the model type (e.g., detectors `yolov5`, `yolov6`, `yolov7`, `yolov8`, `yolonas`  or classification models).
 - `<model_name_folder_on_triton>`: The name of the model folder in the Triton server where your chosen model is deployed.
 - `/path/to/labels/coco.names`: The path to the file containing label names (e.g., COCO labels).
 - `<http or grpc>`: Choose either `http` or `grpc` as the protocol based on your Triton server setup.
