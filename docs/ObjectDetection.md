@@ -1,20 +1,67 @@
+## Instructions
 
-## YoloV5 Export
+### Export the model for the inference
+## YoloV8
 
-To export YoloV5 models in ONNX format, you can run the export script from the [yolov5 repository](https://github.com/ultralytics/yolov5/issues/251).
+Install YoloV8 [following Ultralytics official documentation](https://docs.ultralytics.com/quickstart/) and export the model in different formats, you can use the following commands:
 
-## YoloV6 Export
+#### Torchscript
 
-Export YoloV6 models in ONNX format from the [YoloV6 repository](https://github.com/meituan/YOLOv6/tree/main/deploy/ONNX). Post-processing code for YoloV6 is identical to YoloV5.
+To export the model in the TorchScript format:
 
-## YoloV7 Export
+```
+yolo export model=best.pt(the best corrisponding to your trained yolov8n/s/m/x) format=torchscript
+```
 
-To export YoloV7 models, run the export script from the [YoloV7 repository](https://github.com/WongKinYiu/yolov7#export). Make sure to specify necessary export parameters, such as input and output sizes.
+#### OnnxRuntime
 
-## YoloV8 Export
+To export the model in the ONNXRuntime format:
 
-YoloV8 models can be exported in ONNX format similarly to YoloV5. You can refer to the [Ultralytics YoloV8-CPP-Inference example](https://github.com/ultralytics/ultralytics/tree/main/examples/YOLOv8-CPP-Inference).
+```
+yolo export model=best.pt format=onnx
+```
 
-## Yolo-Nas Export
+#### TensorRT
 
-To export Yolo-Nas models in ONNX format, follow the instructions in the [YoloNAS Quickstart](https://github.com/Deci-AI/super-gradients/blob/master/documentation/source/YoloNASQuickstart.md#export-to-onnx).
+To export the model in the TensorRT format:
+
+```
+yolo export model=best.pt format=engine
+```
+
+Please note that when using TensorRT, ensure that the version installed under Ultralytics python environment matches the C++ version you plan to use for inference. Another way to export the model is to use `trtexec` with the following command:
+
+```
+trtexec --onnx=best.onnx --saveEngine=best.engine
+```
+
+
+## YoloV5 
+#### OnnxRuntime
+* Run from [yolov5 repo](https://github.com/ultralytics/yolov5/issues/251) export script:  ```python export.py  --weights <yolov5_version>.pt  --include onnx```
+
+#### Libtorch
+* from yolov5 repo: ```python export.py  --weights <yolov5_version>.pt  --include torchscript```
+
+## YoloV6
+#### OnnxRuntime
+Weights to export in ONNX format or download from [yolov6 repo](https://github.com/meituan/YOLOv6/tree/main/deploy/ONNX). Posteprocessing code is identical to yolov5-v7.
+
+
+## YoloV7
+#### OnnxRuntime and/or Libtorch
+* Run from [yolov7 repo](https://github.com/WongKinYiu/yolov7#export): ```python export.py --weights <yolov7_version>.pt --grid  --simplify --topk-all 100 --iou-thres 0.65 --conf-thres 0.35 --img-size 640 640 --max-wh 640``` (Don't use end-to-end parameter)
+
+
+## Yolo-Nas export 
+#### OnnxRuntime
+* Weights can be export in ONNX format like in [YoloNAS Quickstart](https://github.com/Deci-AI/super-gradients/blob/master/documentation/source/YoloNASQuickstart.md#export-to-onnx).  
+I export the model specifying input and output layers name, for example here below in the case of yolo_nas_s version:
+```
+from super_gradients.training import models
+
+net = models.get("yolo_nas_s", pretrained_weights="coco")
+models.convert_to_onnx(model=net, input_shape=(3,640,640), out_path="yolo_nas_s.onnx", torch_onnx_export_kwargs={"input_names": ['input'], "output_names": ['output0', 'output1']})
+```
+
+
