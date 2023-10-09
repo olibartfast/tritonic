@@ -213,12 +213,20 @@ int main(int argc, const char* argv[])
     std::unique_ptr<TaskInterface> task;
     if (taskType == "detection") {
         task = createDetectorInstance(modelType, modelInfo.input_w_, modelInfo.input_h_);
+        if(task == nullptr)
+        {
+            std::cerr << "Invalid model type specified: " +  modelType << std::endl;
+        }
     } 
     else if (taskType == "classification") {
         task = createClassifierInstance(modelType, modelInfo.input_w_, modelInfo.input_h_, modelInfo.input_c_);
+        if(task == nullptr)
+        {
+            std::cerr << "Invalid model type specified: " +  modelType << std::endl;
+        }
     } 
     else {
-        std::cerr << "Invalid model_type specified." << std::endl;
+        std::cerr << "Invalid task type specified: " +  taskType << std::endl;
         return 1;
     }
 
