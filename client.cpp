@@ -54,7 +54,7 @@ std::vector<Result> processSource(const cv::Mat& source,
 // Define a function to perform inference on an image
 void ProcessImage(const std::string& sourceName,
     const std::unique_ptr<TaskInterface>& task, 
-     const std::unique_ptr<Triton>&  tritonClient,
+    const std::unique_ptr<Triton>&  tritonClient,
     const TritonModelInfo& modelInfo, 
     const std::vector<std::string>& class_names) {
     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
@@ -90,70 +90,68 @@ void ProcessImage(const std::string& sourceName,
     cv::imwrite(processedFrameFilename, image);
 }
 
-// // Define a function to perform inference on a video
-// void ProcessVideo(const std::string& sourceName,
-//     const std::unique_ptr<TaskInterface>& task, 
-//     tc::InferOptions& options, 
-//     Triton::TritonClient& tritonClient, 
-//     const Triton::TritonModelInfo& modelInfo, 
-//     Triton::ProtocolType protocol, 
-//      const std::vector<std::string>& class_names, size_t batch_size) {
-//     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
-//     cv::VideoCapture cap(sourceName);
+// Define a function to perform inference on a video
+void ProcessVideo(const std::string& sourceName,
+    const std::unique_ptr<TaskInterface>& task, 
+    const std::unique_ptr<Triton>&  tritonClient, 
+    TritonModelInfo& modelInfo,  
+     const std::vector<std::string>& class_names, size_t batch_size) {
+    std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
+    cv::VideoCapture cap(sourceName);
 
-//     if (!cap.isOpened()) {
-//         std::cout << "Could not open the video: " << sourceName << std::endl;
-//         return;
-//     }
+    if (!cap.isOpened()) {
+        std::cout << "Could not open the video: " << sourceName << std::endl;
+        return;
+    }
 
-// #ifdef WRITE_FRAME
-//     cv::VideoWriter outputVideo;
-//     cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH), (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
-//     int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
-//     outputVideo.open(sourceDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
+#ifdef WRITE_FRAME
+    cv::VideoWriter outputVideo;
+    cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH), (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+    int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
+    outputVideo.open(sourceDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
 
-//     if (!outputVideo.isOpened()) {
-//         std::cout << "Could not open the output video for write: " << sourceName << std::endl;
-//         return;
-//     }
-// #endif
+    if (!outputVideo.isOpened()) {
+        std::cout << "Could not open the output video for write: " << sourceName << std::endl;
+        return;
+    }
+#endif
 
-//     cv::Mat frame;
-//     while (cap.read(frame)) {
-//         auto start = std::chrono::steady_clock::now();
-//         // Call your processSource function here
-//         std::vector<Result> predictions = processSource(frame, task, options, tritonClient, modelInfo, protocol, batch_size);
-//         auto end = std::chrono::steady_clock::now();
-//         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-//         std::cout << "Infer time: " << diff << " ms" << std::endl;
+    cv::Mat frame;
+    while (cap.read(frame)) {
+        auto start = std::chrono::steady_clock::now();
+        // Call your processSource function here
+        std::vector<Result> predictions = processSource(frame, task, tritonClient, modelInfo);
+        auto end = std::chrono::steady_clock::now();
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "Infer time: " << diff << " ms" << std::endl;
 
-// #if defined(SHOW_FRAME) || defined(WRITE_FRAME)
-//         double fps = 1000.0 / static_cast<double>(diff);
-//         std::string fpsText = "FPS: " + std::to_string(fps);
-//         cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
-//         for (auto&& prediction : predictions) 
-//         {
-//             if (std::holds_alternative<Detection>(prediction)) 
-//             {
-//                 Detection detection = std::get<Detection>(prediction);
-//                 cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
-//                 cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
-//                 cv::putText(frame, class_names[detection.class_id],
-//                 cv::Point(detection.bbox.x, detection.bbox.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
-//             }
-//         }
-// #endif
+#if defined(SHOW_FRAME) || defined(WRITE_FRAME)
+        double fps = 1000.0 / static_cast<double>(diff);
+        std::string fpsText = "FPS: " + std::to_string(fps);
+        cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
+        for (auto&& prediction : predictions) 
+        {
+            if (std::holds_alternative<Detection>(prediction)) 
+            {
+                Detection detection = std::get<Detection>(prediction);
+                cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
+                cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
+                cv::putText(frame, class_names[detection.class_id],
+                cv::Point(detection.bbox.x, detection.bbox.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
+            }
+        }
+#endif
 
-// #ifdef SHOW_FRAME
-//         cv::imshow("video feed", frame);
-//         cv::waitKey(1);
-// #endif
+#ifdef SHOW_FRAME
+        cv::imshow("video feed", frame);
+        cv::waitKey(1);
+#endif
 
-// #ifdef WRITE_FRAME
-//         outputVideo.write(frame);
-// #endif
-//     }
-// }
+#ifdef WRITE_FRAME
+        outputVideo.write(frame);
+#endif
+    }
+}
 
 
 static const std::string keys =
