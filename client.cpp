@@ -99,7 +99,7 @@ void ProcessVideo(const std::string& sourceName,
     const std::unique_ptr<TaskInterface>& task, 
     const std::unique_ptr<Triton>&  tritonClient, 
     TritonModelInfo& modelInfo,  
-     const std::vector<std::string>& class_names, size_t batch_size) {
+     const std::vector<std::string>& class_names) {
     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
     cv::VideoCapture cap(sourceName);
 
@@ -231,7 +231,7 @@ int main(int argc, const char* argv[])
     if (sourceName.find(".jpg") != std::string::npos || sourceName.find(".png") != std::string::npos) {
          ProcessImage(sourceName, task, tritonClient, modelInfo, class_names);
     } else {
-         //ProcessVideo(sourceName, task, options, tritonClient, modelInfo, protocol, class_names, batch_size);
+         ProcessVideo(sourceName, task, tritonClient, modelInfo, class_names);
     }
 
     return 0;
