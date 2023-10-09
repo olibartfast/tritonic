@@ -19,7 +19,7 @@ endif()
 
 set(TritonClient_DIR "$ENV{TritonClientBuild_DIR}/lib/cmake/TritonClient")
 set(TritonCommon_DIR "$ENV{TritonClientBuild_DIR}/lib/cmake/TritonCommon")
-set(TritonCore_DIR "$ENV{TritonClientBuild_DIR}/lib/cmake/TritonCore")
+
 
 find_package(OpenCV REQUIRED)
 find_package(TritonCommon REQUIRED)

@@ -1,14 +1,12 @@
 #include "Triton.hpp"
 
-namespace Triton 
-{
-    size_t WriteCallback(char* ptr, size_t size, size_t nmemb, std::string& data) {
+    static size_t WriteCallback(char* ptr, size_t size, size_t nmemb, std::string& data) {
         size_t totalSize = size * nmemb;
         data.append(ptr, totalSize);
         return totalSize;
     }
 
-    TritonModelInfo parseModelHttp(const std::string& modelName, const std::string& url) {
+    TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::string& url) {
         TritonModelInfo info;
 
         CURL* curl = curl_easy_init();
@@ -55,7 +53,8 @@ namespace Triton
 
         // Fix the input format if it is "FORMAT_NONE"
         // https://github.com/triton-inference-server/server/issues/1240
-        if (info.input_format_ == "FORMAT_NONE") {
+        if (info.input_format_ == "FORMAT_NONE") 
+        {
             info.input_format_ = "FORMAT_NCHW"; // or hardcode the string you know
         }        
         if (info.input_format_ == "FORMAT_NCHW")
@@ -130,7 +129,7 @@ namespace Triton
     }
 
 
-    TritonModelInfo setModel(const std::string& modelName, const std::string& url) {
+    TritonModelInfo Triton::getModelInfo(const std::string& modelName, const std::string& url) {
         TritonModelInfo info = parseModelHttp(modelName, url);
 
         // Print the retrieved model information
@@ -148,31 +147,32 @@ namespace Triton
             std::cout << outputName << " ";
         }
         std::cout << std::endl;
-
+        model_info_ = info;
         return info;
     }
 
     // Function to create Triton client based on the protocol
-    void createTritonClient(Triton::TritonClient& tritonClient, const std::string& url, bool verbose, Triton::ProtocolType protocol)
+    void Triton::createTritonClient()
     {
         tc::Error err;
-        if (protocol == Triton::ProtocolType::HTTP) {
+        if (protocol_ == ProtocolType::HTTP) {
             err = tc::InferenceServerHttpClient::Create(
-                &tritonClient.httpClient, url, verbose);
+                &triton_client_.httpClient, url_, verbose_);
         }
         else {
             err = tc::InferenceServerGrpcClient::Create(
-                &tritonClient.grpcClient, url, verbose);
+                &triton_client_.grpcClient, url_, verbose_);
         }
         if (!err.IsOk()) {
             std::cerr << "error: unable to create client for inference: " << err
                 << std::endl;
             exit(1);
         }
+
     }
 
 
-    std::vector<const tc::InferRequestedOutput*> createInferRequestedOutput(const std::vector<std::string>& output_names_)
+    std::vector<const tc::InferRequestedOutput*> Triton::createInferRequestedOutput(const std::vector<std::string>& output_names_)
     {
         std::vector<const tc::InferRequestedOutput*> outputs;
         tc::Error err;
@@ -189,14 +189,8 @@ namespace Triton
         return outputs;    
     }
 
-    tc::InferOptions createInferOptions(const std::string& modelName, const std::string& modelVersion) 
-    {
-        tc::InferOptions options(modelName);
-        options.model_version_ = modelVersion;
-        return options;
-    }
 
-    std::tuple<std::vector<std::vector<float>> , std::vector<std::vector<int64_t>>> getInferResults(
+    std::tuple<std::vector<std::vector<float>> , std::vector<std::vector<int64_t>>> Triton::getInferResults(
                     tc::InferResult* result,
                     const size_t batch_size,
                     const std::vector<std::string>& output_names, const bool batching)
@@ -237,4 +231,178 @@ namespace Triton
     }
 
 
-}
+    std::tuple<std::vector<std::vector<float>>, std::vector<std::vector<int64_t>>> Triton::infer(const std::vector<uint8_t>& input_data)
+    {
+
+        tc::Error err;
+        std::vector<tc::InferInput*> inputs = { nullptr };
+        std::vector<const tc::InferRequestedOutput*> outputs = createInferRequestedOutput(model_info_.output_names_);        
+            tc::InferOptions options(model_name_);
+            options.model_version_ = model_version_;
+        if (inputs[0] != nullptr) {
+            err = inputs[0]->Reset();
+            if (!err.IsOk()) {
+                std::cerr << "failed resetting input: " << err << std::endl;
+                exit(1);
+            }
+        }
+        else {
+            err = tc::InferInput::Create(
+                &inputs[0], model_info_.input_name_, model_info_.shape_, model_info_.input_datatype_);
+            if (!err.IsOk()) {
+                std::cerr << "unable to get input: " << err << std::endl;
+                exit(1);
+            }
+        }
+
+        err = inputs[0]->AppendRaw(input_data);
+        if (!err.IsOk()) {
+            std::cerr << "failed setting input: " << err << std::endl;
+            exit(1);
+        }
+
+        tc::InferResult* result;
+        std::unique_ptr<tc::InferResult> result_ptr;
+        if (protocol_ == ProtocolType::HTTP) {
+            err = triton_client_.httpClient->Infer(
+                &result, options, inputs, outputs);
+        }
+        else {
+            err = triton_client_.grpcClient->Infer(
+                &result, options, inputs, outputs);
+        }
+        if (!err.IsOk()) {
+            std::cerr << "failed sending synchronous infer request: " << err
+                << std::endl;
+            exit(1);
+        }
+
+        const auto [infer_results, infer_shapes] = getInferResults(result, model_info_.batch_size_, model_info_.output_names_, model_info_.max_batch_size_ != 0);
+        result_ptr.reset(result);
+        return std::make_tuple(infer_results, infer_shapes);
+
+    }
+
+    // TritonModelInfo parseModelGrpc(const inference::ModelMetadataResponse& model_metadata,const inference::ModelConfigResponse& model_config)
+    // {
+    //     TritonModelInfo model_info;
+    //     if (model_metadata.inputs().size() != 1) {
+    //         std::cerr << "expecting 1 input, got " << model_metadata.inputs().size()
+    //                 << std::endl;
+    //         exit(1);
+    //     }
+
+    //     if (model_metadata.outputs().size() != 1) {
+    //         std::cerr << "expecting 1 output, got " << model_metadata.outputs().size()
+    //                 << std::endl;
+    //         exit(1);
+    //     }
+
+    //     if (model_config.config().input().size() != 1) {
+    //         std::cerr << "expecting 1 input in model configuration, got "
+    //                 << model_config.config().input().size() << std::endl;
+    //         exit(1);
+    //     }
+
+    //     auto input_metadata = model_metadata.inputs(0);
+    //     auto input_config = model_config.config().input(0);
+    //     auto output_metadata = model_metadata.outputs(0);
+
+    //     if (output_metadata.datatype().compare("FP32") != 0) {
+    //         std::cerr << "expecting output datatype to be FP32, model '"
+    //                 << model_metadata.name() << "' output type is '"
+    //                 << output_metadata.datatype() << "'" << std::endl;
+    //         exit(1);
+    //     }
+
+    //     model_info.max_batch_size_ = model_config.config().max_batch_size();
+
+    //     // Model specifying maximum batch size of 0 indicates that batching
+    //     // is not supported and so the input tensors do not expect a "N"
+    //     // dimension (and 'batch_size' should be 1 so that only a single
+    //     // image instance is inferred at a time).
+    //     if (model_info.max_batch_size_ == 0) {
+    //         if (model_info.batch_size_ != 1) {
+    //         std::cerr << "batching not supported for model \""
+    //                     << model_metadata.name() << "\"" << std::endl;
+    //         exit(1);
+    //         }
+    //     } else {
+    //         if (model_info.batch_size_ > (size_t)model_info.max_batch_size_) {
+    //         std::cerr << "expecting batch size <= " << model_info.max_batch_size_
+    //                     << " for model '" << model_metadata.name() << "'" << std::endl;
+    //         exit(1);
+    //         }
+    //     }
+
+    //     // Output is expected to be a vector. But allow any number of
+    //     // dimensions as long as all but 1 is size 1 (e.g. { 10 }, { 1, 10
+    //     // }, { 10, 1, 1 } are all ok).
+    //     bool output_batch_dim = (model_info.max_batch_size_ > 0);
+    //     size_t non_one_cnt = 0;
+    //     for (const auto dim : output_metadata.shape()) {
+    //         if (output_batch_dim) {
+    //         output_batch_dim = false;
+    //         } else if (dim == -1) {
+    //         std::cerr << "variable-size dimension in model output not supported"
+    //                     << std::endl;
+    //         exit(1);
+    //         } else if (dim > 1) {
+    //         non_one_cnt += 1;
+    //         if (non_one_cnt > 1) {
+    //             std::cerr << "expecting model output to be a vector" << std::endl;
+    //             exit(1);
+    //         }
+    //         }
+    //     }
+
+    //     // Model input must have 3 dims, either CHW or HWC (not counting the
+    //     // batch dimension), either CHW or HWC
+    //     const bool input_batch_dim = (model_info.max_batch_size_ > 0);
+    //     const int expected_input_dims = 3 + (input_batch_dim ? 1 : 0);
+    //     if (input_metadata.shape().size() != expected_input_dims) {
+    //         std::cerr << "expecting input to have " << expected_input_dims
+    //                 << " dimensions, model '" << model_metadata.name()
+    //                 << "' input has " << input_metadata.shape().size() << std::endl;
+    //         exit(1);
+    //     }
+
+    //     if ((input_config.format() != inference::ModelInput::FORMAT_NCHW) &&
+    //         (input_config.format() != inference::ModelInput::FORMAT_NHWC)) {
+    //         std::cerr
+    //             << "unexpected input format "
+    //             << inference::ModelInput_Format_Name(input_config.format())
+    //             << ", expecting "
+    //             << inference::ModelInput_Format_Name(inference::ModelInput::FORMAT_NHWC)
+    //             << " or "
+    //             << inference::ModelInput_Format_Name(inference::ModelInput::FORMAT_NCHW)
+    //             << std::endl;
+    //         exit(1);
+    //     }
+
+    //     model_info.output_name_ = output_metadata.name();
+    //     model_info.input_name_ = input_metadata.name();
+    //     model_info.input_datatype_ = input_metadata.datatype();
+
+    //     if (input_config.format() == inference::ModelInput::FORMAT_NHWC) {
+    //         model_info.input_format_ = "FORMAT_NHWC";
+    //         model_info.input_h_ = input_metadata.shape(input_batch_dim ? 1 : 0);
+    //         model_info.input_w_ = input_metadata.shape(input_batch_dim ? 2 : 1);
+    //         model_info.input_c_ = input_metadata.shape(input_batch_dim ? 3 : 2);
+    //     } else {
+    //         model_info.input_format_ = "FORMAT_NCHW";
+    //         model_info.input_c_ = input_metadata.shape(input_batch_dim ? 1 : 0);
+    //         model_info.input_h_ = input_metadata.shape(input_batch_dim ? 2 : 1);
+    //         model_info.input_w_ = input_metadata.shape(input_batch_dim ? 3 : 2);
+    //     }
+
+    //     // if (!ParseType(
+    //     //         model_info->input_datatype_, &(model_info->type1_),
+    //     //         &(model_info->type3_))) {
+    //     //     std::cerr << "unexpected input datatype '" << model_info->input_datatype_
+    //     //             << "' for model \"" << model_metadata.name() << std::endl;
+    //     //     exit(1);
+    //     // }
+    //     return model_info;
+    // }
+
