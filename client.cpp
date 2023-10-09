@@ -31,6 +31,10 @@ std::unique_ptr<TaskInterface> createDetectorInstance(const std::string& modelTy
     {
         return std::make_unique<Yolo>(input_width, input_height);
     }
+    else if (modelType.find("yolonas") != std::string::npos )
+    {
+        return std::make_unique<YoloNas>(input_width, input_height);
+    }        
     else
     {
         return nullptr;
