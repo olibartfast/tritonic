@@ -44,8 +44,7 @@ Follow these steps to build and compile the application:
 
 - [Object Detection](docs/ObjectDetection.md)
 - [Classification](docs/Classification.md) (In progress...)
-- Instance Segmentation (TO DO)
-- Action Recognition (TO DO)
+- TODO Instance Segmentation, PoseEstimation... 
 
 ## Notes
 
