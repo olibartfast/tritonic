@@ -44,8 +44,7 @@ Follow these steps to build and compile the application:
 
 - [Object Detection](docs/ObjectDetection.md)
 - [Classification](docs/Classification.md) (In progress...)
-- Instance Segmentation (TO DO)
-- Action Recognition (TO DO)
+- TODO Instance Segmentation, PoseEstimation... 
 
 ## Notes
 
@@ -160,3 +159,8 @@ Watch a test of YOLOv7-tiny exported to ONNX [here](https://youtu.be/lke5TcbP2a0
 - [YOLOv5 ONNX Runtime](https://github.com/itsnine/yolov5-onnxruntime)
 - [TensorRTX](https://github.com/wang-xinyu/tensorrt)
 - [Triton user guide](https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/user_guide/model_repository.html)
+
+
+
+## Feedback
+- Any feedback is greatly appreciated, if you have any suggestions, bug reports or questions don't hesitate to open an [issue](https://github.com/olibartfast/computer-vision-triton-cpp-client/issues).
