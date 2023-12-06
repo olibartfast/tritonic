@@ -3,7 +3,7 @@
 ### Export the model for the inference
 ## Models from Torchvision Pytorch API
 
-* Select a model from https://pytorch.org/vision/stable/models.html#classification, for exaple resnet50, then write a python script like below:
+* Select a model from https://pytorch.org/vision/stable/models.html#classification, for example resnet50, then write a python script like below:
 
 #### OnnxRuntime
  ```python
@@ -30,13 +30,12 @@ torch.onnx.export(resnet50,
  #### TensorRT
  Once you have your exported onnx model, using trtexec:
  ```bash
-   trtexec --onnx=model.onnx --saveEngine=./model_repository/resnet50_trt/1/model.plan --explicitBatch --minShapes=input:1x3x224x224 --optShapes=input:1x3x224x224 --maxShapes=input:256x3x224x224
+   trtexec --onnx=model.onnx --saveEngine=model.plan --explicitBatch --minShapes=input:1x3x224x224 --optShapes=input:1x3x224x224 --maxShapes=input:256x3x224x224
 
   ```
 
   * Pay attention to use tensorrt version corresponding to the one used on Triton image, or you could use a container like below (supposing you are using Triton release 23.08)
    ```bash
   docker run -it --gpus=all -v $(pwd):/workspace nvcr.io/nvidia/pytorch:23.08-py3 /bin/bash -cx \
-  "python onnx_exporter.py --save model.onnx &&
-   trtexec --onnx=model.onnx --saveEngine=./model_repository/resnet50_trt/1/model.plan --explicitBatch --minShapes=input:1x3x224x224 --optShapes=input:1x3x224x224 --maxShapes=input:256x3x224x224 --fp16 
+   "trtexec --onnx=model.onnx --saveEngine=model.plan --explicitBatch --minShapes=input:1x3x224x224 --optShapes=input:1x3x224x224 --maxShapes=input:256x3x224x224 --fp16 
   ```  
