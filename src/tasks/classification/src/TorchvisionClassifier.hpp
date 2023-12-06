@@ -10,11 +10,12 @@ public:
     }
 
     std::vector<Result> postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results,
-                                            const std::vector<std::vector<int64_t>>& infer_shapes) override {
+                                            const std::vector<std::vector<int64_t>>& infer_shapes) override 
+    {
         
         // Implement your postprocess logic here
         auto result = infer_results.front();
-        const auto shape = infer_shapes[1].front();
+        const auto shape = infer_shapes[0][1];
         std::transform(result.begin(), result.end(), result.begin(), [](float val) {return std::exp(val);});
         auto sum = std::accumulate(result.begin(), result.end(), 0.0);
         // find top classes predicted by the model
@@ -24,18 +25,16 @@ public:
         // print results
         int i = 0;
         std::vector<Result> results;
-        const auto score = result[indices[i]] / sum; 
-        while (score > 0.005)
+        while (result[indices[i]] / sum > 0.005)
         {
             Classification classification;
-            classification.class_id;
-            classification.class_confidence;
-            std::cout << "confidence: " << 100 * score << "% | index: " << indices[i] << "\n";
+            classification.class_id = indices[i];
+            classification.class_confidence = result[indices[i]] / sum;
             ++i;
             results.emplace_back(classification);
         }
             return results;
-        }
+    }
 
     std::vector<uint8_t> preprocess(const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
                                     size_t img_channels, const cv::Size& img_size) override {

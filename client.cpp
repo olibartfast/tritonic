@@ -6,11 +6,9 @@
 
 std::unique_ptr<TaskInterface> createClassifierInstance(const std::string& modelType, const int input_width, const int input_height, const int channels)
 {
-    if (modelType == "torchvision")
+    if (modelType == "torchvision-classifier")
     {
-        //return std::make_unique<TorchvisionClassifier>(input_width, input_height, channels);
-        std::cout << "Work in progress..." << std::endl;
-        return nullptr;
+        return std::make_unique<TorchvisionClassifier>(input_width, input_height, channels);
     }
     else
     {
@@ -79,7 +77,7 @@ void ProcessImage(const std::string& sourceName,
     for (const Result& prediction : predictions) 
     {
         if (std::holds_alternative<Classification>(prediction)) {
-        Classification classification = std::get<Classification>(prediction);
+            Classification classification = std::get<Classification>(prediction);
             std::cout << class_names[classification.class_id] << ": " << classification.class_confidence << std::endl; 
 
         } 
@@ -163,14 +161,15 @@ static const std::string keys =
     "{ help h   | | Print help message. }"
     "{ model_type mt | yolov7 | yolo version used i.e yolov5, yolov6, yolov7, yolov8}"
     "{ model m | yolov7-tiny_onnx | model name of folder in triton }"
-    "{ task_type tt | detection | detection, classification}"
+    "{ task_type tt | | detection, classification}"
     "{ source s | data/dog.jpg | path to video or image}"
     "{ serverAddress  ip  | localhost | server address ip, default localhost}"
     "{ port  p  | 8001 | Port number(Grpc 8001, Http 8000)}"
     "{ verbose vb | false | Verbose mode, true or false}"
     "{ protocol pt | grpc | Protocol type, grpc or http}"
     "{ labelsFile l | ../coco.names | path to coco labels names}"
-    "{ batch b | 1 | Batch size}";
+    "{ batch b | 1 | Batch size}"
+    "{ input_sizes is | | Input sizes (channels width height)}";
 
 int main(int argc, const char* argv[])
 {
@@ -191,9 +190,22 @@ int main(int argc, const char* argv[])
     std::string modelName = parser.get<std::string>("model");
     std::string modelVersion = "";
     std::string modelType = parser.get<std::string>("model_type");
+
+    if(!parser.has("task_type"))
+    {
+        std::cerr << "Task type (classification or detection) is required " << std::endl;
+        std::exit(1);
+    }
+
     std::string taskType = parser.get<std::string>("task_type");
     std::string url(serverAddress + ":" + port);
     std::string labelsFile = parser.get<std::string>("labelsFile");
+
+    std::string input_sizes_str = parser.get<std::string>("input_sizes");
+    std::istringstream input_sizes_stream(input_sizes_str);
+    
+    size_t input_size_c, input_size_w, input_size_h;
+    input_sizes_stream >> input_size_c >> input_size_w >> input_size_h;
 
     std::cout << "Chosen Parameters:" << std::endl;
     std::cout << "task_type (tt): " << parser.get<std::string>("task_type") << std::endl;
@@ -206,11 +218,25 @@ int main(int argc, const char* argv[])
     std::cout << "labelsFile (l): " << parser.get<std::string>("labelsFile") << std::endl;
     std::cout << "batch (b): " << parser.get<size_t>("batch") << std::endl;
 
+    std::vector<int64_t> input_sizes;
+    if (parser.has("input_sizes")) {
+        std::cout << "input_size_c: " << input_size_c << std::endl;
+        std::cout << "input_size_w: " << input_size_w << std::endl;
+        std::cout << "input_size_h: " << input_size_h << std::endl;
+        input_sizes.push_back(batch_size);
+        input_sizes.push_back(input_size_c);
+        input_sizes.push_back(input_size_w);
+        input_sizes.push_back(input_size_h);
+    }
+
+   
+    
+
     // Create Triton client
     std::unique_ptr<Triton> tritonClient = std::make_unique<Triton>(url, protocol, modelName);
     tritonClient->createTritonClient();
 
-    TritonModelInfo modelInfo = tritonClient->getModelInfo(modelName, serverAddress);
+    TritonModelInfo modelInfo = tritonClient->getModelInfo(modelName, serverAddress, input_sizes);
     std::unique_ptr<TaskInterface> task;
     if (taskType == "detection") {
         task = createDetectorInstance(modelType, modelInfo.input_w_, modelInfo.input_h_);
@@ -220,6 +246,7 @@ int main(int argc, const char* argv[])
         }
     } 
     else if (taskType == "classification") {
+ 
         task = createClassifierInstance(modelType, modelInfo.input_w_, modelInfo.input_h_, modelInfo.input_c_);
         if(task == nullptr)
         {

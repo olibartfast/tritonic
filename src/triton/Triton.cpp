@@ -129,10 +129,21 @@
     }
 
 
-    TritonModelInfo Triton::getModelInfo(const std::string& modelName, const std::string& url) {
-        TritonModelInfo info = parseModelHttp(modelName, url);
+    TritonModelInfo Triton::getModelInfo(const std::string& modelName, const std::string& url, const std::vector<int64_t>& shape) {
+        model_info_ = parseModelHttp(modelName, url);
+
+        if(model_info_.input_w_ == -1 || model_info_.input_h_ == -1)
+        {
+            if(shape.empty())
+            {
+                std::cerr << "Model having dynamic input sizes loaded, set input from command line" << std::endl;
+                std::exit(1);
+            }
+            setInputShape(shape);
+        }
 
         // Print the retrieved model information
+        const auto& info = model_info_;
         std::cout << "Retrieved model information: " << std::endl;
         std::cout << "Input Name: " << info.input_name_ << std::endl;
         std::cout << "Input Data Type: " << info.input_datatype_ << std::endl;
@@ -146,9 +157,15 @@
         for (const auto& outputName : info.output_names_) {
             std::cout << outputName << " ";
         }
-        std::cout << std::endl;
-        model_info_ = info;
         return info;
+    }
+
+    void Triton::setInputShape(const std::vector<int64_t>& shape)
+    {
+        model_info_.shape_ = shape;
+        model_info_.input_c_ = shape[1];
+        model_info_.input_w_ = shape[2];
+        model_info_.input_h_ = shape[3];
     }
 
     // Function to create Triton client based on the protocol

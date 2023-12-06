@@ -63,7 +63,9 @@ class Triton{
         //size_t WriteCallback(char* ptr, size_t size, size_t nmemb, std::string& data);
         TritonModelInfo parseModelHttp(const std::string& modelName, const std::string& url);
         TritonModelInfo parseModelGrpc(const inference::ModelMetadataResponse& model_metadata,const inference::ModelConfigResponse& model_config);
-        TritonModelInfo getModelInfo(const std::string& modelName, const std::string& url);
+        TritonModelInfo getModelInfo(const std::string& modelName, const std::string& url, const std::vector<int64_t>& shape);
+
+        void setInputShape(const std::vector<int64_t>& shape);
 
         // Function to create Triton client based on the protocol
         void createTritonClient();
