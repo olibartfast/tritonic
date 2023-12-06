@@ -80,6 +80,7 @@ void ProcessImage(const std::string& sourceName,
     {
         if (std::holds_alternative<Classification>(prediction)) {
         Classification classification = std::get<Classification>(prediction);
+            std::cout << class_names[classification.class_id] << ": " << classification.class_confidence << std::endl; 
 
         } 
         else if (std::holds_alternative<Detection>(prediction)) 
