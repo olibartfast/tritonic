@@ -99,6 +99,10 @@ By using the `--source` parameter with the path to either a video or an image, y
     --serverAddress=<triton-ip> \
     --port=<8000 for http, 8001 for grpc>
 ```
+Add input sizes if your model has dynamic axis
+```
+    --input_sizes="c w h" 
+```
 
 Replace the following placeholders:
 
