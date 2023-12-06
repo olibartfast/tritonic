@@ -43,7 +43,7 @@ Follow these steps to build and compile the application:
 # Computer Vision Tasks
 
 - [Object Detection](docs/ObjectDetection.md)
-- [Classification](docs/Classification.md) (In progress...)
+- [Classification](docs/Classification.md) 
 - TODO Instance Segmentation, PoseEstimation... 
 
 ## Notes
