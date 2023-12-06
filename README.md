@@ -1,6 +1,6 @@
 # C++ Triton Client for Computer Vision Models
 
-This C++ application allows you to perform computer vision tasks such as object detection or classification using Nvidia Triton Server to manage multiple framework backends. It currently supports object detection models like YOLOv5, YOLOv6, YOLOv7, YOLOv8, and YOLO-NAS, planning complete inference for classification models from the Torchvision API.
+This C++ application allows you to perform computer vision tasks such as object detection or classification using Nvidia Triton Server to manage multiple framework backends. It currently supports object detection models like YOLOv5, YOLOv6, YOLOv7, YOLOv8, and YOLO-NAS, inference for classification models from the Torchvision API.
 
 ## Build Client Libraries
 
