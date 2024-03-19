@@ -3,8 +3,8 @@
 ### Export the model for the inference
 
 ## YOLOv9
+from [yolov9 repo](https://github.com/WongKinYiu/yolov9):
 #### OnnxRuntime
-* Run from [yolov9 repo](https://github.com/WongKinYiu/yolov9):
 ```
  python export.py --weights yolov9-c/e-converted.pt --include onnx
 ```
