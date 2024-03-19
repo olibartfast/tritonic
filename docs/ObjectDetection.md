@@ -1,6 +1,22 @@
 ## Instructions
 
 ### Export the model for the inference
+
+## YOLOv9
+#### OnnxRuntime
+* Run from [yolov9 repo](https://github.com/WongKinYiu/yolov9):
+```
+ python export.py --weights yolov9-c/e-converted.pt --include onnx
+```
+#### Torchscript
+```
+ python export.py --weights yolov9-c/e-converted.pt --include torchscript
+```
+#### TensorRT
+```
+ trtexec --onnx=yolov9-c/e-converted.onnx --saveEngine=yolov9-c/e.engine --fp16
+```
+
 ## YoloV8
 
 Install YoloV8 [following Ultralytics official documentation](https://docs.ultralytics.com/quickstart/) and export the model in different formats, you can use the following commands:
