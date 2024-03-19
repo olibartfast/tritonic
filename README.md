@@ -1,6 +1,6 @@
 # C++ Triton Client for Computer Vision Models
 
-This C++ application allows you to perform computer vision tasks such as object detection or classification using Nvidia Triton Server to manage multiple framework backends. It currently supports object detection models like YOLOv5, YOLOv6, YOLOv7, YOLOv8, and YOLO-NAS, inference for classification models from the Torchvision API.
+This C++ application allows you to perform computer vision tasks such as object detection or classification using Nvidia Triton Server to manage multiple framework backends. It currently supports object detection models like YOLOv5, YOLOv6, YOLOv7, YOLOv8, YOLOv9, and YOLO-NAS, inference for classification models from the Torchvision API.
 
 ## Build Client Libraries
 
@@ -108,7 +108,7 @@ Replace the following placeholders:
 
 - `/path/to/source.format`: The path to your video or image file.
 - `<task_type>`: Choose the computer vision task type (e.g., `detection` or `classification`).
-- `<model_type>`: Specify the model type (e.g., one of detectors `yolov5`, `yolov6`, `yolov7`, `yolov8`, `yolonas`  or classification models).
+- `<model_type>`: Specify the model type (e.g., one of detectors: `yolov5`, `yolov6`, `yolov7`, `yolov8`, `yolov9`, `yolonas`  or classification models: `torchvision-classifier`).
 - `<model_name_folder_on_triton>`: The name of the model folder in the Triton server where your chosen model is deployed.
 - `/path/to/labels/coco.names`: The path to the file containing label names (e.g., COCO labels).
 - `<http or grpc>`: Choose either `http` or `grpc` as the protocol based on your Triton server setup.
