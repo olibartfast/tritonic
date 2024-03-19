@@ -4,6 +4,31 @@
 #include "Triton.hpp"
 #include "TorchvisionClassifier.hpp"
 
+void draw_label(cv::Mat& input_image, const std::string& label, float confidence, int left, int top)
+{
+    const float FONT_SCALE = 0.7;
+    const int FONT_FACE = cv::FONT_HERSHEY_DUPLEX; // Change font type to what you think is better for you
+    const int THICKNESS = 2;
+    cv::Scalar YELLOW = cv::Scalar(0, 255, 255);
+
+    // Display the label and confidence at the top of the bounding box.
+    int baseLine;
+    std::string display_text = label + ": " + std::to_string(confidence);
+    cv::Size label_size = cv::getTextSize(display_text, FONT_FACE, FONT_SCALE, THICKNESS, &baseLine);
+    top = cv::max(top, label_size.height);
+
+    // Top left corner.
+    cv::Point tlc = cv::Point(left, top);
+    // Bottom right corner.
+    cv::Point brc = cv::Point(left + label_size.width, top + label_size.height + baseLine);
+
+    // Draw black rectangle.
+    cv::rectangle(input_image, tlc, brc, cv::Scalar(255, 0, 255), cv::FILLED);
+
+    // Put the label and confidence on the black rectangle.
+    cv::putText(input_image, display_text, cv::Point(left, top + label_size.height), FONT_FACE, FONT_SCALE, YELLOW, THICKNESS);
+}
+
 std::unique_ptr<TaskInterface> createClassifierInstance(const std::string& modelType, const int input_width, const int input_height, const int channels)
 {
     if (modelType == "torchvision-classifier")
@@ -85,6 +110,7 @@ void ProcessImage(const std::string& sourceName,
         {
             Detection detection = std::get<Detection>(prediction);
             cv::rectangle(image, detection.bbox, cv::Scalar(255, 0, 0), 2);
+            draw_label(image,  class_names[detection.class_id], detection.class_confidence, detection.bbox.x, detection.bbox.y - 1);
         }
     }    
 
@@ -138,9 +164,7 @@ void ProcessVideo(const std::string& sourceName,
             {
                 Detection detection = std::get<Detection>(prediction);
                 cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
-                cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
-                cv::putText(frame, class_names[detection.class_id],
-                cv::Point(detection.bbox.x, detection.bbox.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
+                draw_label(frame,  class_names[detection.class_id], detection.class_confidence, detection.bbox.x, detection.bbox.y - 1);
             }
         }
 #endif
