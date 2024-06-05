@@ -1,5 +1,6 @@
 #include "Yolo.hpp"
 #include "YoloNas.hpp"
+#include "YOLOv10.hpp"
 #include "YOLOv7_NMS.hpp"
 #include "Triton.hpp"
 #include "TorchvisionClassifier.hpp"
@@ -50,6 +51,10 @@ std::unique_ptr<TaskInterface> createDetectorInstance(const std::string& modelTy
         std::cout << "Work in progress..." << std::endl;
         return nullptr;
     }
+    else if (modelType.find("yolov10") != std::string::npos )
+    {
+        return std::make_unique<YOLOv10>(input_width, input_height);
+    }    
     else if (modelType.find("yolov") != std::string::npos )
     {
         return std::make_unique<Yolo>(input_width, input_height);

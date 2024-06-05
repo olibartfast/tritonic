@@ -33,7 +33,10 @@ set(SOURCES
     # Add any additional source files here
 )
 
-set(DETECTOR_SOURCES ${PROJECT_SOURCE_DIR} src/tasks/object_detection/src/Yolo.cpp src/tasks/object_detection/src/YoloNas.cpp)
+set(DETECTOR_SOURCES ${PROJECT_SOURCE_DIR}  
+  src/tasks/object_detection/src/Yolo.cpp 
+  src/tasks/object_detection/src/YoloNas.cpp
+  src/tasks/object_detection/src/YOLOv10.cpp )
 
 # Set the source files
 set(TRITON_SOURCES ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp)
