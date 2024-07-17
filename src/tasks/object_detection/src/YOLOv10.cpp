@@ -17,8 +17,6 @@ const std::vector<std::vector<int64_t>>& infer_shapes)
     const auto infer_shape = infer_shapes.front(); 
     auto infer_result = infer_results.front(); 
 
-    std::vector<float> confidences;
-
 
     int rows = infer_shape[1]; // 300
 
