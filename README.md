@@ -162,7 +162,7 @@ Watch a test of YOLOv7-tiny exported to ONNX [here](https://youtu.be/lke5TcbP2a0
 
 - [Triton Inference Server Client Example](https://github.com/triton-inference-server/client/blob/r21.08/src/c%2B%2B/examples/image_client.cc)
 - [YOLOv5 ONNX Runtime](https://github.com/itsnine/yolov5-onnxruntime)
-- [TensorRTX](https://github.com/wang-xinyu/tensorrt)
+- [TensorRTX](https://github.com/wang-xinyu/tensorrtx)
 - [Triton user guide](https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/user_guide/model_repository.html)
 - [ONNX models](https://onnx.ai/models/)
 - [Torchvision models](https://pytorch.org/vision/stable/models.html)
