@@ -1,10 +1,41 @@
 ## Instructions
 
 ### Export the model to deploy inside model repository referenced by Triton Server
+Install YOLO11 [following Ultralytics official documentation (pip ultralytics package version >= > 8.3.0)](https://docs.ultralytics.com/quickstart/) and export the model in different formats, you can use the following commands:
+
+#### Torchscript
+
+To export the model in the TorchScript format:
+
+```
+yolo export model=best.pt(the best corrisponding to your trained yolo11n/s/m/x) format=torchscript
+```
+
+#### OnnxRuntime
+
+To export the model in the ONNXRuntime format:
+
+```
+yolo export model=best.pt format=onnx
+```
+
+#### TensorRT
+
+To export the model in the TensorRT format:
+
+```
+yolo export model=best.pt format=engine
+```
+
+Please note that when using TensorRT, ensure that the version installed under Ultralytics python environment matches the C++ version you plan to use for inference. Another way to export the model is to use `trtexec` with the following command:
+
+```
+trtexec --onnx=best.onnx --saveEngine=best.engine
+```
 
 ## YOLOv10
 ### OnnxRuntime 
-* From [yolov10 repo](https://github.com/THU-MIG/yolov10):
+* From [yolov10 repo](https://github.com/THU-MIG/yolov10) or [ultralytics package](https://pypi.org/project/ultralytics/):
 ```
 yolo export format=onnx model=yolov10model.pt
 
@@ -38,38 +69,8 @@ from [yolov9 repo](https://github.com/WongKinYiu/yolov9):
 ```
 
 ## YoloV8
+* same as YOLO11, check ultralytics documentation
 
-Install YoloV8 [following Ultralytics official documentation](https://docs.ultralytics.com/quickstart/) and export the model in different formats, you can use the following commands:
-
-#### Torchscript
-
-To export the model in the TorchScript format:
-
-```
-yolo export model=best.pt(the best corrisponding to your trained yolov8n/s/m/x) format=torchscript
-```
-
-#### OnnxRuntime
-
-To export the model in the ONNXRuntime format:
-
-```
-yolo export model=best.pt format=onnx
-```
-
-#### TensorRT
-
-To export the model in the TensorRT format:
-
-```
-yolo export model=best.pt format=engine
-```
-
-Please note that when using TensorRT, ensure that the version installed under Ultralytics python environment matches the C++ version you plan to use for inference. Another way to export the model is to use `trtexec` with the following command:
-
-```
-trtexec --onnx=best.onnx --saveEngine=best.engine
-```
 
 
 ## YoloV5 

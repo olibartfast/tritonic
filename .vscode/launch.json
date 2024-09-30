@@ -13,8 +13,8 @@
         "--serverAddress=localhost",
         "--labelsFile=labels/coco.txt",
         //"--model=yolov9e_onnx",
-        "--model=yolov10_onnx",
-        "--model_type=yolov10",
+        "--model=yolo11_onnx",
+        "--model_type=yolo11",
         "--task_type=detection"//,
         //"--input_sizes=3 224 224"
     ],

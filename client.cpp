@@ -1,7 +1,6 @@
 #include "Yolo.hpp"
 #include "YoloNas.hpp"
 #include "YOLOv10.hpp"
-#include "YOLOv7_NMS.hpp"
 #include "Triton.hpp"
 #include "TorchvisionClassifier.hpp"
 
@@ -30,6 +29,8 @@ void draw_label(cv::Mat& input_image, const std::string& label, float confidence
     cv::putText(input_image, display_text, cv::Point(left, top + label_size.height), FONT_FACE, FONT_SCALE, YELLOW, THICKNESS);
 }
 
+
+
 std::unique_ptr<TaskInterface> createClassifierInstance(const std::string& modelType, const int input_width, const int input_height, const int channels)
 {
     if (modelType == "torchvision-classifier")
@@ -45,29 +46,37 @@ std::unique_ptr<TaskInterface> createClassifierInstance(const std::string& model
 
 std::unique_ptr<TaskInterface> createDetectorInstance(const std::string& modelType, const int input_width, const int input_height)
 {
-    if (modelType == "yolov7nms")
-    {
-        //return std::make_unique<YOLOv7_NMS>(input_width, input_height);
-        std::cout << "Work in progress..." << std::endl;
-        return nullptr;
-    }
-    else if (modelType.find("yolov10") != std::string::npos )
+    if (modelType.find("yolov10") != std::string::npos )
     {
         return std::make_unique<YOLOv10>(input_width, input_height);
     }    
-    else if (modelType.find("yolov") != std::string::npos )
-    {
-        return std::make_unique<Yolo>(input_width, input_height);
-    }
     else if (modelType.find("yolonas") != std::string::npos )
     {
         return std::make_unique<YoloNas>(input_width, input_height);
-    }        
+    }     
+    else if (modelType.find("yolo") != std::string::npos )
+    {
+        return std::make_unique<Yolo>(input_width, input_height);
+    }       
     else
     {
         return nullptr;
     }
 }
+
+
+// std::unique_ptr<TaskInterface> createSegmentationInstance(const std::string& modelType, const int input_width, const int input_height, const int channels)
+// {
+//     if (modelType == "yolo")
+//     {
+//         return std::make_unique<YOLOSeg>(input_width, input_height, channels);
+//     }
+//     else
+//     {
+//         return nullptr;
+//     }
+// }
+
 
 std::vector<Result> processSource(const cv::Mat& source, 
     const std::unique_ptr<TaskInterface>& task, 
@@ -188,7 +197,7 @@ void ProcessVideo(const std::string& sourceName,
 
 static const std::string keys =
     "{ help h   | | Print help message. }"
-    "{ model_type mt | yolov7 | yolo version used i.e yolov5, yolov6, yolov7, yolov8}"
+    "{ model_type mt | yolo11 | yolo version used i.e yolov5, yolov6, yolov7, yolov8, yolov9, yolov10, yolo11}"
     "{ model m | yolov7-tiny_onnx | model name of folder in triton }"
     "{ task_type tt | | detection, classification}"
     "{ source s | data/dog.jpg | path to video or image}"

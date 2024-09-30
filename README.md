@@ -4,13 +4,13 @@ This C++ application allows you to perform machine learning tasks, such as compu
 
 ## Build Client Libraries
 
-To build the client libraries, please refer to the Triton Inference Server client libraries located [here](https://github.com/triton-inference-server/client/tree/r23.08).
+To build the client libraries, please refer to the Triton Inference Server client libraries located [here](https://github.com/triton-inference-server/client/tree/r24.09).
 
 ## Dependencies
 
 Ensure that you have the following dependencies installed:
 
-- Nvidia Triton Inference Server container pulled from NGC (`docker pull nvcr.io/nvidia/tritonserver:23.08-py3`).
+- Nvidia Triton Inference Server container pulled from NGC (`docker pull nvcr.io/nvidia/tritonserver:24.09-py3`).
 - Triton client libraries (Tested Release 23.08).
 - Protobuf and gRPC++ (versions compatible with Triton Server).
 - RapidJSON (`apt install rapidjson-dev`).
@@ -109,7 +109,7 @@ Replace the following placeholders:
 
 - `/path/to/source.format`: The path to your video or image file.
 - `<task_type>`: Choose the computer vision task type (e.g., `detection` or `classification`).
-- `<model_type>`: Specify the model type (e.g., one of detectors: `yolov5`, `yolov6`, `yolov7`, `yolov8`, `yolov9`, `yolov10`, `yolonas`  or classification models: `torchvision-classifier`).
+- `<model_type>`: Specify the model type (e.g., one of detectors: `yolov5`, `yolov6`, `yolov7`, `yolov8`, `yolov9`, `yolov10`, `yolo11`,`yolonas`  or classification models: `torchvision-classifier`).
 - `<model_name_folder_on_triton>`: The name of the model folder in the Triton server where your chosen model is deployed.
 - `/path/to/labels/coco.names`: The path to the file containing label names (e.g., COCO labels).
 - `<http or grpc>`: Choose either `http` or `grpc` as the protocol based on your Triton server setup.

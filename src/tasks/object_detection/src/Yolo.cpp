@@ -62,6 +62,7 @@ const std::vector<std::vector<int64_t>>& infer_shapes)
     const auto infer_shape = infer_shapes.front(); 
     auto infer_result = infer_results.front(); 
 
+    // yolov5/v6/v7
     if(infer_shape[2]  < infer_shape[1])
     {
         const int numClasses =  infer_shape[2] - 5;
@@ -79,7 +80,7 @@ const std::vector<std::vector<int64_t>>& infer_shapes)
         }
 
     }
-    else
+    else // yolov8/v9 and yolo11
     {
         const int numClasses =  infer_shape[1] - 4;
         std::vector<std::vector<float>> output(infer_shape[1], std::vector<float>(infer_shape[2]));
