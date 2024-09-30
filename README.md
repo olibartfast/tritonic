@@ -161,7 +161,6 @@ Watch a test of YOLOv7-tiny exported to ONNX [here](https://youtu.be/lke5TcbP2a0
 ## References
 
 - [Triton Inference Server Client Example](https://github.com/triton-inference-server/client/blob/r21.08/src/c%2B%2B/examples/image_client.cc)
-- 
 - [Triton user guide](https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/getting_started/quickstart.html)
 - [Triton Tutorials](https://github.com/triton-inference-server/tutorials)
 - [ONNX models](https://onnx.ai/models/)
