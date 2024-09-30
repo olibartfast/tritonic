@@ -11,7 +11,7 @@ To build the client libraries, please refer to the Triton Inference Server clien
 Ensure that you have the following dependencies installed:
 
 - Nvidia Triton Inference Server container pulled from NGC (`docker pull nvcr.io/nvidia/tritonserver:24.09-py3`).
-- Triton client libraries (Tested Release 23.08).
+- Triton client libraries (Tested Release r24.09).
 - Protobuf and gRPC++ (versions compatible with Triton Server).
 - RapidJSON (`apt install rapidjson-dev`).
 - libcurl (`apt install libcurl4-openssl-dev`).
