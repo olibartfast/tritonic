@@ -53,7 +53,7 @@ Follow these steps to build and compile the application:
 
 ## Deploy to Triton
 
-To deploy the models to Triton, set up a model repository folder following the [Triton Model Repository schema](https://github.com/triton-inference-server/server/blob/main/docs/model_repository.md). Usually, the `config.pbtxt` file is optional unless you use the OpenVino backend.
+To deploy the models to Triton, set up a model repository folder following the [Triton Model Repository schema](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_repository.md). Usually, the `config.pbtxt` file is optional unless you use the OpenVino backend.
 
 Example repository structure:
 
