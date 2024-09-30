@@ -3,7 +3,7 @@
 ### Export the model to deploy inside model repository referenced by Triton Server
 
 ## YOLO11
-Install YOLO11 [following Ultralytics official documentation (pip ultralytics package version >= > 8.3.0)](https://docs.ultralytics.com/quickstart/) and export the model in different formats, you can use the following commands:
+Install YOLO11 [following Ultralytics official documentation (pip ultralytics package version >= 8.3.0)](https://docs.ultralytics.com/quickstart/) and export the model in different formats, you can use the following commands:
 
 #### Torchscript
 
