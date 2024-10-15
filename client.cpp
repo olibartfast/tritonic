@@ -220,7 +220,7 @@ void ProcessVideo(const std::string& sourceName,
 
 static const std::string keys =
     "{ help h   | | Print help message. }"
-    "{ model_type mt | yolo11 | yolo version used i.e yolov5, yolov6, yolov7, yolov8, yolov9, yolov10, yolo11}"
+    "{ model_type mt | yolo11 | yolo version used i.e yolov5, yolov6, yolov7, yolov8, yolov9, yolov10, yolo11, yolonas, yoloseg, torchvision-classifier}"
     "{ model m | yolo11x_onnx | model name of folder in triton }"
     "{ task_type tt | | detection, classification, instance_segmentation}"
     "{ source s | data/dog.jpg | path to video or image}"

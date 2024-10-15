@@ -6,3 +6,7 @@
 ```
 yolo export model=yolov8/yolo11 n/s/m/x-seg.pt format=onnx/torchscript/openvino
 ```
+
+## YoloV5 
+#### OnnxRuntime/Torchscript
+* Run from [yolov5 repo](https://github.com/ultralytics/yolov5) export script:  ```python export.py  --weights <yolov5seg_version>.pt  --include [onnx,torchscript]```

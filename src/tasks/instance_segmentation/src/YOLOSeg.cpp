@@ -47,8 +47,9 @@ std::vector<Result> YOLOSeg::postprocess(const cv::Size& frame_size,
         // yolov5/v6/v7
         if(infer_shape[2] < infer_shape[1])
         {
-            const int numClasses = infer_shape[2] - 5;
-            for (auto it = infer_result.begin(); it != infer_result.end(); it += (numClasses + 5))
+            const int numClasses = infer_shape[2] - 5 - 32;
+            const int maskDim = mask_shape[1];  // Dimension of the mask embeddings
+            for (auto it = infer_result.begin(); it != infer_result.end(); it += (numClasses + 5 + maskDim))
             {
                 float clsConf = it[4];
                 if (clsConf > confThreshold)
@@ -68,7 +69,10 @@ std::vector<Result> YOLOSeg::postprocess(const cv::Size& frame_size,
                     boxes.emplace_back(get_rect(frame_size, std::vector<float>(it, it + 4)));
                     float confidence = clsConf * bestClassConf;
                     confs.emplace_back(confidence);
-                    classIds.emplace_back(bestClassId);              
+                    classIds.emplace_back(bestClassId);
+                    
+                    // Fill picked_proposals with mask coefficients
+                    picked_proposals.emplace_back(std::vector<float>(it + 5 + numClasses, it + 5 + numClasses + maskDim));
                 }
             }
         }

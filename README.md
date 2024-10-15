@@ -5,7 +5,7 @@ This C++ application enables machine learning tasks, such as object detection an
 ### Supported Models
 
 - **Object Detection**: YOLOv5, YOLOv6, YOLOv7, YOLOv8, YOLOv9, YOLOv10, YOLO11, YOLO-NAS
-- **Instance Segmentation**: YOLOv8, YOLO11
+- **Instance Segmentation**: YOLOv5, YOLOv8, YOLO11
 - **Classification**: Torchvision API-based models
 
 ---
@@ -72,7 +72,7 @@ To build and compile the application, follow these steps:
 
 ## Machine Learning Tasks
 
-### Computer Vision
+### Export Instructions
 
 - [Object Detection](docs/ObjectDetection.md)
 - [Classification](docs/Classification.md)
@@ -147,7 +147,7 @@ _If the model has dynamic input sizes, use:_
 
 - **`/path/to/source.format`**: Path to the input video or image file.
 - **`<task_type>`**: Type of computer vision task (`detection`, `classification`, or `instance_segmentation`).
-- **`<model_type>`**: Model type (e.g., `yolov5`, `yolov6`, `yolov8`, `torchvision-classifier`, ).
+- **`<model_type>`**: Model type (e.g., `yolov5`, `yolov8`, `yolo11`, `yoloseg`, `torchvision-classifier`).
 - **`<model_name_folder_on_triton>`**: Name of the model folder on the Triton server.
 - **`/path/to/labels/coco.names`**: Path to the label file (e.g., COCO labels).
 - **`<http or grpc>`**: Communication protocol (`http` or `grpc`).
