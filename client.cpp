@@ -191,17 +191,39 @@ void ProcessVideo(const std::string& sourceName,
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         std::cout << "Infer time: " << diff << " ms" << std::endl;
 
+
 #if defined(SHOW_FRAME) || defined(WRITE_FRAME)
         double fps = 1000.0 / static_cast<double>(diff);
         std::string fpsText = "FPS: " + std::to_string(fps);
         cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
-        for (auto&& prediction : predictions) 
+        for (const auto& prediction : predictions) 
         {
             if (std::holds_alternative<Detection>(prediction)) 
             {
                 Detection detection = std::get<Detection>(prediction);
                 cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
-                draw_label(frame,  class_names[detection.class_id], detection.class_confidence, detection.bbox.x, detection.bbox.y - 1);
+                draw_label(frame, class_names[detection.class_id], detection.class_confidence, detection.bbox.x, detection.bbox.y - 1);
+            }
+            else if (std::holds_alternative<InstanceSegmentation>(prediction)) 
+            {
+                InstanceSegmentation segmentation = std::get<InstanceSegmentation>(prediction);
+                
+                // Draw bounding box
+                cv::rectangle(frame, segmentation.bbox, cv::Scalar(255, 0, 0), 2);
+                
+                // Draw label
+                draw_label(frame, class_names[segmentation.class_id], segmentation.class_confidence, segmentation.bbox.x, segmentation.bbox.y - 1);
+                
+                // Create mask from stored data
+                cv::Mat mask = cv::Mat(segmentation.mask_height, segmentation.mask_width, CV_8UC1, segmentation.mask_data.data());
+                
+                // Draw mask
+                cv::Mat colorMask = cv::Mat::zeros(mask.size(), CV_8UC3);
+                cv::Scalar color = cv::Scalar(rand() & 255, rand() & 255, rand() & 255);
+                colorMask.setTo(color, mask);
+                
+                cv::Mat roi = frame(segmentation.bbox);
+                cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
             }
         }
 #endif

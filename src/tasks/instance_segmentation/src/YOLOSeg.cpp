@@ -155,8 +155,15 @@ std::vector<Result> YOLOSeg::postprocess(const cv::Size& frame_size,
                 mask = mask(roi);
 
                 cv::resize(mask, mask, frame_size, cv::INTER_NEAREST);
-                mask = mask(boxes[idx]) > mask_thresh;            
-                
+                // Ensure roi is within mask boundaries
+                cv::Rect safeRoi = roi & cv::Rect(0, 0, mask.cols, mask.rows);
+                if (safeRoi.width > 0 && safeRoi.height > 0) {
+                    mask = mask(safeRoi);
+                } else {
+                    // If roi is completely outside, skip this instance
+                    continue;
+                }
+
                 // Store mask data and dimensions
                 seg.mask_data.assign(mask.data, mask.data + mask.total());
                 seg.mask_height = mask.rows;
