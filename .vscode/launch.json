@@ -5,23 +5,50 @@
     "version": "0.2.0",
     "configurations": [
         {
-        "name": "C++ Launch",
+        "name": "YOLOv8x-Seg Onnx",
         "type": "cppdbg",
         "request": "launch",
         "program": "${workspaceFolder}/build/computer-vision-triton-cpp-client",
         "args": ["--source=data/dog.jpg", 
         "--serverAddress=localhost",
         "--labelsFile=labels/coco.txt",
-        //"--model=yolov9e_onnx",
         "--model=yolov8x-seg_onnx",
         "--model_type=yoloseg",
-        //"--task_type=detection"//,
         "--task_type=instance_segmentation"
-        //"--input_sizes=3 224 224"
-    ],
+        ],
+        "environment": [{ "name": "config", "value": "Debug" }],
+        "cwd": "${workspaceFolder}" 
+        },
+        {
+            "name": "YOLO11x-Seg Onnx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/computer-vision-triton-cpp-client",
+            "args": ["--source=data/dog.jpg", 
+            "--serverAddress=localhost",
+            "--labelsFile=labels/coco.txt",
+            "--model=yolo11-seg_onnx",
+            "--model_type=yoloseg",
+            "--task_type=instance_segmentation"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        },        
+        {
+        "name": "yolov9e_onnx",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/build/computer-vision-triton-cpp-client",
+        "args": ["--source=data/dog.jpg", 
+        "--serverAddress=localhost",
+        "--labelsFile=labels/coco.txt",
+        "--model=yolov9e_onnx",
+        "--model_type=yolov9",
+        "--task_type=detection"
+        ],
         "environment": [{ "name": "config", "value": "Debug" }],
         "cwd": "${workspaceFolder}" 
         }
-
     ]
+
 }

@@ -2,23 +2,15 @@
 
 ### Export the model to deploy inside model repository referenced by Triton Server
 
-## YOLO11
-Install YOLO11 [following Ultralytics official documentation (pip ultralytics package version >= 8.3.0)](https://docs.ultralytics.com/quickstart/) and export the model in different formats, you can use the following commands:
+## YOLOv8/YOLO11
+Install  [following Ultralytics official documentation (pip ultralytics package version >= 8.3.0)](https://docs.ultralytics.com/quickstart/) and export the model in different formats, you can use the following commands:
 
-#### Torchscript
+#### OnnxRuntime/Torchscript
 
 To export the model in the TorchScript format:
 
 ```
-yolo export model=best.pt(the best corrisponding to your trained yolo11n/s/m/x) format=torchscript
-```
-
-#### OnnxRuntime
-
-To export the model in the ONNXRuntime format:
-
-```
-yolo export model=best.pt format=onnx
+yolo export model=best.pt(the best corrisponding to your trained or yolov8/yolo11n/s/m/x ) format=onnx/torchscript
 ```
 
 #### TensorRT
@@ -36,16 +28,10 @@ trtexec --onnx=best.onnx --saveEngine=best.engine
 ```
 
 ## YOLOv10
-### OnnxRuntime 
+### OnnxRuntime/Torchscript
 * From [yolov10 repo](https://github.com/THU-MIG/yolov10) or [ultralytics package](https://pypi.org/project/ultralytics/):
 ```
-yolo export format=onnx model=yolov10model.pt
-
-```
-#### Torchscript
-* Same way as above:
-```
-yolo export format=torchscript model=yolov10model.pt
+yolo export format=onnx/torchscript model=yolov10model.pt
 
 ```
 
@@ -57,21 +43,15 @@ trtexec --onnx=yolov10model.onnx --saveEngine=yolov10model.engine --fp16
 
 ## YOLOv9
 from [yolov9 repo](https://github.com/WongKinYiu/yolov9):
-#### OnnxRuntime
+#### OnnxRuntime/orchscript
 ```
- python export.py --weights yolov9-c/e-converted.pt --include onnx
+ python export.py --weights yolov9-c/e-converted.pt --include onnx/torchscript
 ```
-#### Torchscript
-```
- python export.py --weights yolov9-c/e-converted.pt --include torchscript
-```
+
 #### TensorRT
 ```
  trtexec --onnx=yolov9-c/e-converted.onnx --saveEngine=yolov9-c/e.engine --fp16
 ```
-
-## YoloV8
-* same as YOLO11, check ultralytics documentation
 
 
 

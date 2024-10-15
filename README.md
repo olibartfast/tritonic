@@ -1,96 +1,131 @@
 # C++ Triton Client for Computer Vision Models
 
-This C++ application allows you to perform machine learning tasks, such as computer vision tasks like object detection or classification, using Nvidia Triton Server to manage multiple framework backends. It currently supports object detection models such as YOLOv5, YOLOv6, YOLOv7, YOLOv8, YOLOv9, YOLOV10,YOLO11 and YOLO-NAS, inference for classification models from the Torchvision API.
+This C++ application enables machine learning tasks, such as object detection and classification, using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
+
+### Supported Models
+
+- **Object Detection**: YOLOv5, YOLOv6, YOLOv7, YOLOv8, YOLOv9, YOLOv10, YOLO11, YOLO-NAS
+- **Instance Segmentation**: YOLOv8, YOLO11
+- **Classification**: Torchvision API-based models
+
+---
 
 ## Build Client Libraries
 
-To build the client libraries, please refer to the Triton Inference Server client libraries located [here](https://github.com/triton-inference-server/client/tree/r24.09).
+To build the client libraries, refer to the official [Triton Inference Server client libraries](https://github.com/triton-inference-server/client/tree/r24.09).
+
+---
 
 ## Dependencies
 
-Ensure that you have the following dependencies installed:
+Ensure the following dependencies are installed:
 
-- Nvidia Triton Inference Server container pulled from NGC (`docker pull nvcr.io/nvidia/tritonserver:24.09-py3`).
-- Triton client libraries (Tested Release r24.09).
-- Protobuf and gRPC++ (versions compatible with Triton Server).
-- RapidJSON (`apt install rapidjson-dev`).
-- libcurl (`apt install libcurl4-openssl-dev`).
-- OpenCV 4 (Tested version: 4.7.0).
+- **Nvidia Triton Inference Server** (from NGC):  
+  ```bash
+  docker pull nvcr.io/nvidia/tritonserver:24.09-py3
+  ```
+- **Triton client libraries**: Tested on Release r24.09
+- **Protobuf and gRPC++**: Versions compatible with Triton
+- **RapidJSON**:  
+  ```bash
+  apt install rapidjson-dev
+  ```
+- **libcurl**:  
+  ```bash
+  apt install libcurl4-openssl-dev
+  ```
+- **OpenCV 4**: Tested version: 4.7.0
+
+---
 
 ## Build and Compile
 
-Follow these steps to build and compile the application:
+To build and compile the application, follow these steps:
 
-1. Set the environment variable `TritonClientBuild_DIR` (path/to/client/build/install), or link to the folder where you have installed Triton client libraries, or Triton client libraries directly and edit `CMakeLists` accordingly.
+1. Set the environment variable `TritonClientBuild_DIR` or update the `CMakeLists.txt` with the path to your installed Triton client libraries.
+  
+2. Create a build directory:
+   ```bash
+   mkdir build
+   ```
 
-2. Create a build directory: `mkdir build`.
-
-3. Navigate to the build directory: `cd build`.
+3. Navigate to the build directory:
+   ```bash
+   cd build
+   ```
 
 4. Run CMake to configure the build:
-
-   ```shell
+   ```bash
    cmake -DCMAKE_BUILD_TYPE=Release ..
    ```
 
    Optional flags:
+   - `-DSHOW_FRAME`: Enable to display processed frames after inference.
+   - `-DWRITE_FRAME`: Enable to write processed frames to disk.
 
-   - `-DSHOW_FRAME`: Enable to show processed frames after inference.
-   - `-DWRITE_FRAME`: Enable to write processed frames after inference.
+5. Build the application:
+   ```bash
+   cmake --build .
+   ```
 
-5. Build the application: `cmake --build .`
+---
 
 ## Machine Learning Tasks
+
 ### Computer Vision
 
 - [Object Detection](docs/ObjectDetection.md)
-- [Classification](docs/Classification.md) 
-- Instance Segmentation,
-TO DO other tasks like PoseEstimation, Optical Flow, LLM... 
+- [Classification](docs/Classification.md)
+- [Instance Segmentation](docs/InstanceSegmentation.md)
+  
+  _Other tasks like Pose Estimation, Optical Flow, LLM are in TODO list._
+
+---
 
 ## Notes
 
-- Ensure that the versions of libraries used for exporting models match the versions supported in the Triton release you are using. Check [Triton Server releases here](https://github.com/triton-inference-server/server/releases).
+Ensure the model export versions match those supported by your Triton release. Check Triton releases [here](https://github.com/triton-inference-server/server/releases).
 
-## Deploy to Triton
+---
 
-To deploy the models to Triton, set up a model repository folder following the [Triton Model Repository schema](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_repository.md). Normally, the `config.pbtxt` file is optional unless you are using the OpenVino backend, you are implementing an Ensemble pipeline, or you need to pass some custom inference/scheduling parameters.
+## Deploying Models to Triton
 
-Example repository structure:
+To deploy models, set up a model repository following the [Triton Model Repository schema](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_repository.md). The `config.pbtxt` file is optional unless you're using the OpenVino backend, implementing an Ensemble pipeline, or passing custom inference parameters.
+
+### Example Model Repository Structure
 
 ```
-<model_repository>
-    -> 
-        <model_name>
-            -> 
-                [config.pbtx]
-                <model_version>
-                    ->
-                        <model_binary>
+<model_repository>/
+    <model_name>/
+        config.pbtxt
+        <model_version>/
+            <model_binary>
 ```
 
-Then, run the Triton server:
+To start Triton Server, run:
 
-```shell
+```bash
 #!/bin/bash
-$ docker run --gpus=1 --rm \
--p8000:8000 -p8001:8001 -p8002:8002 \
--v/full/path/to/docs/examples/model_repository:/models \
-nvcr.io/nvidia/tritonserver:<xx.yy>-py3 tritonserver \
---model-repository=/models
+docker run --gpus=1 --rm \
+  -p 8000:8000 -p 8001:8001 -p 8002:8002 \
+  -v /full/path/to/model_repository:/models \
+  nvcr.io/nvidia/tritonserver:<xx.yy>-py3 tritonserver \
+  --model-repository=/models
 ```
 
-If you plan to run on CPU, omit the `--gpus` parameter.
+_Omit the `--gpus` flag if using the CPU version._
 
-For more information and examples, refer to the [Triton Inference Server tutorials](https://github.com/triton-inference-server/tutorials).
+For more examples, check the [Triton Inference Server tutorials](https://github.com/triton-inference-server/tutorials).
 
-## How to Run
+---
 
-### Performing Inference on a Video or Image Source
+## Running Inference
 
-By using the `--source` parameter with the path to either a video or an image, you can perform computer vision tasks on your chosen input type. Follow these instructions:
+### Command-Line Inference on Video or Image
 
-```shell
+Use the following command to perform inference on a video or image:
+
+```bash
 ./computer-vision-triton-cpp-client \
     --source=/path/to/source.format \
     --task_type=<task_type> \
@@ -101,25 +136,33 @@ By using the `--source` parameter with the path to either a video or an image, y
     --serverAddress=<triton-ip> \
     --port=<8000 for http, 8001 for grpc>
 ```
-Add input sizes if your model has dynamic axis
-```
+
+_If the model has dynamic input sizes, use:_
+
+```bash
     --input_sizes="c w h" 
 ```
 
-Replace the following placeholders:
+#### Placeholder Descriptions:
 
-- `/path/to/source.format`: The path to your video or image file.
-- `<task_type>`: Choose the computer vision task type (e.g., `detection`, `classification` or `instance_segmentation` ).
-- `<model_type>`: Specify the model type (e.g., one of detectors: `yolov5`, `yolov6`, `yolov7`, `yolov8`, `yolov9`, `yolov10`, `yolo11`,`yolonas`; classification models: `torchvision-classifier`; segmentation models: `yoloseg`,).
-- `<model_name_folder_on_triton>`: The name of the model folder in the Triton server where your chosen model is deployed.
-- `/path/to/labels/coco.names`: The path to the file containing label names (e.g., COCO labels).
-- `<http or grpc>`: Choose either `http` or `grpc` as the protocol based on your Triton server setup.
-- `<triton-ip>`: The IP address of your Triton server.
-- `<8000 for http, 8001 for grpc>`: The port number, which is usually `8000` for HTTP or `8001` for gRPC, depending on your Triton server configuration.
+- **`/path/to/source.format`**: Path to the input video or image file.
+- **`<task_type>`**: Type of computer vision task (`detection`, `classification`, or `instance_segmentation`).
+- **`<model_type>`**: Model type (e.g., `yolov5`, `yolov6`, `yolov8`, `torchvision-classifier`, ).
+- **`<model_name_folder_on_triton>`**: Name of the model folder on the Triton server.
+- **`/path/to/labels/coco.names`**: Path to the label file (e.g., COCO labels).
+- **`<http or grpc>`**: Communication protocol (`http` or `grpc`).
+- **`<triton-ip>`**: IP address of your Triton server.
+- **`<8000 for http, 8001 for grpc>`**: Port number.
 
-Use `./computer-vision-triton-cpp-client --help` to view all available parameters.
+To view all available parameters, run:
 
-## How to Run with Docker
+```bash
+./computer-vision-triton-cpp-client --help
+```
+
+---
+
+## Running with Docker
 
 ### Build the Docker Image
 
@@ -127,11 +170,7 @@ Use `./computer-vision-triton-cpp-client --help` to view all available parameter
 docker build --rm -t computer-vision-triton-cpp-client .
 ```
 
-This command will create a Docker image based on the provided Dockerfile.
-
 ### Run the Docker Container
-
-Replace the placeholders with your desired options and paths:
 
 ```bash
 docker run --rm \
@@ -145,30 +184,33 @@ docker run --rm \
   --labelsFile=/app/coco.names \
   --protocol=<http or grpc> \
   --serverAddress=<triton-ip> \
-  --port<8000 for http, 8001 for grpc>
+  --port=<8000 for http, 8001 for grpc>
 ```
 
-- `-v /path/to/host/data:/app/data`: Map a host directory to `/app/data` inside the container, allowing you to access input and output data.
-- Adjust the rest of the parameters to match your specific setup.
+- **`-v /path/to/host/data:/app/data`**: Maps host data to `/app/data` in the container for input/output.
 
 ### View Output
 
-The program will process the specified video or image based on your options. You can find the processed output in the `/path/to/host/data` directory on your host machine.
+Processed output is saved to the mapped directory on the host.
 
-## Demo Video: Realtime Inference Test
+---
 
-Watch a test of YOLOv7-tiny exported to ONNX [here](https://youtu.be/lke5TcbP2a0).
+## Demo
+
+Watch a real-time inference test using YOLOv7-tiny exported to ONNX: [YOLOv7-tiny Inference Test](https://youtu.be/lke5TcbP2a0).
+
+---
 
 ## References
 
 - [Triton Inference Server Client Example](https://github.com/triton-inference-server/client/blob/r21.08/src/c%2B%2B/examples/image_client.cc)
-- [Triton user guide](https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/getting_started/quickstart.html)
+- [Triton User Guide](https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/getting_started/quickstart.html)
 - [Triton Tutorials](https://github.com/triton-inference-server/tutorials)
-- [ONNX models](https://onnx.ai/models/)
-- [Torchvision models](https://pytorch.org/vision/stable/models.html)
-- [Tensorflow model garden](https://github.com/tensorflow/models/tree/master/official)
+- [ONNX Models](https://onnx.ai/models/)
+- [Torchvision Models](https://pytorch.org/vision/stable/models.html)
+- [Tensorflow Model Garden](https://github.com/tensorflow/models/tree/master/official)
 
-
+---
 
 ## Feedback
 - Any feedback is greatly appreciated, if you have any suggestions, bug reports or questions don't hesitate to open an [issue](https://github.com/olibartfast/computer-vision-triton-cpp-client/issues).
