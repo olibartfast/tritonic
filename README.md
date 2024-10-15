@@ -45,7 +45,8 @@ Follow these steps to build and compile the application:
 
 - [Object Detection](docs/ObjectDetection.md)
 - [Classification](docs/Classification.md) 
-- TODO Instance Segmentation, PoseEstimation... 
+- Instance Segmentation
+TO DO other tasks like PoseEstimation, Optical Flow, LLM... 
 
 ## Notes
 
