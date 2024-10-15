@@ -1,6 +1,5 @@
 #pragma once
 #include "common.hpp"
-#include "Yolo.hpp"
 #include <curl/curl.h>
 #include <rapidjson/document.h>
 

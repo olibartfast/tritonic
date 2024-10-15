@@ -34,15 +34,22 @@ set(SOURCES
 )
 
 set(DETECTOR_SOURCES ${PROJECT_SOURCE_DIR}  
-  src/tasks/object_detection/src/Yolo.cpp 
+  src/tasks/object_detection/src/YOLO.cpp 
   src/tasks/object_detection/src/YoloNas.cpp
   src/tasks/object_detection/src/YOLOv10.cpp )
+
+set(CLASSIFIER_SOURCES ${PROJECT_SOURCE_DIR}  
+  src/tasks/classification/src/TorchvisionClassifier.cpp)
+
+set(INSTANCE_SEGMENTATION_SOURCES ${PROJECT_SOURCE_DIR}
+  src/tasks/instance_segmentation/src/YOLOSeg.cpp)
+  
 
 # Set the source files
 set(TRITON_SOURCES ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp)
 
 # Add an executable target
-add_executable(${PROJECT_NAME} ${SOURCES} ${DETECTOR_SOURCES} ${TRITON_SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCES} ${DETECTOR_SOURCES} ${CLASSIFIER_SOURCES} ${INSTANCE_SEGMENTATION_SOURCES} ${TRITON_SOURCES})
 
 # Set include directories for the target
 target_include_directories(${PROJECT_NAME}
@@ -54,7 +61,9 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/include
     ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/src
     ${PROJECT_SOURCE_DIR}/src/tasks/classification/include
-    ${PROJECT_SOURCE_DIR}/src/tasks/classification/src    
+    ${PROJECT_SOURCE_DIR}/src/tasks/classification/src  
+    ${PROJECT_SOURCE_DIR}/src/tasks/instance_segmentation/include
+    ${PROJECT_SOURCE_DIR}/src/tasks/instance_segmentation/src  
     ${PROJECT_SOURCE_DIR}/src/triton
     # Add any additional include directories here
 )

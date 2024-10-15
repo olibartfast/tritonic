@@ -16,7 +16,14 @@ struct Detection : public Classification{
     cv::Rect bbox;
 };
 
-using Result = std::variant<Classification, Detection>;
+struct InstanceSegmentation : public Detection {
+    std::vector<uchar> mask_data;  // Store mask data as a vector
+    int mask_height;  // Store mask height
+    int mask_width;   // Store mask width
+};
+
+
+using Result = std::variant<Classification, Detection, InstanceSegmentation>;
 
 class TaskInterface {
 public:

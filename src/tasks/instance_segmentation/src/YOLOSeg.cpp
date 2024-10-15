@@ -1,80 +1,156 @@
-#include "YOLOv8Seg.hpp"
+#include "YOLOSeg.hpp"
 
 
+cv::Rect YOLOSeg::getSegPadSize(const size_t inputW,
+const size_t inputH,
+const cv::Size& inputSize)
+{
+    std::vector<int> padSize;
+    float w, h, x, y;
+    float r_w = inputW / (inputSize.width * 1.0);
+    float r_h = inputH / (inputSize.height * 1.0);
+    if (r_h > r_w)
+    {
+        w = inputW;
+        h = r_w * inputSize.height;
+        x = 0;
+        y = (inputH - h) / 2;
+    }
+    else
+    {
+        w = r_h * inputSize.width;
+        h = inputH;
+        x = (inputW - w) / 2;
+        y = 0;
+    }
+    return cv::Rect(x, y, w,h);
+}
 
 
-   std::tuple<std::vector<Detection>, Mask> postprocess(const float*  output0, const float*  output1, const  std::vector<int64_t>& shape0,  const std::vector<int64_t>& shape1, const cv::Size& frame_size)
-        {
+std::vector<Result> YOLOSeg::postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
+const std::vector<std::vector<int64_t>>& infer_shapes) 
+{
+    std::vector<Result> results;
+    std::vector<cv::Rect> boxes;
+    std::vector<float> confs;
+    std::vector<int> classIds;
+    std::vector<std::vector<float>> picked_proposals;
+    const auto confThreshold = 0.5f;
+    const auto iouThreshold = 0.4f;
+    const auto infer_shape = infer_shapes[1]; 
+    auto infer_result = infer_results[1]; 
 
-            const auto offset = 4;
-            const auto num_classes = shape0[1] - offset - shape1[1];
-            std::vector<std::vector<float>> output0_matrix(shape0[1], std::vector<float>(shape0[2]));
+    const auto& mask_shape = infer_shapes[0];
+    const auto& mask_result = infer_results[0];
 
-            // Construct output matrix
-            for (size_t i = 0; i < shape0[1]; ++i) {
-                for (size_t j = 0; j < shape0[2]; ++j) {
-                    output0_matrix[i][j] = output0[i * shape0[2] + j];
-                }
+    
+
+    // yolov5/v6/v7
+    // if(infer_shape[2]  < infer_shape[1])
+    // {
+    //     // const int numClasses =  infer_shape[2] - 5;
+    //     // for (auto it = infer_result.begin(); it != infer_result.end(); it += (numClasses + 5))
+    //     // {
+    //     //     float clsConf = it[4];
+    //     //     if (clsConf > confThreshold)
+    //     //     {
+    //     //         auto[objConf, classId] = getBestClassInfo(it, numClasses);
+    //     //         boxes.emplace_back(get_rect(frame_size, std::vector<float>(it, it + 4)));
+    //     //         float confidence = clsConf * objConf;
+    //     //         confs.emplace_back(confidence);
+    //     //         classIds.emplace_back(classId);              
+    //     //     }
+    //     // }
+
+    // }
+    // else // yolov8/v9 and yolo11
+    // {
+        const int numClasses =  infer_shape[1] - 32 - 4;
+        std::vector<std::vector<float>> output(infer_shape[1], std::vector<float>(infer_shape[2]));
+
+        // Construct output matrix
+        for (int i = 0; i < infer_shape[1]; i++) {
+            for (int j = 0; j < infer_shape[2]; j++) {
+                output[i][j] = infer_result[i * infer_shape[2] + j];
             }
-
-            std::vector<std::vector<float>> transposed_output0(shape0[2], std::vector<float>(shape0[1]));
-
-            // Transpose output matrix
-            for (int i = 0; i < shape0[1]; ++i) {
-                for (int j = 0; j < shape0[2]; ++j) {
-                    transposed_output0[j][i] = output0_matrix[i][j];
-                }
-            }
-
-            std::vector<cv::Rect> boxes;
-            std::vector<float> confs;
-            std::vector<int> classIds;
-            const auto conf_threshold = 0.25f;
-            const auto iou_threshold = 0.4f;
-            
-            std::vector<std::vector<float>> picked_proposals;
-
-            // Get all the YOLO proposals
-            for (int i = 0; i < shape0[2]; ++i) {
-                const auto& row = transposed_output0[i];
-                const float* bboxesPtr = row.data();
-                const float* scoresPtr = bboxesPtr + 4;
-                auto maxSPtr = std::max_element(scoresPtr, scoresPtr + num_classes);
-                float score = *maxSPtr;
-                if (score > conf_threshold) {
-                    boxes.emplace_back(get_rect(frame_size, std::vector<float>(bboxesPtr, bboxesPtr + 4)));
-                    int label = maxSPtr - scoresPtr;
-                    confs.emplace_back(score);
-                    classIds.emplace_back(label);
-                    picked_proposals.emplace_back(std::vector<float>(scoresPtr + num_classes, scoresPtr + num_classes + shape1[1]));
-                }
-            }
-
-            // Perform Non Maximum Suppression and draw predictions.
-            std::vector<int> indices;
-            cv::dnn::NMSBoxes(boxes, confs, conf_threshold, iou_threshold, indices);
-            std::vector<Detection> detections;
-            Mask segMask;
-            int sc, sh, sw;
-            std::tie(sc, sh, sw) = std::make_tuple(static_cast<int>(shape1[1]), static_cast<int>(shape1[2]), static_cast<int>(shape1[3]));
-            cv::Mat(std::vector<float>(output1, output1 + sc * sh * sw)).reshape(0, { sc, sw * sh }).copyTo(segMask.protos);        
-            cv::Rect segPadRect = getSegPadSize(input_width_, input_height_, frame_size);
-            cv::Rect roi(int((float)segPadRect.x / input_width_ * sw), int((float)segPadRect.y / input_height_ * sh), int(sw - segPadRect.x / 2), int(sh - segPadRect.y / 2));
-            segMask.maskRoi = roi; 
-            cv::Mat maskProposals;
-            for (int i = 0; i < indices.size(); i++)
-            {
-                Detection det;
-                int idx = indices[i];
-                det.label_id = classIds[idx];
-                det.bbox = boxes[idx];
-                det.score = confs[idx];
-                detections.emplace_back(det);
-                maskProposals.push_back(cv::Mat(picked_proposals[idx]).t());
-            }
-            maskProposals.copyTo(segMask.maskProposals);
-            return std::make_tuple(detections, segMask);
         }
 
-        virtual std::tuple<std::vector<Detection>, Mask> infer(const cv::Mat& image) = 0;
-};
+        // Transpose output matrix
+        std::vector<std::vector<float>> transposedOutput(infer_shape[2], std::vector<float>(infer_shape[1]));
+        for (int i = 0; i < infer_shape[1]; i++) {
+            for (int j = 0; j < infer_shape[2]; j++) {
+                transposedOutput[j][i] = output[i][j];
+            }
+        }
+
+        // Get all the YOLO proposals
+        for (int i = 0; i < infer_shape[2]; i++) {
+            const auto& row = transposedOutput[i];
+            const float* bboxesPtr = row.data();
+            const float* scoresPtr = bboxesPtr + 4;
+            auto maxSPtr = std::max_element(scoresPtr, scoresPtr + numClasses);
+            float score = *maxSPtr;
+            if (score > confThreshold) {
+                boxes.emplace_back(get_rect(frame_size, std::vector<float>(bboxesPtr, bboxesPtr + 4)));
+                int label = maxSPtr - scoresPtr;
+                confs.emplace_back(score);
+                classIds.emplace_back(label);
+                picked_proposals.emplace_back(std::vector<float>(scoresPtr + numClasses, scoresPtr + numClasses + mask_shape[1]));
+            }
+        }
+    //}
+    // Perform NMS
+    std::vector<int> indices;
+    cv::dnn::NMSBoxes(boxes, confs, confThreshold, iouThreshold, indices);
+
+    // Process mask results
+    int sc = mask_shape[1], sh = mask_shape[2], sw = mask_shape[3];
+    cv::Mat protos(sc, sh * sw, CV_32F, const_cast<float*>(mask_result.data()));
+    cv::Rect segPadRect = getSegPadSize(input_width_, input_height_, frame_size);
+    cv::Rect roi(int((float)segPadRect.x / input_width_ * sw), int((float)segPadRect.y / input_height_ * sh), int(sw - segPadRect.x / 2), int(sh - segPadRect.y / 2));
+
+    cv::Mat maskProposals;
+    for (int idx : indices) {
+        maskProposals.push_back(cv::Mat(picked_proposals[idx]).t());
+    }
+
+
+    // Generate masks
+    if (!indices.empty()) {
+        cv::Mat masks = cv::Mat((maskProposals * protos).t()).reshape(indices.size(), {sh, sw});
+        std::vector<cv::Mat> maskChannels;
+        cv::split(masks, maskChannels);
+
+        for (size_t i = 0; i < indices.size(); ++i) {
+            int idx = indices[i];
+            InstanceSegmentation seg;
+            seg.bbox = boxes[idx];
+            seg.class_confidence = confs[idx];
+            seg.class_id = classIds[idx];
+
+            
+     
+            const float mask_thresh = 0.5f;
+            cv::Mat mask;
+
+            // Sigmoid
+            cv::exp(-maskChannels[i], mask);
+            mask = 1.0 / (1.0 + mask); // 160*160
+
+            mask = mask(roi);
+
+            cv::resize(mask, mask, frame_size, cv::INTER_NEAREST);
+            mask = mask( boxes[idx]) > mask_thresh;            
+            // Store mask data and dimensions
+            seg.mask_data.assign(mask.data, mask.data + mask.total());
+            seg.mask_height = mask.rows;
+            seg.mask_width = mask.cols;
+
+            results.push_back(seg);
+        }
+    }
+
+   
+
+    return results;
+}

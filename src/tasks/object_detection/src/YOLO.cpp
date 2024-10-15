@@ -1,11 +1,11 @@
-#include "Yolo.hpp"
+#include "YOLO.hpp"
 
-Yolo::Yolo(int input_width, int input_height) : TaskInterface(input_width, input_height) {
+YOLO::YOLO(int input_width, int input_height) : TaskInterface(input_width, input_height) {
     input_width_ = input_width;
     input_height_ = input_height;
 }
 
-cv::Rect Yolo::get_rect(const cv::Size& imgSz, const std::vector<float>& bbox)
+cv::Rect YOLO::get_rect(const cv::Size& imgSz, const std::vector<float>& bbox)
 {
     int l, r, t, b;
     float r_w = input_width_ / (imgSz.width * 1.0);
@@ -33,7 +33,7 @@ cv::Rect Yolo::get_rect(const cv::Size& imgSz, const std::vector<float>& bbox)
     return cv::Rect(l, t, r - l, b - t);
 }
 
-auto Yolo::getBestClassInfo(std::vector<float>::iterator it, const size_t& numClasses)
+auto YOLO::getBestClassInfo(std::vector<float>::iterator it, const size_t& numClasses)
 {
     int idxMax = 5;
     float maxConf = 0;
@@ -49,7 +49,7 @@ auto Yolo::getBestClassInfo(std::vector<float>::iterator it, const size_t& numCl
     return std::make_tuple(maxConf, idxMax);
 }
 
-std::vector<Result> Yolo::postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
+std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
 const std::vector<std::vector<int64_t>>& infer_shapes) 
 {
     
@@ -71,8 +71,8 @@ const std::vector<std::vector<int64_t>>& infer_shapes)
             float clsConf = it[4];
             if (clsConf > confThreshold)
             {
-                auto[objConf, classId] = Yolo::getBestClassInfo(it, numClasses);
-                boxes.emplace_back(Yolo::get_rect(frame_size, std::vector<float>(it, it + 4)));
+                auto[objConf, classId] = getBestClassInfo(it, numClasses);
+                boxes.emplace_back(get_rect(frame_size, std::vector<float>(it, it + 4)));
                 float confidence = clsConf * objConf;
                 confs.emplace_back(confidence);
                 classIds.emplace_back(classId);              
@@ -108,7 +108,7 @@ const std::vector<std::vector<int64_t>>& infer_shapes)
             auto maxSPtr = std::max_element(scoresPtr, scoresPtr + numClasses);
             float score = *maxSPtr;
             if (score > confThreshold) {
-                boxes.emplace_back(Yolo::get_rect(frame_size, std::vector<float>(bboxesPtr, bboxesPtr + 4)));
+                boxes.emplace_back(get_rect(frame_size, std::vector<float>(bboxesPtr, bboxesPtr + 4)));
                 int label = maxSPtr - scoresPtr;
                 confs.emplace_back(score);
                 classIds.emplace_back(label);
@@ -132,7 +132,7 @@ const std::vector<std::vector<int64_t>>& infer_shapes)
 }
 
 
-std::vector<uint8_t> Yolo::preprocess(
+std::vector<uint8_t> YOLO::preprocess(
     const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
     size_t img_channels, const cv::Size& img_size) 
 {

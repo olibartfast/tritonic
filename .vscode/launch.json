@@ -13,9 +13,10 @@
         "--serverAddress=localhost",
         "--labelsFile=labels/coco.txt",
         //"--model=yolov9e_onnx",
-        "--model=yolo11_onnx",
-        "--model_type=yolo11",
-        "--task_type=detection"//,
+        "--model=yolov8x-seg_onnx",
+        "--model_type=yoloseg",
+        //"--task_type=detection"//,
+        "--task_type=instance_segmentation"
         //"--input_sizes=3 224 224"
     ],
         "environment": [{ "name": "config", "value": "Debug" }],

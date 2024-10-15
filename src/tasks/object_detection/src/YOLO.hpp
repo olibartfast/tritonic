@@ -2,9 +2,9 @@
 #include "common.hpp"
 #include "TaskInterface.hpp"
 
-class Yolo : public TaskInterface {
+class YOLO : public TaskInterface {
 public:
-    Yolo(int input_width, int input_height);
+    YOLO(int input_width, int input_height);
 
     cv::Rect get_rect(const cv::Size& imgSz, const std::vector<float>& bbox);
     
@@ -16,7 +16,7 @@ public:
     std::vector<uint8_t> preprocess(const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
                                     size_t img_channels, const cv::Size& img_size) override;
 
-private:
+protected:
     int input_width_;
     int input_height_;
 };

@@ -1,8 +1,9 @@
-#include "Yolo.hpp"
+#include "YOLO.hpp"
 #include "YoloNas.hpp"
 #include "YOLOv10.hpp"
 #include "Triton.hpp"
 #include "TorchvisionClassifier.hpp"
+#include "YOLOSeg.hpp"
 
 void draw_label(cv::Mat& input_image, const std::string& label, float confidence, int left, int top)
 {
@@ -56,7 +57,7 @@ std::unique_ptr<TaskInterface> createDetectorInstance(const std::string& modelTy
     }     
     else if (modelType.find("yolo") != std::string::npos )
     {
-        return std::make_unique<Yolo>(input_width, input_height);
+        return std::make_unique<YOLO>(input_width, input_height);
     }       
     else
     {
@@ -65,17 +66,17 @@ std::unique_ptr<TaskInterface> createDetectorInstance(const std::string& modelTy
 }
 
 
-// std::unique_ptr<TaskInterface> createSegmentationInstance(const std::string& modelType, const int input_width, const int input_height, const int channels)
-// {
-//     if (modelType == "yolo")
-//     {
-//         return std::make_unique<YOLOSeg>(input_width, input_height, channels);
-//     }
-//     else
-//     {
-//         return nullptr;
-//     }
-// }
+std::unique_ptr<TaskInterface> createSegmentationInstance(const std::string& modelType, const int input_width, const int input_height)
+{
+    if (modelType == "yoloseg")
+    {
+        return std::make_unique<YOLOSeg>(input_width, input_height);
+    }
+    else
+    {
+        return nullptr;
+    }
+}
 
 
 std::vector<Result> processSource(const cv::Mat& source, 
@@ -125,6 +126,28 @@ void ProcessImage(const std::string& sourceName,
             Detection detection = std::get<Detection>(prediction);
             cv::rectangle(image, detection.bbox, cv::Scalar(255, 0, 0), 2);
             draw_label(image,  class_names[detection.class_id], detection.class_confidence, detection.bbox.x, detection.bbox.y - 1);
+        }
+
+        else if (std::holds_alternative<InstanceSegmentation>(prediction)) 
+        {
+            InstanceSegmentation segmentation = std::get<InstanceSegmentation>(prediction);
+            
+            // Draw bounding box
+            cv::rectangle(image, segmentation.bbox, cv::Scalar(255, 0, 0), 2);
+            
+            // Draw label
+            draw_label(image, class_names[segmentation.class_id], segmentation.class_confidence, segmentation.bbox.x, segmentation.bbox.y - 1);
+            
+            // Create mask from stored data
+            cv::Mat mask = cv::Mat(segmentation.mask_height, segmentation.mask_width, CV_8UC1, segmentation.mask_data.data());
+            
+            // Draw mask
+            cv::Mat colorMask = cv::Mat::zeros(mask.size(), CV_8UC3);
+            cv::Scalar color = cv::Scalar(rand() & 255, rand() & 255, rand() & 255);
+            colorMask.setTo(color, mask);
+            
+            cv::Mat roi = image(segmentation.bbox);
+            cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
         }
     }    
 
@@ -199,7 +222,7 @@ static const std::string keys =
     "{ help h   | | Print help message. }"
     "{ model_type mt | yolo11 | yolo version used i.e yolov5, yolov6, yolov7, yolov8, yolov9, yolov10, yolo11}"
     "{ model m | yolo11x_onnx | model name of folder in triton }"
-    "{ task_type tt | | detection, classification}"
+    "{ task_type tt | | detection, classification, instance_segmentation}"
     "{ source s | data/dog.jpg | path to video or image}"
     "{ serverAddress  ip  | localhost | server address ip, default localhost}"
     "{ port  p  | 8001 | Port number(Grpc 8001, Http 8000)}"
@@ -291,6 +314,13 @@ int main(int argc, const char* argv[])
             std::cerr << "Invalid model type specified: " +  modelType << std::endl;
         }
     } 
+    else if (taskType == "instance_segmentation") {
+        task = createSegmentationInstance(modelType, modelInfo.input_w_, modelInfo.input_h_);
+        if(task == nullptr)
+        {
+            std::cerr << "Invalid model type specified: " +  modelType << std::endl;
+        }
+    }
     else {
         std::cerr << "Invalid task type specified: " +  taskType << std::endl;
         return 1;
