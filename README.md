@@ -1,6 +1,6 @@
 # C++ Triton Client for Computer Vision Models
 
-This C++ application allows you to perform machine learning tasks, such as computer vision tasks like object detection or classification, using Nvidia Triton Server to manage multiple framework backends. It currently supports object detection models such as YOLOv5, YOLOv6, YOLOv7, YOLOv8, YOLOv9, YOLOV10, and YOLO-NAS, inference for classification models from the Torchvision API.
+This C++ application allows you to perform machine learning tasks, such as computer vision tasks like object detection or classification, using Nvidia Triton Server to manage multiple framework backends. It currently supports object detection models such as YOLOv5, YOLOv6, YOLOv7, YOLOv8, YOLOv9, YOLOV10,YOLO11 and YOLO-NAS, inference for classification models from the Torchvision API.
 
 ## Build Client Libraries
 
@@ -53,7 +53,7 @@ Follow these steps to build and compile the application:
 
 ## Deploy to Triton
 
-To deploy the models to Triton, set up a model repository folder following the [Triton Model Repository schema](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_repository.md). Normally, the `config.pbtxt` file is optional unless you are using the OpenVino backend, you are implementing an Ensamble pipeline, or you need to pass some custom inference/scheduling parameters.
+To deploy the models to Triton, set up a model repository folder following the [Triton Model Repository schema](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_repository.md). Normally, the `config.pbtxt` file is optional unless you are using the OpenVino backend, you are implementing an Ensemble pipeline, or you need to pass some custom inference/scheduling parameters.
 
 Example repository structure:
 
