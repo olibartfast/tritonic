@@ -5,6 +5,24 @@
 #include "TorchvisionClassifier.hpp"
 #include "YOLOSeg.hpp"
 
+std::vector<cv::Scalar> generateRandomColors(size_t size) {
+    std::vector<cv::Scalar> colors;
+    colors.reserve(size); // Reserve space to avoid reallocations
+
+    // Create a random number generator
+    std::random_device rd;  // Seed for the random number engine
+    std::mt19937 gen(rd()); // Mersenne Twister engine
+    std::uniform_int_distribution<> dist(0, 255); // Range for BGR values
+
+    // Generate random BGR colors
+    for (size_t i = 0; i < size; ++i) {
+        cv::Scalar color(dist(gen), dist(gen), dist(gen)); // Random B, G, R values
+        colors.push_back(color);
+    }
+
+    return colors;
+}
+
 void draw_label(cv::Mat& input_image, const std::string& label, float confidence, int left, int top)
 {
     const float FONT_SCALE = 0.7;
@@ -148,7 +166,7 @@ void ProcessImage(const std::string& sourceName,
             colorMask.setTo(color, mask);
             
             cv::Mat roi = image(segmentation.bbox);
-            cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
+            cv::addWeighted(roi, 1, colorMask, 0.7, 0, roi);
         }
     }    
 
@@ -184,6 +202,7 @@ void ProcessVideo(const std::string& sourceName,
 #endif
 
     cv::Mat frame;
+    std::vector<cv::Scalar> colors = generateRandomColors(class_names.size()); 
     while (cap.read(frame)) {
         auto start = std::chrono::steady_clock::now();
         // Call your processSource function here
@@ -195,7 +214,7 @@ void ProcessVideo(const std::string& sourceName,
 
 #if defined(SHOW_FRAME) || defined(WRITE_FRAME)
         double fps = 1000.0 / static_cast<double>(diff);
-        std::string fpsText = "FPS: " + std::to_string(fps);
+        std::string fpsText = "FPS: " + std::to_string(fps).substr(0, 4);
         cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
         for (const auto& prediction : predictions) 
         {
@@ -221,7 +240,7 @@ void ProcessVideo(const std::string& sourceName,
                     
                     // Draw mask
                     cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
-                    cv::Scalar color = cv::Scalar(0, 0, 255);
+                    cv::Scalar color = colors[segmentation.class_id];
                     colorMask.setTo(color, mask);
                     
                     // Get the ROI from the frame
@@ -295,6 +314,7 @@ int main(int argc, const char* argv[])
     std::string taskType = parser.get<std::string>("task_type");
     std::string url(serverAddress + ":" + port);
     std::string labelsFile = parser.get<std::string>("labelsFile");
+
 
     std::string input_sizes_str = parser.get<std::string>("input_sizes");
     std::istringstream input_sizes_stream(input_sizes_str);
