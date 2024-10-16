@@ -313,6 +313,18 @@ int main(int argc, const char* argv[])
     std::cout << "labelsFile (l): " << parser.get<std::string>("labelsFile") << std::endl;
     std::cout << "batch (b): " << parser.get<size_t>("batch") << std::endl;
 
+    if(!std::filesystem::exists(labelsFile))
+    {
+        std::cerr << "Labels file " << labelsFile << " does not exist" << std::endl;
+        std::exit(1);
+    }
+
+    if(!std::filesystem::exists(sourceName))
+    {
+        std::cerr << "Source file " << sourceName << " does not exist" << std::endl;
+        std::exit(1);
+    }
+
     std::vector<int64_t> input_sizes;
     if (parser.has("input_sizes")) {
         std::cout << "input_size_c: " << input_size_c << std::endl;
