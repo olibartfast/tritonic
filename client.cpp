@@ -14,7 +14,8 @@ void draw_label(cv::Mat& input_image, const std::string& label, float confidence
 
     // Display the label and confidence at the top of the bounding box.
     int baseLine;
-    std::string display_text = label + ": " + std::to_string(confidence);
+    std::string confidenceStr = std::to_string(confidence).substr(0, 4);
+    std::string display_text = label + ": " + confidenceStr;
     cv::Size label_size = cv::getTextSize(display_text, FONT_FACE, FONT_SCALE, THICKNESS, &baseLine);
     top = cv::max(top, label_size.height);
 
