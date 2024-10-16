@@ -195,7 +195,7 @@ void ProcessVideo(const std::string& sourceName,
 #if defined(SHOW_FRAME) || defined(WRITE_FRAME)
         double fps = 1000.0 / static_cast<double>(diff);
         std::string fpsText = "FPS: " + std::to_string(fps);
-        //cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
+        cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
         for (const auto& prediction : predictions) 
         {
             if (std::holds_alternative<InstanceSegmentation>(prediction)) 
