@@ -195,35 +195,46 @@ void ProcessVideo(const std::string& sourceName,
 #if defined(SHOW_FRAME) || defined(WRITE_FRAME)
         double fps = 1000.0 / static_cast<double>(diff);
         std::string fpsText = "FPS: " + std::to_string(fps);
-        cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
+        //cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
         for (const auto& prediction : predictions) 
         {
-            if (std::holds_alternative<Detection>(prediction)) 
-            {
-                Detection detection = std::get<Detection>(prediction);
-                cv::rectangle(frame, detection.bbox, cv::Scalar(255, 0, 0), 2);
-                draw_label(frame, class_names[detection.class_id], detection.class_confidence, detection.bbox.x, detection.bbox.y - 1);
-            }
-            else if (std::holds_alternative<InstanceSegmentation>(prediction)) 
+            if (std::holds_alternative<InstanceSegmentation>(prediction)) 
             {
                 InstanceSegmentation segmentation = std::get<InstanceSegmentation>(prediction);
                 
-                // Draw bounding box
-                cv::rectangle(frame, segmentation.bbox, cv::Scalar(255, 0, 0), 2);
+                // Ensure the bounding box is within the frame boundaries
+                cv::Rect safeBbox = segmentation.bbox & cv::Rect(0, 0, frame.cols, frame.rows);
                 
-                // Draw label
-                draw_label(frame, class_names[segmentation.class_id], segmentation.class_confidence, segmentation.bbox.x, segmentation.bbox.y - 1);
-                
-                // Create mask from stored data
-                cv::Mat mask = cv::Mat(segmentation.mask_height, segmentation.mask_width, CV_8UC1, segmentation.mask_data.data());
-                
-                // Draw mask
-                cv::Mat colorMask = cv::Mat::zeros(mask.size(), CV_8UC3);
-                cv::Scalar color = cv::Scalar(rand() & 255, rand() & 255, rand() & 255);
-                colorMask.setTo(color, mask);
-                
-                cv::Mat roi = frame(segmentation.bbox);
-                cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
+                if (safeBbox.width > 0 && safeBbox.height > 0) {
+                    // Draw bounding box
+                    cv::rectangle(frame, safeBbox, cv::Scalar(255, 0, 0), 2);
+                    
+                    // Draw label
+                    draw_label(frame, class_names[segmentation.class_id], segmentation.class_confidence, safeBbox.x, safeBbox.y - 1);
+                    
+                    // Create mask from stored data
+                    cv::Mat mask = cv::Mat(segmentation.mask_height, segmentation.mask_width, CV_8UC1, segmentation.mask_data.data());
+                    
+                    // Resize mask to match the safe bounding box size
+                    cv::resize(mask, mask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
+                    
+                    // Draw mask
+                    cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
+                    cv::Scalar color = cv::Scalar(0, 0, 255);
+                    colorMask.setTo(color, mask);
+                    
+                    // Get the ROI from the frame
+                    cv::Mat roi = frame(safeBbox);
+                    
+                    // Ensure colorMask and roi have the same size
+                    if (roi.size() == colorMask.size()) {
+                        cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
+                    } else {
+                        std::cerr << "ROI and color mask size mismatch. Skipping mask overlay." << std::endl;
+                    }
+                } else {
+                    std::cerr << "Bounding box is outside the frame. Skipping this instance." << std::endl;
+                }
             }
         }
 #endif
