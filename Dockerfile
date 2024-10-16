@@ -24,7 +24,7 @@ WORKDIR /app
 RUN rm -rf build && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && cmake --build .
 
 # Set the entry point for the container
-ENTRYPOINT ["/app/build/object-detection-triton-cpp-client"]
+ENTRYPOINT ["/app/build/computer-vision-triton-cpp-client"]
 
 # Default command if no arguments are provided
 CMD ["--help"]
