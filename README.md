@@ -177,11 +177,11 @@ docker run --rm \
   -v /path/to/host/data:/app/data \
   computer-vision-triton-cpp-client \
   --network host \
-  --source=/app/data/source.format \
+  --source=<pat_to_source_on_container>\
   --task_type=<task_type> \
   --model_type=<model_type> \
   --model=<model_name_folder_on_triton> \
-  --labelsFile=/app/coco.names \
+  --labelsFile=<path_to_labels_on_container> \
   --protocol=<http or grpc> \
   --serverAddress=<triton-ip> \
   --port=<8000 for http, 8001 for grpc>
