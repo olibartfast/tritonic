@@ -131,7 +131,6 @@ std::vector<Result> YOLOSeg::postprocess(const cv::Size& frame_size,
             maskProposals.push_back(cv::Mat(picked_proposals[idx]).t());
         }
 
-        // Generate masks
         if (!indices.empty()) {
             cv::Mat masks = (maskProposals * protos).t();
             masks = masks.reshape(indices.size(), {sh, sw});
@@ -152,9 +151,6 @@ std::vector<Result> YOLOSeg::postprocess(const cv::Size& frame_size,
                 cv::exp(-maskChannels[i], mask);
                 mask = 1.0 / (1.0 + mask); // 160*160
 
-                mask = mask(roi);
-
-                cv::resize(mask, mask, frame_size, cv::INTER_NEAREST);
                 // Ensure roi is within mask boundaries
                 cv::Rect safeRoi = roi & cv::Rect(0, 0, mask.cols, mask.rows);
                 if (safeRoi.width > 0 && safeRoi.height > 0) {
@@ -164,12 +160,21 @@ std::vector<Result> YOLOSeg::postprocess(const cv::Size& frame_size,
                     continue;
                 }
 
-                // Store mask data and dimensions
-                seg.mask_data.assign(mask.data, mask.data + mask.total());
-                seg.mask_height = mask.rows;
-                seg.mask_width = mask.cols;
+                cv::resize(mask, mask, frame_size, cv::INTER_NEAREST);
 
-                results.push_back(seg);
+                // Ensure bbox is within frame boundaries
+                cv::Rect safeBbox = seg.bbox & cv::Rect(0, 0, frame_size.width, frame_size.height);
+                if (safeBbox.width > 0 && safeBbox.height > 0) {
+                    mask = mask(safeBbox);
+                    mask = mask > mask_thresh;
+                    
+                    // Store mask data and dimensions
+                    seg.mask_data.assign(mask.data, mask.data + mask.total());
+                    seg.mask_height = mask.rows;
+                    seg.mask_width = mask.cols;
+
+                    results.push_back(seg);
+                }
             }
         }
 
