@@ -197,7 +197,9 @@ Processed output is saved to the mapped directory on the host.
 
 ## Demo
 
-Watch a real-time inference test using YOLOv7-tiny exported to ONNX: [YOLOv7-tiny Inference Test](https://youtu.be/lke5TcbP2a0).
+Real-time inference test (GPU Rtx 3060):
+  - YOLOv7-tiny exported to ONNX: [YOLOv7-tiny Inference Test](https://youtu.be/lke5TcbP2a0)
+  - YOLO11s exported to onnx: [YOLO11s Inference Test](https://youtu.be/whP-FF__4IM)
 
 ---
 
