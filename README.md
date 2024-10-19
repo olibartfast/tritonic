@@ -2,7 +2,7 @@
 
 This C++ application enables machine learning tasks, such as object detection and classification, using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
 
-### Supported Models
+### Supported(Tested) Models
 
 - **Object Detection**: YOLOv5, YOLOv6, YOLOv7, YOLOv8, YOLOv9, YOLOv10, YOLO11, YOLO-NAS
 - **Instance Segmentation**: YOLOv5, YOLOv8, YOLO11
