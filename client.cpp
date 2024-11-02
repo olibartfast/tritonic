@@ -3,7 +3,27 @@
 #include "YOLOv10.hpp"
 #include "Triton.hpp"
 #include "TorchvisionClassifier.hpp"
+#include "TensorflowClassifier.hpp"
 #include "YOLOSeg.hpp"
+
+std::string ToLower(const std::string& str) {
+    std::string lowerStr = str;
+    std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), [](unsigned char c) {
+        return std::tolower(c);
+    });
+    return lowerStr;
+}
+
+// Function to check if the file has an image extension
+bool IsImageFile(const std::string& fileName) {
+    static const std::set<std::string> imageExtensions = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp"};
+    
+    // Extract the file extension
+    std::string extension = fileName.substr(fileName.find_last_of("."));
+    
+    // Convert the extension to lowercase and check if it's in the set of image extensions
+    return imageExtensions.find(ToLower(extension)) != imageExtensions.end();
+}
 
 void draw_label(cv::Mat& input_image, const std::string& label, float confidence, int left, int top)
 {
@@ -38,6 +58,10 @@ std::unique_ptr<TaskInterface> createClassifierInstance(const std::string& model
     if (modelType == "torchvision-classifier")
     {
         return std::make_unique<TorchvisionClassifier>(input_width, input_height, channels);
+    }
+    else if (modelType == "tensorflow-classifier")
+    {
+        return std::make_unique<TensorflowClassifier>(input_width, input_height, channels);
     }
     else
     {
@@ -120,7 +144,7 @@ void ProcessImage(const std::string& sourceName,
         if (std::holds_alternative<Classification>(prediction)) {
             Classification classification = std::get<Classification>(prediction);
             std::cout << class_names[classification.class_id] << ": " << classification.class_confidence << std::endl; 
-
+            draw_label(image, class_names[classification.class_id] , classification.class_confidence, 30, 30); 
         } 
         else if (std::holds_alternative<Detection>(prediction)) 
         {
@@ -375,13 +399,11 @@ int main(int argc, const char* argv[])
     const auto class_names = task->readLabelNames(labelsFile);
 
 
-
-    // Get the directory of the source file
     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
-    if (sourceName.find(".jpg") != std::string::npos || sourceName.find(".png") != std::string::npos) {
-         ProcessImage(sourceName, task, tritonClient, modelInfo, class_names);
+    if (IsImageFile(sourceName)) {
+        ProcessImage(sourceName, task, tritonClient, modelInfo, class_names);
     } else {
-         ProcessVideo(sourceName, task, tritonClient, modelInfo, class_names);
+        ProcessVideo(sourceName, task, tritonClient, modelInfo, class_names);
     }
 
     return 0;

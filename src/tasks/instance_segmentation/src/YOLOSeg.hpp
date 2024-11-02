@@ -12,7 +12,7 @@ public:
         : YOLO(input_width, input_height) {
     }
 
-    std::vector<Result> postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
+    std::vector<Result> postprocess(const cv::Size& frame_size, const std::vector<std::vector<float>>& infer_results, 
         const std::vector<std::vector<int64_t>>& infer_shapes) override;
 
     cv::Rect getSegPadSize(const size_t inputW,

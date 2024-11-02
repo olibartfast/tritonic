@@ -43,6 +43,13 @@
         rapidjson::Document responseJson;
         responseJson.Parse(responseData.c_str());
 
+        // Extract the model extension
+        std::string platform = "";
+        if (responseJson.HasMember("platform") && responseJson["platform"].IsString()) {
+            platform = responseJson["platform"].GetString();
+
+        } 
+
         // Fill the TritonModelInfo parameters from the parsed JSON
         info.input_name_ = responseJson["input"][0]["name"].GetString();
 
@@ -55,8 +62,12 @@
         // https://github.com/triton-inference-server/server/issues/1240
         if (info.input_format_ == "FORMAT_NONE") 
         {
-            info.input_format_ = "FORMAT_NCHW"; // or hardcode the string you know
+            if (platform == "tensorflow_savedmodel")
+                info.input_format_ = "FORMAT_NHWC"; 
+            else
+                info.input_format_ = "FORMAT_NCWH";    
         }        
+
         if (info.input_format_ == "FORMAT_NCHW")
         {
             if (inputDims.Size() == 4) {
@@ -289,7 +300,7 @@
                 &result, options, inputs, outputs);
         }
         if (!err.IsOk()) {
-            std::cerr << "failed sending synchronous infer request: " << err
+            std::cerr << "\n failed sending synchronous infer request: " << err
                 << std::endl;
             exit(1);
         }

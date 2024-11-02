@@ -41,7 +41,7 @@ public:
         return classes;
     }    
 
-    virtual std::vector<Result> postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
+    virtual std::vector<Result> postprocess(const cv::Size& frame_size, const std::vector<std::vector<float>>& infer_results, 
         const std::vector<std::vector<int64_t>>& infer_shapes) = 0;
     
     virtual std::vector<uint8_t> preprocess(

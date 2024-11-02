@@ -8,9 +8,9 @@ public:
 
     cv::Rect get_rect(const cv::Size& imgSz, const std::vector<float>& bbox);
     
-    auto getBestClassInfo(std::vector<float>::iterator it, const size_t& numClasses);
-    
-    std::vector<Result> postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results,
+    std::tuple<float, int> getBestClassInfo(const std::vector<float>& data, size_t startIdx, const size_t& numClasses);
+
+    std::vector<Result> postprocess(const cv::Size& frame_size, const std::vector<std::vector<float>>& infer_results,
                                     const std::vector<std::vector<int64_t>>& infer_shapes) override;
 
     std::vector<uint8_t> preprocess(const cv::Mat& img, const std::string& format, int img_type1, int img_type3,

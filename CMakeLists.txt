@@ -39,6 +39,7 @@ set(DETECTOR_SOURCES ${PROJECT_SOURCE_DIR}
   src/tasks/object_detection/src/YOLOv10.cpp )
 
 set(CLASSIFIER_SOURCES ${PROJECT_SOURCE_DIR}  
+  src/tasks/classification/src/TensorflowClassifier.cpp
   src/tasks/classification/src/TorchvisionClassifier.cpp)
 
 set(INSTANCE_SEGMENTATION_SOURCES ${PROJECT_SOURCE_DIR}

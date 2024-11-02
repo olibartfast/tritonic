@@ -32,27 +32,25 @@ cv::Rect YOLO::get_rect(const cv::Size& imgSz, const std::vector<float>& bbox)
     }
     return cv::Rect(l, t, r - l, b - t);
 }
-
-auto YOLO::getBestClassInfo(std::vector<float>::iterator it, const size_t& numClasses)
+std::tuple<float, int> YOLO::getBestClassInfo(const std::vector<float>& data, size_t startIdx, const size_t& numClasses)
 {
     int idxMax = 5;
     float maxConf = 0;
 
     for (int i = 5; i < numClasses + 5; i++)
     {
-        if (it[i] > maxConf)
+        if (data[startIdx + i] > maxConf)
         {
-            maxConf = it[i];
+            maxConf = data[startIdx + i];
             idxMax = i - 5;
         }
     }
     return std::make_tuple(maxConf, idxMax);
 }
 
-std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
-const std::vector<std::vector<int64_t>>& infer_shapes) 
+std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vector<std::vector<float>>& infer_results, 
+    const std::vector<std::vector<int64_t>>& infer_shapes) 
 {
-    
     std::vector<Result> detections;
     std::vector<cv::Rect> boxes;
     std::vector<float> confs;
@@ -60,25 +58,29 @@ const std::vector<std::vector<int64_t>>& infer_shapes)
     const auto confThreshold = 0.5f;
     const auto iouThreshold = 0.4f;
     const auto infer_shape = infer_shapes.front(); 
-    auto infer_result = infer_results.front(); 
+    const auto& infer_result = infer_results.front(); 
 
     // yolov5/v6/v7
-    if(infer_shape[2]  < infer_shape[1])
+    if(infer_shape[2] < infer_shape[1])
     {
-        const int numClasses =  infer_shape[2] - 5;
-        for (auto it = infer_result.begin(); it != infer_result.end(); it += (numClasses + 5))
+        const int numClasses = infer_shape[2] - 5;
+        const int stride = numClasses + 5;
+        
+        for (size_t i = 0; i < infer_result.size(); i += stride)
         {
-            float clsConf = it[4];
+            float clsConf = infer_result[i + 4];
             if (clsConf > confThreshold)
             {
-                auto[objConf, classId] = getBestClassInfo(it, numClasses);
-                boxes.emplace_back(get_rect(frame_size, std::vector<float>(it, it + 4)));
+                auto [objConf, classId] = getBestClassInfo(infer_result, i, numClasses);
+                
+                std::vector<float> box_coords(infer_result.begin() + i, infer_result.begin() + i + 4);
+                boxes.emplace_back(get_rect(frame_size, box_coords));
+                
                 float confidence = clsConf * objConf;
                 confs.emplace_back(confidence);
                 classIds.emplace_back(classId);              
             }
         }
-
     }
     else // yolov8/v9 and yolo11
     {

@@ -28,7 +28,7 @@ const cv::Size& inputSize)
 
 
 std::vector<Result> YOLOSeg::postprocess(const cv::Size& frame_size, 
-                                                  std::vector<std::vector<float>>& infer_results, 
+                                                  const std::vector<std::vector<float>>& infer_results, 
                                                   const std::vector<std::vector<int64_t>>& infer_shapes) 
     {
         std::vector<Result> results;
@@ -39,7 +39,7 @@ std::vector<Result> YOLOSeg::postprocess(const cv::Size& frame_size,
         const auto confThreshold = 0.5f;
         const auto iouThreshold = 0.4f;
         const auto& infer_shape = infer_shapes[1]; 
-        auto& infer_result = infer_results[1]; 
+        const auto& infer_result = infer_results[1]; 
 
         const auto& mask_shape = infer_shapes[0];
         const auto& mask_result = infer_results[0];

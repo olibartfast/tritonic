@@ -46,46 +46,47 @@ std::vector<uint8_t> YoloNas::preprocess(
     return input_data;
 }
 
-// Override the postprocess function
-std::vector<Result> YoloNas::postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
+std::vector<Result> YoloNas::postprocess(const cv::Size& frame_size, const std::vector<std::vector<float>>& infer_results, 
 const std::vector<std::vector<int64_t>>& infer_shapes) 
 {
-
     std::vector<Result> detections;
     std::vector<cv::Rect> boxes;
     std::vector<float> confs;
     std::vector<int> classIds;
     const auto confThreshold = 0.5f;
     const auto iouThreshold = 0.4f;
-    float* scores_result = infer_results[0].data();
-    float* detection_result = infer_results[1].data();
+    const float* scores_result = infer_results[0].data();
+    const float* detection_result = infer_results[1].data();
     const auto scores_shape = infer_shapes[0];
     const auto detection_shape = infer_shapes[1];
     
-    const int numClasses =  scores_shape[2];
+    const int numClasses = scores_shape[2];
     const auto rows = detection_shape[1];
-    const auto boxes_size =  detection_shape[2];
+    const auto boxes_size = detection_shape[2];
+
     for (int i = 0; i < rows; ++i) 
     {
-        cv::Mat scores(1, numClasses, CV_32FC1, scores_result);
+        // Create Mat directly from const data using CV_MAT_CONT_FLAG
+        cv::Mat scores(1, numClasses, CV_32FC1 | CV_MAT_CONT_FLAG, (void*)scores_result);
+        
         cv::Point class_id;
         double maxClassScore;
         minMaxLoc(scores, 0, &maxClassScore, 0, &class_id);
+        
         if (maxClassScore >= confThreshold) 
         {
             confs.push_back(maxClassScore);
             classIds.push_back(class_id.x);
             float r_w = (frame_size.width * 1.0) / input_width_;
-            float r_h = (frame_size.height * 1.0) / input_height_ ;
-            std::vector<float> bbox(&detection_result[0], &detection_result[4]);
-
-            int left = (int)(bbox[0] * r_w);
-            int top = (int)(bbox[1] * r_h);
-            int width = (int)((bbox[2] - bbox[0]) * r_w);
-            int height = (int)((bbox[3] - bbox[1]) * r_h);
+            float r_h = (frame_size.height * 1.0) / input_height_;
+            
+            int left = static_cast<int>(detection_result[0] * r_w);
+            int top = static_cast<int>(detection_result[1] * r_h);
+            int width = static_cast<int>((detection_result[2] - detection_result[0]) * r_w);
+            int height = static_cast<int>((detection_result[3] - detection_result[1]) * r_h);
             boxes.push_back(cv::Rect(left, top, width, height));
         }
-        // Jump to the next column.
+        // Jump to the next column
         scores_result += numClasses;
         detection_result += boxes_size;
     }      
@@ -93,10 +94,11 @@ const std::vector<std::vector<int64_t>>& infer_shapes)
     std::vector<int> indices;
     cv::dnn::NMSBoxes(boxes, confs, confThreshold, iouThreshold, indices);
 
+    detections.reserve(indices.size());
     for (int idx : indices)
     {
         Detection d;
-        d.bbox = cv::Rect(boxes[idx]);
+        d.bbox = boxes[idx];
         d.class_confidence = confs[idx];
         d.class_id = classIds[idx];
         detections.emplace_back(d);

@@ -5,13 +5,17 @@ TorchvisionClassifier::TorchvisionClassifier(int input_width, int input_height, 
 }
 
 std::vector<Result> TorchvisionClassifier::postprocess(const cv::Size& frame_size, 
-                                                       std::vector<std::vector<float>>& infer_results,
+                                                       const std::vector<std::vector<float>>& infer_results,
                                                        const std::vector<std::vector<int64_t>>& infer_shapes) 
 {
-    // Implement your postprocess logic here
-    auto result = infer_results.front();
+    // Create a mutable copy of the result vector since infer_results is const
+    std::vector<float> result = infer_results.front();
     const auto shape = infer_shapes[0][1];
-    std::transform(result.begin(), result.end(), result.begin(), [](float val) { return std::exp(val); });
+    
+    // Now transform the mutable copy
+    std::transform(result.begin(), result.end(), result.begin(), 
+                  [](float val) { return std::exp(val); });
+
     auto sum = std::accumulate(result.begin(), result.end(), 0.0);
 
     // find top classes predicted by the model
@@ -20,7 +24,7 @@ std::vector<Result> TorchvisionClassifier::postprocess(const cv::Size& frame_siz
     std::sort(indices.begin(), indices.end(), [&result](int i1, int i2) { return result[i1] > result[i2]; });
 
     // print results
-    int i = 0;
+    size_t i = 0;
     std::vector<Result> results;
     while (result[indices[i]] / sum > 0.005) {
         Classification classification;

@@ -5,7 +5,7 @@ YOLOv10::YOLOv10(int input_width, int input_height) : TaskInterface(input_width,
     input_height_ = input_height;
 }
 
-std::vector<Result> YOLOv10::postprocess(const cv::Size& frame_size, std::vector<std::vector<float>>& infer_results, 
+std::vector<Result> YOLOv10::postprocess(const cv::Size& frame_size, const std::vector<std::vector<float>>& infer_results, 
 const std::vector<std::vector<int64_t>>& infer_shapes) 
 {
     
@@ -14,7 +14,7 @@ const std::vector<std::vector<int64_t>>& infer_shapes)
     std::vector<float> confs;
     std::vector<int> classIds;
     const auto confThreshold = 0.5f;
-    const auto infer_shape = infer_shapes.front(); 
+    const auto& infer_shape = infer_shapes.front(); 
     auto infer_result = infer_results.front(); 
 
 
