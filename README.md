@@ -2,7 +2,7 @@
 
 This C++ application enables machine learning tasks, such as object detection and classification, using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
 
-### Supported Models
+### Supported(Tested) Models
 
 - **Object Detection**: YOLOv5, YOLOv6, YOLOv7, YOLOv8, YOLOv9, YOLOv10, YOLO11, YOLO-NAS
 - **Instance Segmentation**: YOLOv5, YOLOv8, YOLO11
@@ -177,11 +177,11 @@ docker run --rm \
   -v /path/to/host/data:/app/data \
   computer-vision-triton-cpp-client \
   --network host \
-  --source=/app/data/source.format \
+  --source=<pat_to_source_on_container>\
   --task_type=<task_type> \
   --model_type=<model_type> \
   --model=<model_name_folder_on_triton> \
-  --labelsFile=/app/coco.names \
+  --labelsFile=<path_to_labels_on_container> \
   --protocol=<http or grpc> \
   --serverAddress=<triton-ip> \
   --port=<8000 for http, 8001 for grpc>
@@ -197,7 +197,9 @@ Processed output is saved to the mapped directory on the host.
 
 ## Demo
 
-Watch a real-time inference test using YOLOv7-tiny exported to ONNX: [YOLOv7-tiny Inference Test](https://youtu.be/lke5TcbP2a0).
+Real-time inference test (GPU Rtx 3060):
+  - YOLOv7-tiny exported to ONNX: [YOLOv7-tiny Inference Test](https://youtu.be/lke5TcbP2a0)
+  - YOLO11s exported to onnx: [YOLO11s Inference Test](https://youtu.be/whP-FF__4IM)
 
 ---
 
