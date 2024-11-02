@@ -308,122 +308,119 @@ static const std::string keys =
     "{ labelsFile l | ../coco.names | path to coco labels names}"
     "{ batch b | 1 | Batch size}"
     "{ input_sizes is | | Input sizes (channels width height)}";
-
-int main(int argc, const char* argv[])
-{
-    cv::CommandLineParser parser(argc, argv, keys);
-    if (parser.has("help")) {
-        parser.printMessage();
-        return 0;
-    }
-
-    std::cout << "Current path is " << std::filesystem::current_path() << '\n';
-    std::string serverAddress = parser.get<std::string>("serverAddress");
-    std::string port = parser.get<std::string>("port");
-    bool verbose = parser.get<bool>("verbose");
-    std::string sourceName = parser.get<std::string>("source");  // Changed from 'video' to 'source'
-    ProtocolType protocol = parser.get<std::string>("protocol") == "grpc" ? ProtocolType::GRPC : ProtocolType::HTTP;
-    const size_t batch_size = parser.get<size_t>("batch");
-
-    std::string modelName = parser.get<std::string>("model");
-    std::string modelVersion = "";
-    std::string modelType = parser.get<std::string>("model_type");
-
-    if(!parser.has("task_type"))
-    {
-        std::cerr << "Task type (classification or detection) is required " << std::endl;
-        std::exit(1);
-    }
-
-    std::string taskType = parser.get<std::string>("task_type");
-    std::string url(serverAddress + ":" + port);
-    std::string labelsFile = parser.get<std::string>("labelsFile");
-
-
-    std::string input_sizes_str = parser.get<std::string>("input_sizes");
-    std::istringstream input_sizes_stream(input_sizes_str);
     
-    size_t input_size_c, input_size_w, input_size_h;
-    input_sizes_stream >> input_size_c >> input_size_w >> input_size_h;
+int main(int argc, const char* argv[]) {
+    try {
+        cv::CommandLineParser parser(argc, argv, keys);
+        if (parser.has("help")) {
+            parser.printMessage();
+            return 0;
+        }
 
-    std::cout << "Chosen Parameters:" << std::endl;
-    std::cout << "task_type (tt): " << parser.get<std::string>("task_type") << std::endl;
-    std::cout << "model_type (mt): " << parser.get<std::string>("model_type") << std::endl;
-    std::cout << "model (m): " << parser.get<std::string>("model") << std::endl;
-    std::cout << "source (s): " << parser.get<std::string>("source") << std::endl;  // Changed from 'video' to 'source'
-    std::cout << "serverAddress (ip): " << parser.get<std::string>("serverAddress") << std::endl;
-    std::cout << "verbose (vb): " << parser.get<bool>("verbose") << std::endl;
-    std::cout << "protocol (pt): " << parser.get<std::string>("protocol") << std::endl;
-    std::cout << "labelsFile (l): " << parser.get<std::string>("labelsFile") << std::endl;
-    std::cout << "batch (b): " << parser.get<size_t>("batch") << std::endl;
+        std::cout << "Current path is " << std::filesystem::current_path() << '\n';
+        std::string serverAddress = parser.get<std::string>("serverAddress");
+        std::string port = parser.get<std::string>("port");
+        bool verbose = parser.get<bool>("verbose");
+        std::string sourceName = parser.get<std::string>("source");
+        ProtocolType protocol = parser.get<std::string>("protocol") == "grpc" ? ProtocolType::GRPC : ProtocolType::HTTP;
+        const size_t batch_size = parser.get<size_t>("batch");
 
-    if(!std::filesystem::exists(labelsFile))
-    {
-        std::cerr << "Labels file " << labelsFile << " does not exist" << std::endl;
-        std::exit(1);
-    }
+        std::string modelName = parser.get<std::string>("model");
+        std::string modelVersion = "";
+        std::string modelType = parser.get<std::string>("model_type");
 
-    if(!std::filesystem::exists(sourceName))
-    {
-        std::cerr << "Source file " << sourceName << " does not exist" << std::endl;
-        std::exit(1);
-    }
+        if (!parser.has("task_type")) {
+            throw std::runtime_error("Task type (classification or detection) is required");
+        }
 
-    std::vector<int64_t> input_sizes;
-    if (parser.has("input_sizes")) {
-        std::cout << "input_size_c: " << input_size_c << std::endl;
-        std::cout << "input_size_w: " << input_size_w << std::endl;
-        std::cout << "input_size_h: " << input_size_h << std::endl;
-        input_sizes.push_back(batch_size);
-        input_sizes.push_back(input_size_c);
-        input_sizes.push_back(input_size_w);
-        input_sizes.push_back(input_size_h);
-    }
+        std::string taskType = parser.get<std::string>("task_type");
+        std::string url(serverAddress + ":" + port);
+        std::string labelsFile = parser.get<std::string>("labelsFile");
+
+        if (!std::filesystem::exists(labelsFile)) {
+            throw std::runtime_error("Labels file " + labelsFile + " does not exist");
+        }
+
+        if (!std::filesystem::exists(sourceName)) {
+            throw std::runtime_error("Source file " + sourceName + " does not exist");
+        }
+
+        std::istringstream input_sizes_stream(parser.get<std::string>("input_sizes"));
+        size_t input_size_c, input_size_w, input_size_h;
+        input_sizes_stream >> input_size_c >> input_size_w >> input_size_h;
+
+        std::cout << "Chosen Parameters:" << std::endl;
+        std::cout << "task_type (tt): " << parser.get<std::string>("task_type") << std::endl;
+        std::cout << "model_type (mt): " << parser.get<std::string>("model_type") << std::endl;
+        std::cout << "model (m): " << parser.get<std::string>("model") << std::endl;
+        std::cout << "source (s): " << parser.get<std::string>("source") << std::endl;  // Changed from 'video' to 'source'
+        std::cout << "serverAddress (ip): " << parser.get<std::string>("serverAddress") << std::endl;
+        std::cout << "verbose (vb): " << parser.get<bool>("verbose") << std::endl;
+        std::cout << "protocol (pt): " << parser.get<std::string>("protocol") << std::endl;
+        std::cout << "labelsFile (l): " << parser.get<std::string>("labelsFile") << std::endl;
+        std::cout << "batch (b): " << parser.get<size_t>("batch") << std::endl;
+
+        if(!std::filesystem::exists(labelsFile))
+        {
+            std::cerr << "Labels file " << labelsFile << " does not exist" << std::endl;
+            std::exit(1);
+        }
+
+        if(!std::filesystem::exists(sourceName))
+        {
+            std::cerr << "Source file " << sourceName << " does not exist" << std::endl;
+            std::exit(1);
+        }
+
+        std::vector<int64_t> input_sizes;
+        if (parser.has("input_sizes")) {
+            std::cout << "input_size_c: " << input_size_c << std::endl;
+            std::cout << "input_size_w: " << input_size_w << std::endl;
+            std::cout << "input_size_h: " << input_size_h << std::endl;
+            input_sizes.push_back(batch_size);
+            input_sizes.push_back(input_size_c);
+            input_sizes.push_back(input_size_w);
+            input_sizes.push_back(input_size_h);
+        }
 
    
     
 
-    // Create Triton client
-    std::unique_ptr<Triton> tritonClient = std::make_unique<Triton>(url, protocol, modelName);
-    tritonClient->createTritonClient();
+        // Create Triton client
+        std::unique_ptr<Triton> tritonClient = std::make_unique<Triton>(url, protocol, modelName);
+        tritonClient->createTritonClient();
 
-    TritonModelInfo modelInfo = tritonClient->getModelInfo(modelName, serverAddress, input_sizes);
-    std::unique_ptr<TaskInterface> task;
-    if (taskType == "detection") {
-        task = createDetectorInstance(modelType, modelInfo.input_w_, modelInfo.input_h_);
-        if(task == nullptr)
-        {
-            std::cerr << "Invalid model type specified: " +  modelType << std::endl;
+        TritonModelInfo modelInfo = tritonClient->getModelInfo(modelName, serverAddress, {batch_size, input_size_c, input_size_w, input_size_h});
+
+        std::unique_ptr<TaskInterface> task;
+        if (taskType == "detection") {
+            task = createDetectorInstance(modelType, modelInfo.input_w_, modelInfo.input_h_);
+        } else if (taskType == "classification") {
+            task = createClassifierInstance(modelType, modelInfo.input_w_, modelInfo.input_h_, modelInfo.input_c_);
+        } else if (taskType == "instance_segmentation") {
+            task = createSegmentationInstance(modelType, modelInfo.input_w_, modelInfo.input_h_);
+        } else {
+            throw std::invalid_argument("Invalid task type specified: " + taskType);
         }
-    } 
-    else if (taskType == "classification") {
- 
-        task = createClassifierInstance(modelType, modelInfo.input_w_, modelInfo.input_h_, modelInfo.input_c_);
-        if(task == nullptr)
-        {
-            std::cerr << "Invalid model type specified: " +  modelType << std::endl;
+
+        if (!task) {
+            throw std::runtime_error("Invalid model type specified: " + modelType);
         }
-    } 
-    else if (taskType == "instance_segmentation") {
-        task = createSegmentationInstance(modelType, modelInfo.input_w_, modelInfo.input_h_);
-        if(task == nullptr)
-        {
-            std::cerr << "Invalid model type specified: " +  modelType << std::endl;
+
+        const auto class_names = task->readLabelNames(labelsFile);
+        std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
+
+        if (IsImageFile(sourceName)) {
+            ProcessImage(sourceName, task, tritonClient, modelInfo, class_names);
+        } else {
+            ProcessVideo(sourceName, task, tritonClient, modelInfo, class_names);
         }
-    }
-    else {
-        std::cerr << "Invalid task type specified: " +  taskType << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
         return 1;
-    }
-
-    const auto class_names = task->readLabelNames(labelsFile);
-
-
-    std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
-    if (IsImageFile(sourceName)) {
-        ProcessImage(sourceName, task, tritonClient, modelInfo, class_names);
-    } else {
-        ProcessVideo(sourceName, task, tritonClient, modelInfo, class_names);
+    } catch (...) {
+        std::cerr << "An unknown error occurred." << std::endl;
+        return 1;
     }
 
     return 0;

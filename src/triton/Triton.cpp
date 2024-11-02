@@ -168,6 +168,7 @@
         for (const auto& outputName : info.output_names_) {
             std::cout << outputName << " ";
         }
+        std::cout << std::endl;
         return info;
     }
 
@@ -300,7 +301,7 @@
                 &result, options, inputs, outputs);
         }
         if (!err.IsOk()) {
-            std::cerr << "\n failed sending synchronous infer request: " << err
+            std::cerr << "failed sending synchronous infer request: " << err
                 << std::endl;
             exit(1);
         }
