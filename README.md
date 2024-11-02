@@ -70,7 +70,7 @@ To build and compile the application, follow these steps:
 
 ---
 
-## Machine Learning Tasks
+## Tasks
 
 ### Export Instructions
 
