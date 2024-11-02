@@ -30,6 +30,7 @@ find_package(RapidJSON REQUIRED)
 # Set the source files
 set(SOURCES
     ${PROJECT_SOURCE_DIR}/client.cpp
+    ${PROJECT_SOURCE_DIR}/src/tasks/task_factory.cpp
     # Add any additional source files here
 )
 
@@ -45,12 +46,19 @@ set(CLASSIFIER_SOURCES ${PROJECT_SOURCE_DIR}
 set(INSTANCE_SEGMENTATION_SOURCES ${PROJECT_SOURCE_DIR}
   src/tasks/instance_segmentation/src/YOLOSeg.cpp)
   
-
 # Set the source files
 set(TRITON_SOURCES ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp)
 
+set(UTILS_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/utils.cpp)
+
 # Add an executable target
-add_executable(${PROJECT_NAME} ${SOURCES} ${DETECTOR_SOURCES} ${CLASSIFIER_SOURCES} ${INSTANCE_SEGMENTATION_SOURCES} ${TRITON_SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCES}
+    ${UTILS_SOURCES} 
+    ${DETECTOR_SOURCES} 
+    ${CLASSIFIER_SOURCES} 
+    ${INSTANCE_SEGMENTATION_SOURCES} 
+    ${TRITON_SOURCES}
+    )
 
 # Set include directories for the target
 target_include_directories(${PROJECT_NAME}
@@ -59,6 +67,8 @@ target_include_directories(${PROJECT_NAME}
     $ENV{TritonClientBuild_DIR}/include
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/src/utils
+    ${PROJECT_SOURCE_DIR}/src/tasks
     ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/include
     ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/src
     ${PROJECT_SOURCE_DIR}/src/tasks/classification/include
