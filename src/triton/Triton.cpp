@@ -68,7 +68,7 @@
                 info.input_format_ = "FORMAT_NCWH";    
         }        
 
-        if (info.input_format_ == "FORMAT_NCHW")
+        if (info.input_format_ == "FORMAT_NCWH")
         {
             if (inputDims.Size() == 4) {
                 // Batch size is included, and it's the first dimension    
