@@ -21,7 +21,7 @@
 
 class TaskFactory {
 private:
-    using TaskCreator = std::function<std::unique_ptr<TaskInterface>(const std::vector<std::vector<int64_t>>&)>;
+    using TaskCreator = std::function<std::unique_ptr<TaskInterface>(const TritonModelInfo& modelInfo)>;
     
     static std::map<std::string, TaskCreator> taskCreators;
 

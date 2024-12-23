@@ -4,44 +4,13 @@
 
 
 
-std::vector<Result> processSource(const cv::Mat& source, 
+std::vector<Result> processSource(const std::vector<cv::Mat>& source, 
     const std::unique_ptr<TaskInterface>& task, 
-    const std::unique_ptr<Triton>&  tritonClient, 
-    const TritonModelInfo& modelInfo)
+    const std::unique_ptr<Triton>&  tritonClient)
 {
-    std::vector<std::vector<uint8_t>> input_data(modelInfo.input_shapes.size());
-
-    for (size_t i = 0; i < modelInfo.input_shapes.size(); ++i) {
-        const auto& input_name = modelInfo.input_names[i];
-        const auto& input_shape = modelInfo.input_shapes[i];
-        const auto& input_format = modelInfo.input_formats[i];
-        const auto& input_type = modelInfo.input_types[i];
-
-        if (input_shape.size() >= 3) {
-            // This is likely an image input
-            const auto input_c = input_format == "FORMAT_NHWC" ? input_shape[3] : input_shape[1];
-            const auto input_h = input_format == "FORMAT_NHWC" ? input_shape[1] : input_shape[2];
-            const auto input_w = input_shape[2];
-            const auto input_size = cv::Size(input_w, input_h);
-
-            input_data[i] = task->preprocess(source, input_format, modelInfo.type1_, modelInfo.type3_,
-                                             input_c, input_size);
-        } else if (input_name == "orig_target_sizes" || input_name == "orig_size") {
-            // Handle original image size input
-            const auto input_h = input_format == "FORMAT_NHWC" ? input_shape[1] : input_shape[2];
-            const auto input_w = input_shape[2];
-            std::vector<int64_t> orig_sizes = {static_cast<int64_t>(input_h), static_cast<int64_t>(input_w)};
-            input_data[i] = std::vector<uint8_t>(reinterpret_cast<uint8_t*>(orig_sizes.data()),
-                                                 reinterpret_cast<uint8_t*>(orig_sizes.data()) + orig_sizes.size() * sizeof(int64_t));
-        } else {
-            // For other types of inputs, you might need to add more cases
-            // or use a default handling method
-            std::cerr << "Warning: Unhandled input " << input_name << ". Sending empty data." << std::endl;
-        }
-    }
-
+    const auto input_data = task->preprocess(source);
     auto [infer_results, infer_shapes] = tritonClient->infer(input_data);
-    return task->postprocess(cv::Size(source.cols, source.rows), infer_results, infer_shapes);
+    return task->postprocess(cv::Size(source.front().cols, source.front().rows), infer_results, infer_shapes);
 }
 
 
@@ -49,19 +18,19 @@ std::vector<Result> processSource(const cv::Mat& source,
 void ProcessImage(const std::string& sourceName,
     const std::unique_ptr<TaskInterface>& task, 
     const std::unique_ptr<Triton>&  tritonClient,
-    const TritonModelInfo& modelInfo, 
     const std::vector<std::string>& class_names) {
     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
     cv::Mat image = cv::imread(sourceName);
-
     if (image.empty()) {
         std::cerr << "Could not open or read the image: " << sourceName << std::endl;
         return;
-    }
+    }    
+    std::vector<cv::Mat> images = {image};
+
 
     auto start = std::chrono::steady_clock::now();
     // Call your processSource function here
-    std::vector<Result> predictions = processSource(image, task,  tritonClient, modelInfo);
+    std::vector<Result> predictions = processSource(images, task,  tritonClient);
     auto end = std::chrono::steady_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "Infer time: " << diff << " ms" << std::endl;
@@ -112,7 +81,6 @@ void ProcessImage(const std::string& sourceName,
 void ProcessVideo(const std::string& sourceName,
     const std::unique_ptr<TaskInterface>& task, 
     const std::unique_ptr<Triton>&  tritonClient, 
-    TritonModelInfo& modelInfo,  
      const std::vector<std::string>& class_names) {
     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
     cv::VideoCapture cap(sourceName);
@@ -139,7 +107,7 @@ void ProcessVideo(const std::string& sourceName,
     while (cap.read(frame)) {
         auto start = std::chrono::steady_clock::now();
         // Call your processSource function here
-        std::vector<Result> predictions = processSource(frame, task, tritonClient, modelInfo);
+        std::vector<Result> predictions = processSource(frame, task, tritonClient);
         auto end = std::chrono::steady_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         std::cout << "Infer time: " << diff << " ms" << std::endl;
@@ -333,9 +301,9 @@ int main(int argc, const char* argv[]) {
         std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
 
         if (IsImageFile(sourceName)) {
-            ProcessImage(sourceName, task, tritonClient, modelInfo, class_names);
+            ProcessImage(sourceName, task, tritonClient, class_names);
         } else {
-            ProcessVideo(sourceName, task, tritonClient, modelInfo, class_names);
+            ProcessVideo(sourceName, task, tritonClient, class_names);
         }
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

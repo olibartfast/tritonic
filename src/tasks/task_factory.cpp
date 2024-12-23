@@ -9,7 +9,7 @@ std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
     // {"yoloseg", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<YOLOSeg>(sizes); }},
     // {"yolo", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<YOLO>(sizes); }},
     // {"rtdetr", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<RTDetr>(sizes); }},
-    {"dfine", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<DFine>(sizes); }}
+    {"dfine", [](const TritonModelInfo& modelInfo) { return std::make_unique<DFine>(modelInfo); }}
 };
 
 std::unique_ptr<TaskInterface> TaskFactory::createTaskInstance(const std::string& modelType, const TritonModelInfo& modelInfo) {
@@ -20,7 +20,7 @@ std::unique_ptr<TaskInterface> TaskFactory::createTaskInstance(const std::string
 
         for (const auto& [key, creator] : taskCreators) {
             if (icontains(modelType, key)) {
-                return creator(input_sizes);
+                return creator(modelInfo);
             }
         }
 

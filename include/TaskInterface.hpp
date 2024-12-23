@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>
 #include <variant>
+#include "TritonModelInfo.hpp"
 
 struct Classification {
     // fields specific to Classification
@@ -28,8 +29,8 @@ using TensorElement = std::variant<float, int32_t, int64_t>;
 
 class TaskInterface {
 public:
-    TaskInterface(const std::vector<std::vector<int64_t>>& input_sizes)
-        : input_sizes_(input_sizes) {}
+    TaskInterface(const TritonModelInfo& modelInfo)
+        : model_info_(modelInfo) {}
 
     std::vector<std::string> readLabelNames(const std::string& fileName) 
     {
@@ -46,12 +47,11 @@ public:
         const std::vector<std::vector<TensorElement>>& infer_results, 
         const std::vector<std::vector<int64_t>>& infer_shapes) = 0;
     
-    virtual std::vector<uint8_t> preprocess(
-        const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
-                                    size_t img_channels, const cv::Size& img_size) = 0;
+    virtual std::vector<std::vector<uint8_t>> preprocess(
+        const std::vector<cv::Mat>& imgs) = 0;
 
     virtual ~TaskInterface() {}
 
 protected:
-    std::vector<std::vector<int64_t>> input_sizes_;
+    TritonModelInfo model_info_;
 };
