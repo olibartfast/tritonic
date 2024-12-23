@@ -1,10 +1,48 @@
 #include "YOLOv10.hpp"
 
-YOLOv10::YOLOv10(const std::vector<std::vector<int64_t>>& input_sizes) : TaskInterface(input_sizes) {
-    
+YOLOv10::YOLOv10(const TritonModelInfo& model_info) : TaskInterface(model_info) {
+    for(size_t i = 0; i < model_info.input_shapes.size(); i++)
+    {
+        if(model_info.input_shapes[i].size() >= 3)
+        { 
+            input_height_ = model_info.input_formats[i] == "FORMAT_NHWC" ? model_info.input_shapes[i][1] : model_info.input_shapes[i][2];
+            input_width_ = model_info.input_shapes[i][2];
+        }
+    }
 }
 
-std::vector<uint8_t> YOLOv10::preprocess(
+std::vector<std::vector<uint8_t>> YOLOv10::preprocess(const std::vector<cv::Mat>& imgs)
+{
+    if (imgs.empty()) {
+        throw std::runtime_error("Input image vector is empty");
+    }
+
+    cv::Mat img = imgs.front();
+    if (img.empty()) {
+        throw std::runtime_error("Input image is empty");
+    }
+    std::vector<std::vector<uint8_t>> input_data(model_info_.input_shapes.size());
+
+    for (size_t i = 0; i < model_info_.input_shapes.size(); ++i) {
+        const auto& input_name = model_info_.input_names[i];
+        const auto& input_shape = model_info_.input_shapes[i];
+        const auto& input_format = model_info_.input_formats[i];
+        const auto& input_type = model_info_.input_types[i];
+
+        if (input_shape.size() >= 3) {
+            // This is likely an image input
+            const auto input_size = cv::Size(input_width_, input_height_);
+            input_data[i] = preprocess_image(img, input_format, model_info_.type1_, model_info_.type3_, img.channels(), input_size);
+        } else {
+            // For other types of inputs, you might need to add more cases
+            // or use a default handling method
+            throw std::runtime_error("Unhandled input");
+        }
+    }
+    return input_data;
+}
+
+std::vector<uint8_t> YOLOv10::preprocess_image(
     const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
     size_t img_channels, const cv::Size& img_size) 
 {

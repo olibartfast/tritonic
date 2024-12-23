@@ -63,7 +63,7 @@ std::vector<uint8_t> DFine::preprocess_image(const cv::Mat& img, const std::stri
     {
         std::cerr << "unexpected total size of channels " << pos << ", expecting "
             << img_byte_size << std::endl;
-        exit(1);
+        throw std::runtime_error("unexpected total size of channels");
     }
 
     return input_data;
@@ -100,7 +100,7 @@ std::vector<std::vector<uint8_t>> DFine::preprocess(const std::vector<cv::Mat>& 
         } else {
             // For other types of inputs, you might need to add more cases
             // or use a default handling method
-            std::cerr << "Warning: Unhandled input " << input_name << ". Sending empty data." << std::endl;
+            throw std::runtime_error("Unhandled input");
         }
     }
     return input_data;
