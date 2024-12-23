@@ -24,12 +24,12 @@ struct InstanceSegmentation : public Detection {
 
 
 using Result = std::variant<Classification, Detection, InstanceSegmentation>;
+using TensorElement = std::variant<float, int32_t, int64_t>;
 
 class TaskInterface {
 public:
-
-    TaskInterface(int input_width = 0, int input_height = 0, int channels = 3)
-        : input_width_(input_width), input_height_(input_height), channels_(channels) {}
+    TaskInterface(const std::vector<std::vector<int64_t>>& input_sizes)
+        : input_sizes_(input_sizes) {}
 
     std::vector<std::string> readLabelNames(const std::string& fileName) 
     {
@@ -41,17 +41,17 @@ public:
         return classes;
     }    
 
-    virtual std::vector<Result> postprocess(const cv::Size& frame_size, const std::vector<std::vector<float>>& infer_results, 
+    virtual std::vector<Result> postprocess(
+        const cv::Size& frame_size, 
+        const std::vector<std::vector<TensorElement>>& infer_results, 
         const std::vector<std::vector<int64_t>>& infer_shapes) = 0;
     
     virtual std::vector<uint8_t> preprocess(
         const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
-        size_t img_channels, const cv::Size& img_size) = 0;
+                                    size_t img_channels, const cv::Size& img_size) = 0;
 
     virtual ~TaskInterface() {}
 
 protected:
-    int input_width_;
-    int input_height_;
-    int channels_;    
+    std::vector<std::vector<int64_t>> input_sizes_;
 };

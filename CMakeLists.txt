@@ -35,17 +35,22 @@ set(SOURCES
 )
 
 set(DETECTOR_SOURCES ${PROJECT_SOURCE_DIR}  
-  src/tasks/object_detection/src/YOLO.cpp 
-  src/tasks/object_detection/src/YoloNas.cpp
-  src/tasks/object_detection/src/YOLOv10.cpp )
+  # src/tasks/object_detection/src/YOLO.cpp 
+  # src/tasks/object_detection/src/YoloNas.cpp
+  # src/tasks/object_detection/src/YOLOv10.cpp 
+  # src/tasks/object_detection/src/RTDetr.cpp
+   src/tasks/object_detection/src/DFine.cpp
+  )
 
 set(CLASSIFIER_SOURCES ${PROJECT_SOURCE_DIR}  
-  src/tasks/classification/src/TensorflowClassifier.cpp
-  src/tasks/classification/src/TorchvisionClassifier.cpp)
+  # src/tasks/classification/src/TensorflowClassifier.cpp
+  # src/tasks/classification/src/TorchvisionClassifier.cpp
+  )
 
 set(INSTANCE_SEGMENTATION_SOURCES ${PROJECT_SOURCE_DIR}
-  src/tasks/instance_segmentation/src/YOLOSeg.cpp)
-  
+  # src/tasks/instance_segmentation/src/YOLOSeg.cpp
+  )
+
 # Set the source files
 set(TRITON_SOURCES ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp)
 

@@ -4,39 +4,6 @@ TorchvisionClassifier::TorchvisionClassifier(int input_width, int input_height, 
     : TaskInterface(input_width, input_height, channels) {
 }
 
-std::vector<Result> TorchvisionClassifier::postprocess(const cv::Size& frame_size, 
-                                                       const std::vector<std::vector<float>>& infer_results,
-                                                       const std::vector<std::vector<int64_t>>& infer_shapes) 
-{
-    // Create a mutable copy of the result vector since infer_results is const
-    std::vector<float> result = infer_results.front();
-    const auto shape = infer_shapes[0][1];
-    
-    // Now transform the mutable copy
-    std::transform(result.begin(), result.end(), result.begin(), 
-                  [](float val) { return std::exp(val); });
-
-    auto sum = std::accumulate(result.begin(), result.end(), 0.0);
-
-    // find top classes predicted by the model
-    std::vector<int> indices(shape);
-    std::iota(indices.begin(), indices.end(), 0); // generate sequence 0, 1, 2, 3, ..., 999
-    std::sort(indices.begin(), indices.end(), [&result](int i1, int i2) { return result[i1] > result[i2]; });
-
-    // print results
-    size_t i = 0;
-    std::vector<Result> results;
-    while (result[indices[i]] / sum > 0.005) {
-        Classification classification;
-        classification.class_id = indices[i];
-        classification.class_confidence = result[indices[i]] / sum;
-        ++i;
-        results.emplace_back(classification);
-    }
-
-    return results;
-}
-
 std::vector<uint8_t> TorchvisionClassifier::preprocess(const cv::Mat& img, const std::string& format, 
                                                        int img_type1, int img_type3, size_t img_channels, 
                                                        const cv::Size& img_size) 
@@ -70,4 +37,48 @@ std::vector<uint8_t> TorchvisionClassifier::preprocess(const cv::Mat& img, const
     }
 
     return input_data;
+}
+
+std::vector<Result> TorchvisionClassifier::postprocess(const cv::Size& frame_size, 
+                                                       const std::vector<std::vector<TensorElement>>& infer_results,
+                                                       const std::vector<std::vector<int64_t>>& infer_shapes) 
+{
+    if (infer_results.empty() || infer_shapes.empty()) {
+        throw std::runtime_error("Inference results or shapes are empty.");
+    }
+
+    const auto& input_result = infer_results.front();
+    const auto shape = infer_shapes[0][1];
+    
+    // Convert TensorElement to float
+    std::vector<float> result;
+    result.reserve(input_result.size());
+    for (const auto& elem : input_result) {
+        result.push_back(std::visit([](auto&& arg) -> float { return static_cast<float>(arg); }, elem));
+    }
+
+    // Apply exponential function
+    std::transform(result.begin(), result.end(), result.begin(), 
+                   [](float val) { return std::exp(val); });
+
+    auto sum = std::accumulate(result.begin(), result.end(), 0.0f);
+
+    // Find top classes predicted by the model
+    std::vector<int> indices(shape);
+    std::iota(indices.begin(), indices.end(), 0);
+    std::sort(indices.begin(), indices.end(), [&result](int i1, int i2) { return result[i1] > result[i2]; });
+
+    // Generate results
+    std::vector<Result> results;
+    for (size_t i = 0; i < shape; ++i) {
+        float confidence = result[indices[i]] / sum;
+        if (confidence <= 0.005f) break;
+
+        Classification classification;
+        classification.class_id = indices[i];
+        classification.class_confidence = confidence;
+        results.emplace_back(classification);
+    }
+
+    return results;
 }

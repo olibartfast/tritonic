@@ -1,20 +1,33 @@
 #include "task_factory.hpp"
 
-std::unique_ptr<TaskInterface> TaskFactory::createTaskInstance(const std::string& modelType, int input_width, int input_height, int channels) {
-    if (modelType == "torchvision-classifier") {
-        return std::make_unique<TorchvisionClassifier>(input_width, input_height, channels);
-    } else if (modelType == "tensorflow-classifier") {
-        return std::make_unique<TensorflowClassifier>(input_width, input_height, channels);
-    } else if (modelType.find("yolov10") != std::string::npos) {
-        return std::make_unique<YOLOv10>(input_width, input_height);
-    } else if (modelType.find("yolonas") != std::string::npos) {
-        return std::make_unique<YoloNas>(input_width, input_height);
-    } else if (modelType == "yoloseg") {
-        return std::make_unique<YOLOSeg>(input_width, input_height);
-    }else if (modelType.find("yolo") != std::string::npos) {
-        return std::make_unique<YOLO>(input_width, input_height); 
+// Define the map of task creators
+std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
+    // {"torchvision-classifier", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<TorchvisionClassifier>(sizes); }},
+    // {"tensorflow-classifier", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<TensorflowClassifier>(sizes); }},
+    // {"yolov10", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<YOLOv10>(sizes); }},
+    // {"yolonas", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<YoloNas>(sizes); }},
+    // {"yoloseg", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<YOLOSeg>(sizes); }},
+    // {"yolo", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<YOLO>(sizes); }},
+    // {"rtdetr", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<RTDetr>(sizes); }},
+    {"dfine", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<DFine>(sizes); }}
+};
+
+std::unique_ptr<TaskInterface> TaskFactory::createTaskInstance(const std::string& modelType, const TritonModelInfo& modelInfo) {
+    try 
+    {
+        const auto& input_sizes = modelInfo.input_shapes;
+        validateInputSizes(input_sizes);
+
+        for (const auto& [key, creator] : taskCreators) {
+            if (icontains(modelType, key)) {
+                return creator(input_sizes);
+            }
+        }
+
+        throw std::runtime_error("Unrecognized model type: " + modelType);
     }
-    else {
+    catch (const std::exception& e) {
+        std::cerr << "Error creating task instance: " << e.what() << std::endl;
         return nullptr;
     }
 }

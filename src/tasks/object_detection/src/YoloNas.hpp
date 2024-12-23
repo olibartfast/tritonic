@@ -12,7 +12,7 @@ public:
         size_t img_channels, const cv::Size& img_size) override;
    
     // Override the postprocess function
-    std::vector<Result> postprocess(const cv::Size& frame_size, const std::vector<std::vector<float>>& infer_results, 
+    std::vector<Result> postprocess(const cv::Size& frame_size, const std::vector<std::vector<TensorElement>>& infer_results, 
     const std::vector<std::vector<int64_t>>& infer_shapes) override;
     
 private:

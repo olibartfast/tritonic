@@ -9,9 +9,36 @@ std::vector<Result> processSource(const cv::Mat& source,
     const std::unique_ptr<Triton>&  tritonClient, 
     const TritonModelInfo& modelInfo)
 {
- 
-    std::vector<uint8_t> input_data = task->preprocess(source, modelInfo.input_format_, modelInfo.type1_, modelInfo.type3_,
-        modelInfo.input_c_, cv::Size(modelInfo.input_w_, modelInfo.input_h_));
+    std::vector<std::vector<uint8_t>> input_data(modelInfo.input_shapes.size());
+
+    for (size_t i = 0; i < modelInfo.input_shapes.size(); ++i) {
+        const auto& input_name = modelInfo.input_names[i];
+        const auto& input_shape = modelInfo.input_shapes[i];
+        const auto& input_format = modelInfo.input_formats[i];
+        const auto& input_type = modelInfo.input_types[i];
+
+        if (input_shape.size() >= 3) {
+            // This is likely an image input
+            const auto input_c = input_format == "FORMAT_NHWC" ? input_shape[3] : input_shape[1];
+            const auto input_h = input_format == "FORMAT_NHWC" ? input_shape[1] : input_shape[2];
+            const auto input_w = input_shape[2];
+            const auto input_size = cv::Size(input_w, input_h);
+
+            input_data[i] = task->preprocess(source, input_format, modelInfo.type1_, modelInfo.type3_,
+                                             input_c, input_size);
+        } else if (input_name == "orig_target_sizes" || input_name == "orig_size") {
+            // Handle original image size input
+            const auto input_h = input_format == "FORMAT_NHWC" ? input_shape[1] : input_shape[2];
+            const auto input_w = input_shape[2];
+            std::vector<int64_t> orig_sizes = {static_cast<int64_t>(input_h), static_cast<int64_t>(input_w)};
+            input_data[i] = std::vector<uint8_t>(reinterpret_cast<uint8_t*>(orig_sizes.data()),
+                                                 reinterpret_cast<uint8_t*>(orig_sizes.data()) + orig_sizes.size() * sizeof(int64_t));
+        } else {
+            // For other types of inputs, you might need to add more cases
+            // or use a default handling method
+            std::cerr << "Warning: Unhandled input " << input_name << ". Sending empty data." << std::endl;
+        }
+    }
 
     auto [infer_results, infer_shapes] = tritonClient->infer(input_data);
     return task->postprocess(cv::Size(source.cols, source.rows), infer_results, infer_shapes);
@@ -179,7 +206,7 @@ void ProcessVideo(const std::string& sourceName,
 
 static const std::string keys =
     "{ help h   | | Print help message. }"
-    "{ model_type mt | yolo11 | yolo version used i.e yolov5, yolov6, yolov7, yolov8, yolov9, yolov10, yolo11, yolonas, yoloseg, torchvision-classifier}"
+    "{ model_type mt | yolo11 | yolo version used i.e yolov5 -> yolov10, yolo11, yolonas, yoloseg, dfine, torchvision-classifier}"
     "{ model m | yolo11x_onnx | model name of folder in triton }"
     "{ task_type tt | | detection, classification, instance_segmentation}"
     "{ source s | data/dog.jpg | path to video or image}"
@@ -189,7 +216,7 @@ static const std::string keys =
     "{ protocol pt | grpc | Protocol type, grpc or http}"
     "{ labelsFile l | ../coco.names | path to coco labels names}"
     "{ batch b | 1 | Batch size}"
-    "{ input_sizes is | | Input sizes (channels width height)}";
+    "{ input_sizes is | | Input sizes for each model input. Format: CHW;CHW;... (e.g., '3,224,224' for single input or '3,224,224;3,224,224' for two inputs, '3,640,640;2' for rtdetr/dfine models) }";
     
 int main(int argc, const char* argv[]) {
     try {
@@ -227,9 +254,33 @@ int main(int argc, const char* argv[]) {
             throw std::runtime_error("Source file " + sourceName + " does not exist");
         }
 
-        std::istringstream input_sizes_stream(parser.get<std::string>("input_sizes"));
-        size_t input_size_c, input_size_w, input_size_h;
-        input_sizes_stream >> input_size_c >> input_size_w >> input_size_h;
+        std::vector<std::vector<int64_t>> input_sizes;
+        if (parser.has("input_sizes")) {
+            std::string sizes_str = parser.get<std::string>("input_sizes");
+            std::istringstream sizes_stream(sizes_str);
+            std::string size;
+            while (std::getline(sizes_stream, size, ';')) {
+                std::vector<int64_t> dims;
+                std::istringstream dim_stream(size);
+                std::string dim;
+                while (std::getline(dim_stream, dim, ',')) {
+                    dims.push_back(std::stoll(dim));
+                }
+                input_sizes.push_back(dims);
+            }
+
+            // Print parsed input information
+            std::cout << "Parsed input sizes:" << std::endl;
+            for (size_t i = 0; i < input_sizes.size(); ++i) {
+                std::cout << "Input " << i << " - Shape: ";
+                for (const auto& dim : input_sizes[i]) {
+                    std::cout << dim << " ";
+                }
+                std::cout << std::endl;
+            }
+        } else {
+            std::cout << "No input sizes provided. Will use default model configuration." << std::endl;
+        }
 
         std::cout << "Chosen Parameters:" << std::endl;
         std::cout << "task_type (tt): " << parser.get<std::string>("task_type") << std::endl;
@@ -254,38 +305,28 @@ int main(int argc, const char* argv[]) {
             std::exit(1);
         }
 
-        std::vector<int64_t> input_sizes;
-        if (parser.has("input_sizes")) {
-            std::cout << "input_size_c: " << input_size_c << std::endl;
-            std::cout << "input_size_w: " << input_size_w << std::endl;
-            std::cout << "input_size_h: " << input_size_h << std::endl;
-            input_sizes.push_back(batch_size);
-            input_sizes.push_back(input_size_c);
-            input_sizes.push_back(input_size_w);
-            input_sizes.push_back(input_size_h);
-        }
-
    
 
         // Create Triton client
         std::unique_ptr<Triton> tritonClient = std::make_unique<Triton>(url, protocol, modelName);
         tritonClient->createTritonClient();
 
-        TritonModelInfo modelInfo = tritonClient->getModelInfo(modelName, serverAddress, {batch_size, input_size_c, input_size_w, input_size_h});
+        TritonModelInfo modelInfo = tritonClient->getModelInfo(modelName, serverAddress, input_sizes);
 
-        std::unique_ptr<TaskInterface> task;
-        if (taskType == "detection") {
-            task = TaskFactory::createTaskInstance(modelType, modelInfo.input_w_, modelInfo.input_h_);
-        } else if (taskType == "classification") {
-            task = TaskFactory::createTaskInstance(modelType, modelInfo.input_w_, modelInfo.input_h_, modelInfo.input_c_);
-        } else if (taskType == "instance_segmentation") {
-            task = TaskFactory::createTaskInstance(modelType, modelInfo.input_w_, modelInfo.input_h_);
-        } else {
-            throw std::invalid_argument("Invalid task type specified: " + taskType);
-        }
+
+        
+        // Use the new TaskFactory with input_sizes
+        std::unique_ptr<TaskInterface> task = TaskFactory::createTaskInstance(modelType, modelInfo);
 
         if (!task) {
-            throw std::runtime_error("Invalid model type specified: " + modelType);
+            throw std::runtime_error("Failed to create task instance");
+        }
+
+        // Validate that the created task matches the specified task type
+        if ((taskType == "detection" && !dynamic_cast<Detection*>(task.get()) && !dynamic_cast<DFine*>(task.get())) ||
+            (taskType == "classification" && !dynamic_cast<Classification*>(task.get())) ||
+            (taskType == "instance_segmentation" && !dynamic_cast<InstanceSegmentation*>(task.get()))) {
+            throw std::runtime_error("Created task does not match specified task type: " + taskType);
         }
 
         const auto class_names = task->readLabelNames(labelsFile);

@@ -1,53 +1,8 @@
 #include "YOLOv10.hpp"
 
-YOLOv10::YOLOv10(int input_width, int input_height) : TaskInterface(input_width, input_height) {
-    input_width_ = input_width;
-    input_height_ = input_height;
-}
-
-std::vector<Result> YOLOv10::postprocess(const cv::Size& frame_size, const std::vector<std::vector<float>>& infer_results, 
-const std::vector<std::vector<int64_t>>& infer_shapes) 
-{
+YOLOv10::YOLOv10(const std::vector<std::vector<int64_t>>& input_sizes) : TaskInterface(input_sizes) {
     
-    std::vector<Result> detections;
-    std::vector<cv::Rect> boxes;
-    std::vector<float> confs;
-    std::vector<int> classIds;
-    const auto confThreshold = 0.5f;
-    const auto& infer_shape = infer_shapes.front(); 
-    auto infer_result = infer_results.front(); 
-
-
-    int rows = infer_shape[1]; // 300
-
-    for (int i = 0; i < rows; ++i) 
-    {
-        if (i*infer_shape[2] + 4 >= infer_result.size()) {
-            break;
-        }
-
-        float score = infer_result[i*infer_shape[2] + 4];
-        if (score >= confThreshold) 
-        {
-            Detection d;
-            float label = infer_result[i*infer_shape[2] + 5];
-            d.class_id = static_cast<int>(label);
-            d.class_confidence = score;
-            float r_w = (frame_size.width * 1.0) / input_width_;
-            float r_h = (frame_size.height * 1.0) / input_height_ ;
-
-            float x1 = infer_result[i*infer_shape[2] + 0] * r_w;
-            float y1 = infer_result[i*infer_shape[2] + 1] * r_h;
-            float x2 = infer_result[i*infer_shape[2] + 2] * r_w;
-            float y2 = infer_result[i*infer_shape[2] + 3] * r_h;
-
-            d.bbox = cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2));
-            detections.emplace_back(d);
-        }
-    }
-    return detections; 
 }
-
 
 std::vector<uint8_t> YOLOv10::preprocess(
     const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
@@ -90,4 +45,47 @@ std::vector<uint8_t> YOLOv10::preprocess(
     }
 
     return input_data;
+}
+
+
+std::vector<Result> YOLOv10::postprocess(const cv::Size& frame_size, const std::vector<std::vector<TensorElement>>& infer_results, 
+const std::vector<std::vector<int64_t>>& infer_shapes) 
+{
+    std::vector<Result> detections;
+    const auto confThreshold = 0.5f;
+    const auto& infer_shape = infer_shapes.front(); 
+    const auto& infer_result = infer_results.front(); 
+
+    auto get_float = [](const TensorElement& elem) {
+        return std::visit([](auto&& arg) -> float { return static_cast<float>(arg); }, elem);
+    };
+
+    int rows = infer_shape[1]; // 300
+
+    for (int i = 0; i < rows; ++i) 
+    {
+        if (i*infer_shape[2] + 5 >= infer_result.size()) {
+            break;
+        }
+
+        float score = get_float(infer_result[i*infer_shape[2] + 4]);
+        if (score >= confThreshold) 
+        {
+            Detection d;
+            float label = get_float(infer_result[i*infer_shape[2] + 5]);
+            d.class_id = static_cast<int>(label);
+            d.class_confidence = score;
+            float r_w = (frame_size.width * 1.0) / input_width_;
+            float r_h = (frame_size.height * 1.0) / input_height_;
+
+            float x1 = get_float(infer_result[i*infer_shape[2] + 0]) * r_w;
+            float y1 = get_float(infer_result[i*infer_shape[2] + 1]) * r_h;
+            float x2 = get_float(infer_result[i*infer_shape[2] + 2]) * r_w;
+            float y2 = get_float(infer_result[i*infer_shape[2] + 3]) * r_h;
+
+            d.bbox = cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2));
+            detections.emplace_back(d);
+        }
+    }
+    return detections; 
 }

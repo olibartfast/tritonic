@@ -33,10 +33,9 @@ std::vector<uint8_t> TensorflowClassifier::preprocess(const cv::Mat& img, const 
     return input_data;
 }
 
-
 std::vector<Result> TensorflowClassifier::postprocess(const cv::Size& frame_size,
-                                                       const std::vector<std::vector<float>>& infer_results,
-                                                       const std::vector<std::vector<int64_t>>& infer_shapes) {
+                                                      const std::vector<std::vector<TensorElement>>& infer_results,
+                                                      const std::vector<std::vector<int64_t>>& infer_shapes) {
     // Check if the input vectors are not empty
     if (infer_results.empty() || infer_shapes.empty()) {
         throw std::runtime_error("Inference results or shapes are empty.");
@@ -46,24 +45,29 @@ std::vector<Result> TensorflowClassifier::postprocess(const cv::Size& frame_size
     const auto& results = infer_results.front();
     const auto shape = infer_shapes[0][1];
 
-    // Define the confidence threshold and top-k values
-    const auto confThreshold = 0.5f;
-    size_t i = 0;
-    std::vector<int> indices(shape);
-    std::iota(indices.begin(), indices.end(), 0); // generate sequence 0, 1, 2, 3, ..., 999
-    std::sort(indices.begin(), indices.end(), [&results](int i1, int i2) { return results[i1] > results[i2]; });
+    // Define the confidence threshold
+    const float threshold = 0.5f;
 
-    // Extract top-k results with confidence greater than the threshold
-    float threshold = 0.5f;
+    // Create a vector of indices and sort them based on the result values
+    std::vector<int> indices(shape);
+    std::iota(indices.begin(), indices.end(), 0);
+    std::sort(indices.begin(), indices.end(), [&results](int i1, int i2) {
+        return std::visit([](auto&& arg1, auto&& arg2) { return arg1 > arg2; },
+                          results[i1], results[i2]);
+    });
+
+    // Extract results with confidence greater than the threshold
     std::vector<Result> classification_results;
-    while (results[indices[i]] > threshold) {
+    for (size_t i = 0; i < shape; ++i) {
+        float confidence = std::visit([](auto&& arg) -> float { return static_cast<float>(arg); },
+                                      results[indices[i]]);
+        if (confidence <= threshold) break;
+
         Classification classification;
         classification.class_id = indices[i];
-        classification.class_confidence = results[indices[i]];
-        ++i;
+        classification.class_confidence = confidence;
         classification_results.emplace_back(classification);
     }
 
     return classification_results;
 }
-

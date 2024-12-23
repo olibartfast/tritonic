@@ -32,23 +32,29 @@ cv::Rect YOLO::get_rect(const cv::Size& imgSz, const std::vector<float>& bbox)
     }
     return cv::Rect(l, t, r - l, b - t);
 }
-std::tuple<float, int> YOLO::getBestClassInfo(const std::vector<float>& data, size_t startIdx, const size_t& numClasses)
+
+std::tuple<float, int> YOLO::getBestClassInfo(const std::vector<TensorElement>& data, size_t startIdx, const size_t& numClasses)
 {
-    int idxMax = 5;
+    int idxMax = 0;
     float maxConf = 0;
 
-    for (int i = 5; i < numClasses + 5; i++)
+    auto get_float = [](const TensorElement& elem) {
+        return std::visit([](auto&& arg) -> float { return static_cast<float>(arg); }, elem);
+    };
+
+    for (size_t i = 5; i < numClasses + 5; i++)
     {
-        if (data[startIdx + i] > maxConf)
+        float conf = get_float(data[startIdx + i]);
+        if (conf > maxConf)
         {
-            maxConf = data[startIdx + i];
+            maxConf = conf;
             idxMax = i - 5;
         }
     }
     return std::make_tuple(maxConf, idxMax);
 }
 
-std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vector<std::vector<float>>& infer_results, 
+std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vector<std::vector<TensorElement>>& infer_results, 
     const std::vector<std::vector<int64_t>>& infer_shapes) 
 {
     std::vector<Result> detections;
@@ -57,8 +63,12 @@ std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vec
     std::vector<int> classIds;
     const auto confThreshold = 0.5f;
     const auto iouThreshold = 0.4f;
-    const auto infer_shape = infer_shapes.front(); 
+    const auto& infer_shape = infer_shapes.front(); 
     const auto& infer_result = infer_results.front(); 
+
+    auto get_float = [](const TensorElement& elem) {
+        return std::visit([](auto&& arg) -> float { return static_cast<float>(arg); }, elem);
+    };
 
     // yolov5/v6/v7
     if(infer_shape[2] < infer_shape[1])
@@ -68,12 +78,16 @@ std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vec
         
         for (size_t i = 0; i < infer_result.size(); i += stride)
         {
-            float clsConf = infer_result[i + 4];
+            float clsConf = get_float(infer_result[i + 4]);
             if (clsConf > confThreshold)
             {
                 auto [objConf, classId] = getBestClassInfo(infer_result, i, numClasses);
                 
-                std::vector<float> box_coords(infer_result.begin() + i, infer_result.begin() + i + 4);
+                std::vector<float> box_coords;
+                box_coords.reserve(4);
+                for (int j = 0; j < 4; ++j) {
+                    box_coords.push_back(get_float(infer_result[i + j]));
+                }
                 boxes.emplace_back(get_rect(frame_size, box_coords));
                 
                 float confidence = clsConf * objConf;
@@ -90,7 +104,7 @@ std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vec
         // Construct output matrix
         for (int i = 0; i < infer_shape[1]; i++) {
             for (int j = 0; j < infer_shape[2]; j++) {
-                output[i][j] = infer_result[i * infer_shape[2] + j];
+                output[i][j] = get_float(infer_result[i * infer_shape[2] + j]);
             }
         }
 
@@ -100,7 +114,7 @@ std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vec
             for (int j = 0; j < infer_shape[2]; j++) {
                 transposedOutput[j][i] = output[i][j];
             }
-                }
+        }
 
         // Get all the YOLO proposals
         for (int i = 0; i < infer_shape[2]; i++) {
@@ -128,11 +142,9 @@ std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vec
         d.class_confidence = confs[idx];
         d.class_id = classIds[idx];
         detections.emplace_back(d);
-
     }        
     return detections; 
 }
-
 
 std::vector<uint8_t> YOLO::preprocess(
     const cv::Mat& img, const std::string& format, int img_type1, int img_type3,

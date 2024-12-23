@@ -46,7 +46,7 @@ std::vector<uint8_t> YoloNas::preprocess(
     return input_data;
 }
 
-std::vector<Result> YoloNas::postprocess(const cv::Size& frame_size, const std::vector<std::vector<float>>& infer_results, 
+std::vector<Result> YoloNas::postprocess(const cv::Size& frame_size, const std::vector<std::vector<TensorElement>>& infer_results, 
 const std::vector<std::vector<int64_t>>& infer_shapes) 
 {
     std::vector<Result> detections;
@@ -55,23 +55,31 @@ const std::vector<std::vector<int64_t>>& infer_shapes)
     std::vector<int> classIds;
     const auto confThreshold = 0.5f;
     const auto iouThreshold = 0.4f;
-    const float* scores_result = infer_results[0].data();
-    const float* detection_result = infer_results[1].data();
-    const auto scores_shape = infer_shapes[0];
-    const auto detection_shape = infer_shapes[1];
+    const auto& scores_result = infer_results[0];
+    const auto& detection_result = infer_results[1];
+    const auto& scores_shape = infer_shapes[0];
+    const auto& detection_shape = infer_shapes[1];
     
     const int numClasses = scores_shape[2];
     const auto rows = detection_shape[1];
     const auto boxes_size = detection_shape[2];
 
+    auto get_float = [](const TensorElement& elem) {
+        return std::visit([](auto&& arg) -> float { return static_cast<float>(arg); }, elem);
+    };
+
     for (int i = 0; i < rows; ++i) 
     {
-        // Create Mat directly from const data using CV_MAT_CONT_FLAG
-        cv::Mat scores(1, numClasses, CV_32FC1 | CV_MAT_CONT_FLAG, (void*)scores_result);
+        std::vector<float> scores(numClasses);
+        for (int j = 0; j < numClasses; ++j) {
+            scores[j] = get_float(scores_result[i * numClasses + j]);
+        }
+
+        cv::Mat scores_mat(1, numClasses, CV_32FC1, scores.data());
         
         cv::Point class_id;
         double maxClassScore;
-        minMaxLoc(scores, 0, &maxClassScore, 0, &class_id);
+        cv::minMaxLoc(scores_mat, nullptr, &maxClassScore, nullptr, &class_id);
         
         if (maxClassScore >= confThreshold) 
         {
@@ -80,15 +88,15 @@ const std::vector<std::vector<int64_t>>& infer_shapes)
             float r_w = (frame_size.width * 1.0) / input_width_;
             float r_h = (frame_size.height * 1.0) / input_height_;
             
-            int left = static_cast<int>(detection_result[0] * r_w);
-            int top = static_cast<int>(detection_result[1] * r_h);
-            int width = static_cast<int>((detection_result[2] - detection_result[0]) * r_w);
-            int height = static_cast<int>((detection_result[3] - detection_result[1]) * r_h);
-            boxes.push_back(cv::Rect(left, top, width, height));
+            float left = get_float(detection_result[i * boxes_size]) * r_w;
+            float top = get_float(detection_result[i * boxes_size + 1]) * r_h;
+            float right = get_float(detection_result[i * boxes_size + 2]) * r_w;
+            float bottom = get_float(detection_result[i * boxes_size + 3]) * r_h;
+
+            int width = static_cast<int>(right - left);
+            int height = static_cast<int>(bottom - top);
+            boxes.push_back(cv::Rect(static_cast<int>(left), static_cast<int>(top), width, height));
         }
-        // Jump to the next column
-        scores_result += numClasses;
-        detection_result += boxes_size;
     }      
 
     std::vector<int> indices;
