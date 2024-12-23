@@ -1,4 +1,6 @@
 #include "task_factory.hpp"
+#include "DFine.hpp"
+#include "RTDetr.hpp"
 
 // Define the map of task creators
 std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
@@ -8,7 +10,7 @@ std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
     // {"yolonas", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<YoloNas>(sizes); }},
     // {"yoloseg", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<YOLOSeg>(sizes); }},
     // {"yolo", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<YOLO>(sizes); }},
-    // {"rtdetr", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<RTDetr>(sizes); }},
+    {"rtdetr", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetr>(modelInfo); }},
     {"dfine", [](const TritonModelInfo& modelInfo) { return std::make_unique<DFine>(modelInfo); }}
 };
 
