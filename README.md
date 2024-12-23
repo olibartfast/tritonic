@@ -4,7 +4,7 @@ This C++ application enables machine learning tasks, such as object detection an
 
 ### Supported(Tested) Models
 
-- **Object Detection**: YOLOv5, YOLOv6, YOLOv7, YOLOv8, YOLOv9, YOLOv10, YOLO11, YOLO-NAS
+- **Object Detection**: YOLOv5, YOLOv6, YOLOv7, YOLOv8, YOLOv9, YOLOv10, YOLO11, YOLO-NAS, RTDETR, D-FINE
 - **Instance Segmentation**: YOLOv5, YOLOv8, YOLO11
 - **Classification**: Torchvision API-based models, Tensorflow-Keras API(saved_model export)
 

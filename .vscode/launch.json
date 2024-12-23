@@ -108,7 +108,22 @@
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-            },        
+        },     
+        {
+            "name": "rtdetr_r18vd_6x_coco onnx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/computer-vision-triton-cpp-client",
+            "args": ["--source=data/bus.jpg", 
+            "--serverAddress=localhost",
+            "--labelsFile=labels/coco.txt",
+            "--model=rtdetr_r18vd_6x_coco",
+            "--model_type=rtdetr",
+            "--task_type=detection"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        }, 
 
     ]
 
