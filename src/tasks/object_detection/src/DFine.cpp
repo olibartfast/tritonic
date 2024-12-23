@@ -10,8 +10,19 @@ DFine::DFine(const TritonModelInfo& model_info) : TaskInterface(model_info) {
             input_width_ = model_info.input_shapes[i][2];
         }
     }    
-    if (input_height_ == 0 || input_width_ == 0)
+    if (input_channels_ == 0 || input_height_ == 0 || input_width_ == 0)
         throw std::invalid_argument("Not initialized input width/height");
+
+     for (size_t i = 0; i < model_info.output_names.size(); ++i) {
+        if (model_info.output_names[i] == "scores") scores_idx_ = i;
+        else if (model_info.output_names[i] == "boxes") boxes_idx_ = i;
+        else if (model_info.output_names[i] == "labels") labels_idx_ = i;
+    }
+
+    // Check if all indices are set
+    if (!scores_idx_.has_value() || !boxes_idx_.has_value() || !labels_idx_.has_value()) {
+        throw std::runtime_error("Not all required output indices were set in the model info");
+    }       
 }   
 
 
@@ -99,18 +110,17 @@ std::vector<std::vector<uint8_t>> DFine::preprocess(const std::vector<cv::Mat>& 
 std::vector<Result> DFine::postprocess(const cv::Size& frame_size, 
                                        const std::vector<std::vector<TensorElement>>& infer_results,
                                        const std::vector<std::vector<int64_t>>& infer_shapes) {
-    const size_t labels_idx = 2, boxes_idx = 1, scores_idx = 0;
+    
+
+
     const float confThreshold = 0.5f, iouThreshold = 0.4f;
 
-    const auto& scores = infer_results[scores_idx];
-    const auto& boxes = infer_results[boxes_idx];
-    const auto& labels = infer_results[labels_idx];
+    const auto& scores = infer_results[scores_idx_.value()];
+    const auto& boxes = infer_results[boxes_idx_.value()];
+    const auto& labels = infer_results[labels_idx_.value()];
 
-    if (infer_shapes[scores_idx].size() != 2 || infer_shapes[boxes_idx].size() != 3 || infer_shapes[labels_idx].size() != 2) {
-        throw std::runtime_error("Unexpected shape for inference results");
-    }
 
-    int rows = infer_shapes[scores_idx][1]; // Assuming this is 300
+    int rows = infer_shapes[scores_idx_.value()][1]; // Assuming this is 300
 
     std::vector<int> classIds;
     std::vector<float> confidences;

@@ -1,6 +1,8 @@
 #pragma once
 #include "common.hpp"
 #include "TaskInterface.hpp"
+#include <optional>
+#include <stdexcept>
 
 class DFine : public TaskInterface {
 public:
@@ -20,4 +22,8 @@ private:
     int input_width_;
     int input_height_;
     int input_channels_;
+
+    std::optional<size_t> scores_idx_;
+    std::optional<size_t> boxes_idx_;
+    std::optional<size_t> labels_idx_;
 };
