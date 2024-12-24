@@ -8,8 +8,8 @@
 
 class YOLOSeg : public YOLO{
 public:
-    YOLOSeg(int input_width, int input_height)
-        : YOLO(input_width, input_height) {
+    YOLOSeg(const TritonModelInfo& model_info)
+        : YOLO(model_info) {
     }
 
     std::vector<Result> postprocess(const cv::Size& frame_size, const std::vector<std::vector<TensorElement>>& infer_results, 

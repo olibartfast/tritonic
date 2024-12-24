@@ -42,7 +42,7 @@
             "args": ["--source=data/person.jpg", 
             "--serverAddress=localhost",
             "--labelsFile=labels/coco.txt",
-            "--model=yolov5x-seg_onnx ",
+            "--model=yolov5x-seg_onnx",
             "--model_type=yoloseg",
             "--task_type=instance_segmentation"
             ],

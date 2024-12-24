@@ -6,19 +6,20 @@
 #include "YOLOv10.hpp"
 // #include "TorchvisionClassifier.hpp"
 // #include "TensorflowClassifier.hpp"
-// #include "YOLOSeg.hpp"
+#include "YOLOSeg.hpp"
 
 // Define the map of task creators
 std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
     // {"torchvision-classifier", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<TorchvisionClassifier>(sizes); }},
     // {"tensorflow-classifier", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<TensorflowClassifier>(sizes); }},
-    // {"yoloseg", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<YOLOSeg>(sizes); }},
+    {"yoloseg", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLOSeg>(modelInfo); }},
     {"yolonas", [](const TritonModelInfo& modelInfo) { return std::make_unique<YoloNas>(modelInfo); }},
     {"yolov5", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLO>(modelInfo); }},
     {"yolov6", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLO>(modelInfo); }},
     {"yolov7", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLO>(modelInfo); }},
     {"yolov8", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLO>(modelInfo); }},
     {"yolov9", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLO>(modelInfo); }},
+    {"yolo11", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLO>(modelInfo); }},
     {"yolov10", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLOv10>(modelInfo); }},
     {"rtdetr", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetr>(modelInfo); }},
     {"dfine", [](const TritonModelInfo& modelInfo) { return std::make_unique<DFine>(modelInfo); }}

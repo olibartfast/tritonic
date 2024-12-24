@@ -48,7 +48,7 @@ set(CLASSIFIER_SOURCES ${PROJECT_SOURCE_DIR}
   )
 
 set(INSTANCE_SEGMENTATION_SOURCES ${PROJECT_SOURCE_DIR}
-  # src/tasks/instance_segmentation/src/YOLOSeg.cpp
+   src/tasks/instance_segmentation/src/YOLOSeg.cpp
   )
 
 # Set the source files

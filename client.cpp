@@ -18,7 +18,7 @@ std::vector<Result> processSource(const std::vector<cv::Mat>& source,
 void ProcessImage(const std::string& sourceName,
     const std::unique_ptr<TaskInterface>& task, 
     const std::unique_ptr<Triton>&  tritonClient,
-    const std::vector<std::string>& class_names) {
+    const std::vector<std::string>& class_names, const std::string& model_name) {
     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
     cv::Mat image = cv::imread(sourceName);
     if (image.empty()) {
@@ -72,7 +72,7 @@ void ProcessImage(const std::string& sourceName,
         }
     }    
 
-    std::string processedFrameFilename = sourceDir + "/processed_frame.jpg";
+    std::string processedFrameFilename = sourceDir + "/processed_frame_" + model_name + ".jpg";
     std::cout << "Saving frame to: " << processedFrameFilename << std::endl;
     cv::imwrite(processedFrameFilename, image);
 }
@@ -294,7 +294,7 @@ int main(int argc, const char* argv[]) {
         std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
 
         if (IsImageFile(sourceName)) {
-            ProcessImage(sourceName, task, tritonClient, class_names);
+            ProcessImage(sourceName, task, tritonClient, class_names, modelName);
         } else {
             ProcessVideo(sourceName, task, tritonClient, class_names);
         }
