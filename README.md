@@ -143,7 +143,7 @@ docker run --gpus=1 --rm \
     --labelsFile=/path/to/labels/coco.names \
     --protocol=<http or grpc> \
     --serverAddress=<triton-ip> \
-    --port=<8000 for http, 8001 for grpc>
+    --port=<8000 for http, 8001 for grpc> \
 ```
 
 For dynamic input sizes:
@@ -160,6 +160,9 @@ For dynamic input sizes:
 - **`<http or grpc>`**: Communication protocol (`http` or `grpc`)
 - **`<triton-ip>`**: IP address of your Triton server
 - **`<8000 for http, 8001 for grpc>`**: Port number
+- **`<batch or b >`**: Batch size, currently only 1 is supported
+- **`<input_sizes or -is>`**: Input sizes input for dynamic axes. Comma separated list format: CHW;CHW;... (e.g., '3,224,224' for single input or '3,224,224;3,224,224' for two inputs, '3,640,640;2' for rtdetr/dfine models)
+
 
 To view all available parameters, run:
 ```bash
