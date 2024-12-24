@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>
 #include <variant>
+#include <stdexcept>
 #include "TritonModelInfo.hpp"
 
 struct Classification {
@@ -23,25 +24,28 @@ struct InstanceSegmentation : public Detection {
     int mask_width;   // Store mask width
 };
 
-
 using Result = std::variant<Classification, Detection, InstanceSegmentation>;
 using TensorElement = std::variant<float, int32_t, int64_t>;
+
+class InputDimensionError : public std::runtime_error {
+public:
+    InputDimensionError(const std::string& what_arg) : std::runtime_error(what_arg) {}
+};
 
 class TaskInterface {
 public:
     TaskInterface(const TritonModelInfo& modelInfo)
-        : model_info_(modelInfo) {}
+        : model_info_(modelInfo) {
+        std::tie(input_width_, input_height_, input_channels_) = initializeInputDimensions(model_info_);
+        
+        if (input_width_ <= 0 || input_height_ <= 0 || input_channels_ <= 0) {
+            throw InputDimensionError("Invalid input dimensions");
+        }
+    }
 
-    std::vector<std::string> readLabelNames(const std::string& fileName) 
-    {
-        std::vector<std::string> classes;
-        std::ifstream ifs(fileName.c_str());
-        std::string line;
-        while (getline(ifs, line))
-            classes.push_back(line);
-        return classes;
-    }    
+    virtual ~TaskInterface() = default;
 
+    // Pure virtual functions
     virtual std::vector<Result> postprocess(
         const cv::Size& frame_size, 
         const std::vector<std::vector<TensorElement>>& infer_results, 
@@ -50,8 +54,33 @@ public:
     virtual std::vector<std::vector<uint8_t>> preprocess(
         const std::vector<cv::Mat>& imgs) = 0;
 
-    virtual ~TaskInterface() {}
+    // Utility functions
+    std::vector<std::string> readLabelNames(const std::string& fileName) const {
+        std::vector<std::string> classes;
+        std::ifstream ifs(fileName.c_str());
+        std::string line;
+        while (getline(ifs, line)) {
+            classes.push_back(line);
+        }
+        return classes;
+    }    
 
 protected:
     TritonModelInfo model_info_;
+    int input_width_ = 0;
+    int input_height_ = 0;
+    int input_channels_ = 0;    
+
+private:
+    std::tuple<int, int, int> initializeInputDimensions(const TritonModelInfo& model_info) const {
+        for (size_t i = 0; i < model_info.input_shapes.size(); i++) {
+            if (model_info.input_shapes[i].size() >= 3) {
+                int channels = model_info.input_formats[i] == "FORMAT_NHWC" ? model_info.input_shapes[i][3] : model_info.input_shapes[i][1];
+                int height = model_info.input_formats[i] == "FORMAT_NHWC" ? model_info.input_shapes[i][1] : model_info.input_shapes[i][2];
+                int width = model_info.input_shapes[i][2];
+                return std::make_tuple(width, height, channels);
+            }
+        }
+        throw InputDimensionError("No valid input shape found");
+    }
 };
