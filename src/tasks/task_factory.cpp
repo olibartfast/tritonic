@@ -4,14 +4,14 @@
 #include "YOLO.hpp"
 #include "YoloNas.hpp"
 #include "YOLOv10.hpp"
-// #include "TorchvisionClassifier.hpp"
-// #include "TensorflowClassifier.hpp"
+#include "TorchvisionClassifier.hpp"
+#include "TensorflowClassifier.hpp"
 #include "YOLOSeg.hpp"
 
 // Define the map of task creators
 std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
-    // {"torchvision-classifier", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<TorchvisionClassifier>(sizes); }},
-    // {"tensorflow-classifier", [](const std::vector<std::vector<int64_t>>& sizes) { return std::make_unique<TensorflowClassifier>(sizes); }},
+    {"torchvision-classifier", [](const TritonModelInfo& modelInfo) { return std::make_unique<TorchvisionClassifier>(modelInfo); }},
+    {"tensorflow-classifier", [](const TritonModelInfo& modelInfo) { return std::make_unique<TensorflowClassifier>(modelInfo); }},
     {"yoloseg", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLOSeg>(modelInfo); }},
     {"yolonas", [](const TritonModelInfo& modelInfo) { return std::make_unique<YoloNas>(modelInfo); }},
     {"yolov5", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLO>(modelInfo); }},
