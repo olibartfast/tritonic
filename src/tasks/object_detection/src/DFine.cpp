@@ -1,19 +1,8 @@
 #include "DFine.hpp"
 
 DFine::DFine(const TritonModelInfo& model_info) : TaskInterface(model_info) {
-    for(size_t i = 0; i < model_info.input_shapes.size(); i++)
-    {
-        if(model_info.input_shapes[i].size() >= 3)
-        { 
-            input_channels_ =  model_info.input_formats[i] == "FORMAT_NHWC" ? model_info.input_shapes[i][3] : model_info.input_shapes[i][1];
-            input_height_ = model_info.input_formats[i] == "FORMAT_NHWC" ? model_info.input_shapes[i][1] : model_info.input_shapes[i][2];
-            input_width_ = model_info.input_shapes[i][2];
-        }
-    }    
-    if (input_channels_ == 0 || input_height_ == 0 || input_width_ == 0)
-        throw std::invalid_argument("Not initialized input width/height");
 
-     for (size_t i = 0; i < model_info.output_names.size(); ++i) {
+    for (size_t i = 0; i < model_info.output_names.size(); ++i) {
         if (model_info.output_names[i] == "scores") scores_idx_ = i;
         else if (model_info.output_names[i] == "boxes") boxes_idx_ = i;
         else if (model_info.output_names[i] == "labels") labels_idx_ = i;

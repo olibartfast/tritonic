@@ -1,14 +1,7 @@
 #include "YOLOv10.hpp"
 
 YOLOv10::YOLOv10(const TritonModelInfo& model_info) : TaskInterface(model_info) {
-    for(size_t i = 0; i < model_info.input_shapes.size(); i++)
-    {
-        if(model_info.input_shapes[i].size() >= 3)
-        { 
-            input_height_ = model_info.input_formats[i] == "FORMAT_NHWC" ? model_info.input_shapes[i][1] : model_info.input_shapes[i][2];
-            input_width_ = model_info.input_shapes[i][2];
-        }
-    }
+
 }
 
 std::vector<std::vector<uint8_t>> YOLOv10::preprocess(const std::vector<cv::Mat>& imgs)

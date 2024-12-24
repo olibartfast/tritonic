@@ -1,8 +1,7 @@
 #include "YOLO.hpp"
 
-YOLO::YOLO(int input_width, int input_height) : TaskInterface(input_width, input_height) {
-    input_width_ = input_width;
-    input_height_ = input_height;
+YOLO::YOLO(const TritonModelInfo& model_info) : TaskInterface(model_info) {
+
 }
 
 cv::Rect YOLO::get_rect(const cv::Size& imgSz, const std::vector<float>& bbox)
@@ -31,6 +30,37 @@ cv::Rect YOLO::get_rect(const cv::Size& imgSz, const std::vector<float>& bbox)
         b = b / r_h;
     }
     return cv::Rect(l, t, r - l, b - t);
+}
+
+std::vector<std::vector<uint8_t>> YOLO::preprocess(const std::vector<cv::Mat>& imgs)
+{
+    if (imgs.empty()) {
+        throw std::runtime_error("Input image vector is empty");
+    }
+
+    cv::Mat img = imgs.front();
+    if (img.empty()) {
+        throw std::runtime_error("Input image is empty");
+    }
+    std::vector<std::vector<uint8_t>> input_data(model_info_.input_shapes.size());
+
+    for (size_t i = 0; i < model_info_.input_shapes.size(); ++i) {
+        const auto& input_name = model_info_.input_names[i];
+        const auto& input_shape = model_info_.input_shapes[i];
+        const auto& input_format = model_info_.input_formats[i];
+        const auto& input_type = model_info_.input_types[i];
+
+        if (input_shape.size() >= 3) {
+            // This is likely an image input
+            const auto input_size = cv::Size(input_width_, input_height_);
+            input_data[i] = preprocess_image(img, input_format, model_info_.type1_, model_info_.type3_, img.channels(), input_size);
+        } else {
+            // For other types of inputs, you might need to add more cases
+            // or use a default handling method
+            throw std::runtime_error("Unhandled input");
+        }
+    }
+    return input_data;
 }
 
 std::tuple<float, int> YOLO::getBestClassInfo(const std::vector<TensorElement>& data, size_t startIdx, const size_t& numClasses)
@@ -146,7 +176,7 @@ std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vec
     return detections; 
 }
 
-std::vector<uint8_t> YOLO::preprocess(
+std::vector<uint8_t> YOLO::preprocess_image(
     const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
     size_t img_channels, const cv::Size& img_size) 
 {

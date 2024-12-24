@@ -1,17 +1,6 @@
 #include "RTDetr.hpp"
 
 RTDetr::RTDetr(const TritonModelInfo& model_info) : TaskInterface(model_info) {
-    for(size_t i = 0; i < model_info.input_shapes.size(); i++)
-    {
-        if(model_info.input_shapes[i].size() >= 3)
-        { 
-            input_channels_ =  model_info.input_formats[i] == "FORMAT_NHWC" ? model_info.input_shapes[i][3] : model_info.input_shapes[i][1];
-            input_height_ = model_info.input_formats[i] == "FORMAT_NHWC" ? model_info.input_shapes[i][1] : model_info.input_shapes[i][2];
-            input_width_ = model_info.input_shapes[i][2];
-        }
-    }    
-    if (input_channels_ == 0 || input_height_ == 0 || input_width_ == 0)
-        throw std::invalid_argument("Not initialized input width/height");
 
      for (size_t i = 0; i < model_info.output_names.size(); ++i) {
         if (model_info.output_names[i] == "scores") scores_idx_ = i;
@@ -111,14 +100,11 @@ std::vector<Result> RTDetr::postprocess(const cv::Size& frame_size,
                                        const std::vector<std::vector<TensorElement>>& infer_results,
                                        const std::vector<std::vector<int64_t>>& infer_shapes) {
     
-
-
     const float confThreshold = 0.5f, iouThreshold = 0.4f;
 
     const auto& scores = infer_results[scores_idx_.value()];
     const auto& boxes = infer_results[boxes_idx_.value()];
     const auto& labels = infer_results[labels_idx_.value()];
-
 
     int rows = infer_shapes[scores_idx_.value()][1]; // Assuming this is 300
 

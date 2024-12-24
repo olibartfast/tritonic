@@ -1,7 +1,7 @@
 #include "YoloNas.hpp"
 
 // Override the preprocess function
-std::vector<uint8_t> YoloNas::preprocess(
+std::vector<uint8_t> YoloNas::preprocess_image(
     const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
     size_t img_channels, const cv::Size& img_size) 
 {
@@ -43,6 +43,37 @@ std::vector<uint8_t> YoloNas::preprocess(
         exit(1);
     }
 
+    return input_data;
+}
+
+std::vector<std::vector<uint8_t>> YoloNas::preprocess(const std::vector<cv::Mat>& imgs)
+{
+    if (imgs.empty()) {
+        throw std::runtime_error("Input image vector is empty");
+    }
+
+    cv::Mat img = imgs.front();
+    if (img.empty()) {
+        throw std::runtime_error("Input image is empty");
+    }
+    std::vector<std::vector<uint8_t>> input_data(model_info_.input_shapes.size());
+
+    for (size_t i = 0; i < model_info_.input_shapes.size(); ++i) {
+        const auto& input_name = model_info_.input_names[i];
+        const auto& input_shape = model_info_.input_shapes[i];
+        const auto& input_format = model_info_.input_formats[i];
+        const auto& input_type = model_info_.input_types[i];
+
+        if (input_shape.size() >= 3) {
+            // This is likely an image input
+            const auto input_size = cv::Size(input_width_, input_height_);
+            input_data[i] = preprocess_image(img, input_format, model_info_.type1_, model_info_.type3_, img.channels(), input_size);
+        } else {
+            // For other types of inputs, you might need to add more cases
+            // or use a default handling method
+            throw std::runtime_error("Unhandled input");
+        }
+    }
     return input_data;
 }
 

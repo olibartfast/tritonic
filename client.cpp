@@ -290,13 +290,6 @@ int main(int argc, const char* argv[]) {
             throw std::runtime_error("Failed to create task instance");
         }
 
-        // Validate that the created task matches the specified task type
-        // if ((taskType == "detection" && !dynamic_cast<Detection*>(task.get())) ||
-        //     (taskType == "classification" && !dynamic_cast<Classification*>(task.get())) ||
-        //     (taskType == "instance_segmentation" && !dynamic_cast<InstanceSegmentation*>(task.get()))) {
-        //     throw std::runtime_error("Created task does not match specified task type: " + taskType);
-        // }
-
         const auto class_names = task->readLabelNames(labelsFile);
         std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
 

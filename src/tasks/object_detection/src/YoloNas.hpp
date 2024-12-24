@@ -2,19 +2,15 @@
 class YoloNas : public TaskInterface
 {
 public:
-    YoloNas(int input_width, int input_height)
-        : TaskInterface(input_width, input_height) {
+    YoloNas(const TritonModelInfo& model_info)
+        : TaskInterface(model_info) {
     }
-
-    // Override the preprocess function
-    std::vector<uint8_t> preprocess(
-        const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
-        size_t img_channels, const cv::Size& img_size) override;
-   
-    // Override the postprocess function
+    std::vector<std::vector<uint8_t>> preprocess(const std::vector<cv::Mat>& imgs) override;
     std::vector<Result> postprocess(const cv::Size& frame_size, const std::vector<std::vector<TensorElement>>& infer_results, 
     const std::vector<std::vector<int64_t>>& infer_shapes) override;
     
 private:
-    // Add additional member variables specific to YoloNas
+    std::vector<uint8_t> preprocess_image(
+        const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
+        size_t img_channels, const cv::Size& img_size);
 };
