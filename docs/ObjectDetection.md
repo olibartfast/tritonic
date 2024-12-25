@@ -43,7 +43,7 @@ trtexec --onnx=yolov10model.onnx --saveEngine=yolov10model.engine --fp16
 
 ## YOLOv9
 from [yolov9 repo](https://github.com/WongKinYiu/yolov9):
-#### OnnxRuntime/orchscript
+#### OnnxRuntime/Torchscript
 ```
  python export.py --weights yolov9-c/e-converted.pt --include onnx/torchscript
 ```
@@ -84,3 +84,92 @@ models.convert_to_onnx(model=net, input_shape=(3,640,640), out_path="yolo_nas_s.
 ```
 
 
+# RT-DETR [lyuwenyu] Export Instructions
+
+From the [lyuwenyu RT-DETR repository](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetr_pytorch):
+
+## OnnxRuntime
+```bash
+cd RT-DETR/rtdetr_pytorch
+python tools/export_onnx.py -c configs/rtdetr/rtdetr_r18vd_6x_coco.yml -r path/to/checkpoint --check
+```
+Note: You can use other versions instead of `rtdetr_r18vd_6x_coco.yml`.
+
+## TensorRT
+```bash
+trtexec --onnx=<model>.onnx --saveEngine=rtdetr_r18vd_dec3_6x_coco_from_paddle.engine --minShapes=images:1x3x640x640,orig_target_sizes:1x2 --optShapes=images:1x3x640x640,orig_target_sizes:1x2 --maxShapes=images:1x3x640x640,orig_target_sizes:1x2
+```
+Note: This assumes you exported the ONNX model in the previous step.
+
+
+# RT-DETR (Ultralytics) Export Instructions
+
+Always use the [Ultralytics pip package](https://docs.ultralytics.com/quickstart/) to export the model.
+
+## OnnxRuntime
+Export the model to ONNX using the following command:
+
+```bash
+yolo export model=best.pt format=onnx
+```
+Note: In this case, `best.pt` is a trained RTDETR-L or RTDETR-X model.
+
+## Libtorch
+Similar to the ONNX case, change format to torchscript:
+
+```bash
+yolo export model=best.pt format=torchscript 
+```
+
+## TensorRT
+Same as explained for YOLOv8:
+
+```bash
+trtexec --onnx=yourmodel.onnx --saveEngine=yourmodel.engine
+```
+
+Or:
+
+```bash
+yolo export model=yourmodel.pt format=engine
+```
+
+For more information, visit: https://docs.ultralytics.com/models/rtdetr/
+
+
+# **D-FINE Export Instructions**  
+
+## **Exporting ONNX Models with ONNXRuntime**  
+To export D-FINE models to ONNX format, follow the steps below:  
+
+### **Repository**  
+[Peterande D-FINE Repository](https://github.com/Peterande/D-FINE)  
+
+### **Steps:**  
+1. Navigate to the D-FINE repository directory:  
+   ```bash
+   cd D-FINE
+   ```  
+
+2. Define the model size you want to export (`n`, `s`, `m`, `l`, or `x`). For example:  
+   ```bash
+   export model=l
+   ```  
+
+3. Run the export script:  
+   ```bash
+   python tools/deployment/export_onnx.py --check -c configs/dfine/dfine_hgnetv2_${model}_coco.yml -r model.pth
+   ```  
+
+### **Notes:**  
+- Ensure the batch size hardcoded in the `export_onnx.py` script is appropriate for your system's available RAM. If not, modify the batch size in the script to avoid out-of-memory errors.  
+- Verify that `model.pth` corresponds to the correct pre-trained model checkpoint for the configuration file you're using.  
+- The `--check` flag ensures that the exported ONNX model is validated after the export process.  
+
+### **Example:**  
+To export the large model (`l`) with the corresponding configuration:  
+```bash
+cd D-FINE
+export model=l
+python tools/deployment/export_onnx.py --check -c configs/dfine/dfine_hgnetv2_l_coco.yml -r model.pth
+```  
