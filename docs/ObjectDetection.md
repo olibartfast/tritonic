@@ -84,7 +84,7 @@ models.convert_to_onnx(model=net, input_shape=(3,640,640), out_path="yolo_nas_s.
 ```
 
 
-# RT-DETR [lyuwenyu] Export Instructions
+# RT-DETR Export Instructions
 
 From the [lyuwenyu RT-DETR repository](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetr_pytorch):
 
