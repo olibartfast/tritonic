@@ -180,6 +180,7 @@ To view all available parameters, run:
 | YOLOv10                | yolov10                |
 | YOLO11                 | yolo11                 |
 | RT-DETR                | rtdetr                 |
+| RT-DETR Ultralytics    | rtdetrul               |
 | D-FINE                 | dfine                  |
 | Torchvision Classifier | torchvision-classifier |
 | Tensorflow Classifier  | tensorflow-classifier  |

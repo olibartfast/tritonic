@@ -1,6 +1,7 @@
 #include "task_factory.hpp"
 #include "DFine.hpp"
 #include "RTDetr.hpp"
+#include "RTDetrUltralytics.hpp"
 #include "YOLO.hpp"
 #include "YoloNas.hpp"
 #include "YOLOv10.hpp"
@@ -22,25 +23,38 @@ std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
     {"yolo11", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLO>(modelInfo); }},
     {"yolov10", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLOv10>(modelInfo); }},
     {"rtdetr", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetr>(modelInfo); }},
+    {"rtdetrul", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetrUltralytics>(modelInfo); }},
     {"dfine", [](const TritonModelInfo& modelInfo) { return std::make_unique<DFine>(modelInfo); }}
 };
 
+void TaskFactory::validateInputSizes(const std::vector<std::vector<int64_t>>& input_sizes) {
+    if (input_sizes.empty()) {
+        throw std::invalid_argument("Input sizes vector is empty");
+    }
+    for (const auto& size : input_sizes) {
+        if (size.empty()) {
+            throw std::invalid_argument("An input size vector is empty");
+        }
+        if (std::any_of(size.begin(), size.end(), [](int64_t s) { return s < 0; })) {
+            throw std::invalid_argument("Negative input size detected");
+        }
+    }
+}
+
 std::unique_ptr<TaskInterface> TaskFactory::createTaskInstance(const std::string& modelType, const TritonModelInfo& modelInfo) {
-    try 
-    {
+    try {
         const auto& input_sizes = modelInfo.input_shapes;
         validateInputSizes(input_sizes);
 
-        for (const auto& [key, creator] : taskCreators) {
-            if (icontains(modelType, key)) {
-                return creator(modelInfo);
-            }
+        auto it = taskCreators.find(modelType);
+        if (it != taskCreators.end()) {
+            return it->second(modelInfo);
         }
 
         throw std::runtime_error("Unrecognized model type: " + modelType);
     }
     catch (const std::exception& e) {
         std::cerr << "Error creating task instance: " << e.what() << std::endl;
-        return nullptr;
+        throw; // Re-throw the exception
     }
 }

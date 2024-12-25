@@ -124,6 +124,21 @@
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
         }, 
+        {
+            "name": "rtdetr-l",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/computer-vision-triton-cpp-client",
+            "args": ["--source=data/bus.jpg", 
+            "--serverAddress=localhost",
+            "--labelsFile=labels/coco.txt",
+            "--model=rtdetr-l",
+            "--model_type=rtdetrul",
+            "--task_type=detection"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        },         
 
     ]
 

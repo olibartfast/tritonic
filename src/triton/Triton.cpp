@@ -8,10 +8,10 @@ static size_t WriteCallback(char* ptr, size_t size, size_t nmemb, std::string& d
 
 TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& model_metadata, const inference::ModelConfigResponse& model_config) {
     TritonModelInfo info;
-
     // TO DO: Parse model metadata and config here
     return info;
 }
+
 TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::string& url, const std::vector<std::vector<int64_t>>& input_sizes) {
     TritonModelInfo info;
 
@@ -29,12 +29,11 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseData);
 
     CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+
     if (res != CURLE_OK) {
-        curl_easy_cleanup(curl);
         throw std::runtime_error("Failed to perform request: " + std::string(curl_easy_strerror(res)));
     }
-
-    curl_easy_cleanup(curl);
 
     if (responseData.find("Request for unknown model") != std::string::npos) {
         throw std::runtime_error("Unknown model: " + modelName);
@@ -80,7 +79,6 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
             std::cout << "Warning: Input sizes provided, but model does not have dynamic shapes. Ignoring provided input sizes." << std::endl;
         }
 
-        // Handle batch size
         if (info.max_batch_size_ > 0 && shape.size() < 4) {
             shape.insert(shape.begin(), 1);  // Insert batch size of 1 at the beginning
         }
@@ -122,20 +120,14 @@ TritonModelInfo Triton::getModelInfo(const std::string& modelName, const std::st
         throw std::runtime_error("Unsupported protocol");
     }
 
-
-    // Update input types based on the parsed information
     updateInputTypes();
-
-    // Print the retrieved model information
     printModelInfo(model_info);
     this->model_info_ = model_info; 
     return model_info;
 }
 
-void Triton::updateInputTypes() 
-{
-    for (size_t i = 0; i < model_info_.input_shapes.size(); ++i) 
-    {
+void Triton::updateInputTypes() {
+    for (size_t i = 0; i < model_info_.input_shapes.size(); ++i) {
         const auto& shape = model_info_.input_shapes[i];
         const auto& format = model_info_.input_formats[i];
         
@@ -149,22 +141,20 @@ void Triton::updateInputTypes()
                 } else if (channels == 3) {
                     inputType = model_info_.type3_;
                 } else {
-                    inputType = CV_32F; // Default to float type if channel count is unexpected
+                    inputType = CV_32F;
                 }
             } else if (shape.size() == 2) {
-                inputType = model_info_.type1_; // Assume grayscale for 2D input
+                inputType = model_info_.type1_;
             } else {
-                inputType = CV_32F; // Default to float type for other dimensions
+                inputType = CV_32F;
             }
         } else {
-            inputType = CV_32F; // Default to float type for other formats
+            inputType = CV_32F;
         }
         
         model_info_.input_types[i] = inputType;
     }
 }
-
-// Updated implementation of setInputShapes
 void Triton::setInputShapes(const std::vector<std::vector<int64_t>>& shapes) {
     if (shapes.size() != model_info_.input_shapes.size()) {
         throw std::runtime_error("Number of provided input shapes does not match model's input count");
@@ -195,7 +185,6 @@ void Triton::setInputShapes(const std::vector<std::vector<int64_t>>& shapes) {
     updateInputTypes();
 }
 
-// Kept the original setInputShape method for backward compatibility
 void Triton::setInputShape(const std::vector<int64_t>& shape) {
     if (model_info_.input_shapes.empty()) {
         throw std::runtime_error("Model information not initialized");
@@ -204,39 +193,29 @@ void Triton::setInputShape(const std::vector<int64_t>& shape) {
     setInputShapes({shape});
 }
 
-// Function to create Triton client based on the protocol
-void Triton::createTritonClient()
-{
+void Triton::createTritonClient() {
     tc::Error err;
     if (protocol_ == ProtocolType::HTTP) {
-        err = tc::InferenceServerHttpClient::Create(
-            &triton_client_.httpClient, url_, verbose_);
-    }
-    else {
-        err = tc::InferenceServerGrpcClient::Create(
-            &triton_client_.grpcClient, url_, verbose_);
+        err = tc::InferenceServerHttpClient::Create(&triton_client_.httpClient, url_, verbose_);
+    } else {
+        err = tc::InferenceServerGrpcClient::Create(&triton_client_.grpcClient, url_, verbose_);
     }
     if (!err.IsOk()) {
-        std::cerr << "error: unable to create client for inference: " << err
-            << std::endl;
-        exit(1);
+        throw std::runtime_error("Unable to create client for inference: " + err.Message());
     }
-
 }
 
-std::vector<const tc::InferRequestedOutput*> Triton::createInferRequestedOutput(const std::vector<std::string>& output_names_)
-{
+std::vector<const tc::InferRequestedOutput*> Triton::createInferRequestedOutput(const std::vector<std::string>& output_names_) {
     std::vector<const tc::InferRequestedOutput*> outputs;
     tc::Error err;
     for (const auto& output_name : output_names_) {
         tc::InferRequestedOutput* output;
         err = tc::InferRequestedOutput::Create(&output, output_name);
         if (!err.IsOk()) {
-            std::cerr << "unable to get output: " << err << std::endl;
-            exit(1);
-        }
-        else
+            throw std::runtime_error("Unable to get output: " + err.Message());
+        } else {
             outputs.push_back(output);
+        }
     }
     return outputs;    
 }
@@ -246,17 +225,14 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
     const size_t batch_size,
     const std::vector<std::string>& output_names)
 {
-    if (!result->RequestStatus().IsOk())
-    {
-        std::cerr << "inference failed with error: " << result->RequestStatus() << std::endl;
-        exit(1);
+    if (!result->RequestStatus().IsOk()) {
+        throw std::runtime_error("Inference failed with error: " + result->RequestStatus().Message());
     }
 
     std::vector<std::vector<TensorElement>> infer_results;
     std::vector<std::vector<int64_t>> infer_shapes;
 
-    for (const auto& outputName : output_names)
-    {
+    for (const auto& outputName : output_names) {
         std::vector<int64_t> infer_shape;
         std::vector<TensorElement> infer_result;
 
@@ -265,22 +241,16 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
         result->RawData(outputName, &outputData, &outputByteSize);
 
         tc::Error err = result->Shape(outputName, &infer_shape);
-        if (!err.IsOk())
-        {
-            std::cerr << "unable to get shape for " << outputName << std::endl;
-            exit(1);
+        if (!err.IsOk()) {
+            throw std::runtime_error("Unable to get shape for " + outputName + ": " + err.Message());
         }
 
-        // Determine the data type of the output
         std::string output_datatype;
         err = result->Datatype(outputName, &output_datatype);
-        if (!err.IsOk())
-        {
-            std::cerr << "unable to get datatype for " << outputName << std::endl;
-            exit(1);
+        if (!err.IsOk()) {
+            throw std::runtime_error("Unable to get datatype for " + outputName + ": " + err.Message());
         }
 
-        // Convert raw data to TensorElement based on the datatype
         if (output_datatype == "FP32") {
             const float* floatData = reinterpret_cast<const float*>(outputData);
             size_t elementCount = outputByteSize / sizeof(float);
@@ -303,8 +273,7 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
                 infer_result.emplace_back(longData[i]);
             }
         } else {
-            std::cerr << "Unsupported datatype: " << output_datatype << std::endl;
-            exit(1);
+            throw std::runtime_error("Unsupported datatype: " + output_datatype);
         }
 
         infer_results.push_back(std::move(infer_result));
@@ -313,28 +282,24 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
 
     return std::make_tuple(infer_results, infer_shapes);
 }
-std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> Triton::infer(const std::vector<std::vector<uint8_t>>& input_data)
-{
+
+std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> Triton::infer(const std::vector<std::vector<uint8_t>>& input_data) {
     tc::Error err;
     std::vector<tc::InferInput*> inputs;
     std::vector<const tc::InferRequestedOutput*> outputs = createInferRequestedOutput(model_info_.output_names);        
     tc::InferOptions options(model_name_);
     options.model_version_ = model_version_;
 
-    // Check if input_data size matches expected number of inputs
     if (input_data.size() != model_info_.input_names.size()) {
-        std::cerr << "Error: Mismatch in number of inputs. Expected " << model_info_.input_names.size() 
-                  << ", but got " << input_data.size() << std::endl;
-        exit(1);
+        throw std::runtime_error("Mismatch in number of inputs. Expected " + std::to_string(model_info_.input_names.size()) + 
+                                 ", but got " + std::to_string(input_data.size()));
     }
 
-    // Create and populate inputs
     for (size_t i = 0; i < model_info_.input_names.size(); ++i) {
         tc::InferInput* input;
         err = tc::InferInput::Create(&input, model_info_.input_names[i], model_info_.input_shapes[i], model_info_.input_datatypes[i]);
         if (!err.IsOk()) {
-            std::cerr << "Unable to create input " << model_info_.input_names[i] << ": " << err << std::endl;
-            exit(1);
+            throw std::runtime_error("Unable to create input " + model_info_.input_names[i] + ": " + err.Message());
         }
         inputs.push_back(input);
 
@@ -345,25 +310,21 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
 
         err = input->AppendRaw(input_data[i]);
         if (!err.IsOk()) {
-            std::cerr << "Failed setting input " << model_info_.input_names[i] << ": " << err << std::endl;
-            exit(1);
+            throw std::runtime_error("Failed setting input " + model_info_.input_names[i] + ": " + err.Message());
         }
 
         std::cout << "Input " << model_info_.input_names[i] << " set with " << input_data[i].size() << " bytes of data" << std::endl;
     }
 
-
     tc::InferResult* result;
     std::unique_ptr<tc::InferResult> result_ptr;
     if (protocol_ == ProtocolType::HTTP) {
         err = triton_client_.httpClient->Infer(&result, options, inputs, outputs);
-    }
-    else {
+    } else {
         err = triton_client_.grpcClient->Infer(&result, options, inputs, outputs);
     }
     if (!err.IsOk()) {
-        std::cerr << "Failed sending synchronous infer request: " << err << std::endl;
-        exit(1);
+        throw std::runtime_error("Failed sending synchronous infer request: " + err.Message());
     }
 
     auto [infer_results, infer_shapes] = getInferResults(result, model_info_.batch_size_, model_info_.output_names);
