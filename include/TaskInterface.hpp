@@ -24,7 +24,13 @@ struct InstanceSegmentation : public Detection {
     int mask_width;   // Store mask width
 };
 
-using Result = std::variant<Classification, Detection, InstanceSegmentation>;
+struct OpticalFlow {
+    cv::Mat flow;  // Store the optical flow result
+    float max_displacement;  // Maximum displacement in the flow field
+};
+
+
+using Result = std::variant<Classification, Detection, InstanceSegmentation, OpticalFlow>;
 using TensorElement = std::variant<float, int32_t, int64_t>;
 
 class InputDimensionError : public std::runtime_error {

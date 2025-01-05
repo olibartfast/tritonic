@@ -8,7 +8,7 @@
 #include "TorchvisionClassifier.hpp"
 #include "TensorflowClassifier.hpp"
 #include "YOLOSeg.hpp"
-
+#include "RAFT.hpp"
 // Define the map of task creators
 std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
     {"torchvision-classifier", [](const TritonModelInfo& modelInfo) { return std::make_unique<TorchvisionClassifier>(modelInfo); }},
@@ -24,7 +24,8 @@ std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
     {"yolov10", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLOv10>(modelInfo); }},
     {"rtdetr", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetr>(modelInfo); }},
     {"rtdetrul", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetrUltralytics>(modelInfo); }},
-    {"dfine", [](const TritonModelInfo& modelInfo) { return std::make_unique<DFine>(modelInfo); }}
+    {"dfine", [](const TritonModelInfo& modelInfo) { return std::make_unique<DFine>(modelInfo); }},
+    {"raft",  [](const TritonModelInfo& modelInfo) { return std::make_unique<RAFT>(modelInfo); }}
 };
 
 void TaskFactory::validateInputSizes(const std::vector<std::vector<int64_t>>& input_sizes) {

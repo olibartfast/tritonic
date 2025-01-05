@@ -39,6 +39,8 @@ This C++ application enables machine learning tasks, such as object detection an
 - Torchvision API-based models
 - Tensorflow-Keras API(saved_model export)
 
+
+
 ## Build Client Libraries
 
 To build the client libraries, refer to the official [Triton Inference Server client libraries](https://github.com/triton-inference-server/client/tree/r24.09).
@@ -137,7 +139,6 @@ docker run --gpus=1 --rm \
 ```bash
 ./computer-vision-triton-cpp-client \
     --source=/path/to/source.format \
-    --task_type=<task_type> \
     --model_type=<model_type> \
     --model=<model_name_folder_on_triton> \
     --labelsFile=/path/to/labels/coco.names \
@@ -153,7 +154,6 @@ For dynamic input sizes:
 
 #### Placeholder Descriptions
 - **`/path/to/source.format`**: Path to the input video or image file
-- **`<task_type>`**: Type of computer vision task (`detection`, `classification`, or `instance_segmentation`)
 - **`<model_type>`**: Model type (e.g., `yolov5`, `yolov8`, `yolo11`, `yoloseg`, `torchvision-classifier`, `tensorflow-classifier`, check below [Model Type Parameters](#model-type-tag-parameters))
 - **`<model_name_folder_on_triton>`**: Name of the model folder on the Triton server
 - **`/path/to/labels/coco.names`**: Path to the label file (e.g., COCO labels)
@@ -202,7 +202,6 @@ docker run --rm \
   computer-vision-triton-cpp-client \
   --network host \
   --source=<path_to_source_on_container> \
-  --task_type=<task_type> \
   --model_type=<model_type> \
   --model=<model_name_folder_on_triton> \
   --labelsFile=<path_to_labels_on_container> \

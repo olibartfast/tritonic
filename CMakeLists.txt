@@ -52,6 +52,10 @@ set(INSTANCE_SEGMENTATION_SOURCES ${PROJECT_SOURCE_DIR}
    src/tasks/instance_segmentation/src/YOLOSeg.cpp
   )
 
+set(OPTICAL_FLOW_SOURCES ${PROJECT_SOURCE_DIR}
+  src/tasks/optical_flow/src/RAFT.cpp
+  )  
+
 # Set the source files
 set(TRITON_SOURCES ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp)
 
@@ -63,6 +67,7 @@ add_executable(${PROJECT_NAME} ${SOURCES}
     ${DETECTOR_SOURCES} 
     ${CLASSIFIER_SOURCES} 
     ${INSTANCE_SEGMENTATION_SOURCES} 
+    ${OPTICAL_FLOW_SOURCES}
     ${TRITON_SOURCES}
     )
 
@@ -81,6 +86,8 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/src/tasks/classification/src  
     ${PROJECT_SOURCE_DIR}/src/tasks/instance_segmentation/include
     ${PROJECT_SOURCE_DIR}/src/tasks/instance_segmentation/src  
+    ${PROJECT_SOURCE_DIR}/src/tasks/optical_flow/include
+    ${PROJECT_SOURCE_DIR}/src/tasks/optical_flow/src
     ${PROJECT_SOURCE_DIR}/src/triton
     # Add any additional include directories here
 )

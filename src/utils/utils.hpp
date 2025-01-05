@@ -6,3 +6,6 @@ bool IsImageFile(const std::string& fileName);
 std::vector<cv::Scalar> generateRandomColors(size_t size);
 
 void draw_label(cv::Mat& input_image, const std::string& label, float confidence, int left, int top);
+
+cv::Mat makeColorwheel();
+cv::Mat visualizeFlow(const cv::Mat& flow);

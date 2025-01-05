@@ -13,8 +13,7 @@
         "--serverAddress=localhost",
         "--labelsFile=labels/coco.txt",
         "--model=yolov8x-seg_onnx",
-        "--model_type=yoloseg",
-        "--task_type=instance_segmentation"
+        "--model_type=yoloseg"
         ],
         "environment": [{ "name": "config", "value": "Debug" }],
         "cwd": "${workspaceFolder}" 
@@ -28,8 +27,7 @@
             "--serverAddress=localhost",
             "--labelsFile=labels/coco.txt",
             "--model=yolo11-seg_onnx",
-            "--model_type=yoloseg",
-            "--task_type=instance_segmentation"
+            "--model_type=yoloseg"
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
@@ -43,8 +41,7 @@
             "--serverAddress=localhost",
             "--labelsFile=labels/coco.txt",
             "--model=yolov5x-seg_onnx",
-            "--model_type=yoloseg",
-            "--task_type=instance_segmentation"
+            "--model_type=yoloseg"
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
@@ -58,8 +55,7 @@
         "--serverAddress=localhost",
         "--labelsFile=labels/coco.txt",
         "--model=yolov9e_onnx",
-        "--model_type=yolov9",
-        "--task_type=detection"
+        "--model_type=yolov9"
         ],
         "environment": [{ "name": "config", "value": "Debug" }],
         "cwd": "${workspaceFolder}" 
@@ -73,8 +69,7 @@
             "--serverAddress=localhost",
             "--labelsFile=labels/coco.txt",
             "--model=yolov5s_onnx",
-            "--model_type=yolov5",
-            "--task_type=detection"
+            "--model_type=yolov5"
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
@@ -88,8 +83,7 @@
             "--serverAddress=localhost",
             "--labelsFile=labels/imagenet.txt",
             "--model=resnet50_tensorflow",
-            "--model_type=tensorflow-classifier",
-            "--task_type=classification"
+            "--model_type=tensorflow-classifier"
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
@@ -103,8 +97,7 @@
             "--serverAddress=localhost",
             "--labelsFile=labels/coco.txt",
             "--model=d-fine_s_coco",
-            "--model_type=dfine",
-            "--task_type=detection"
+            "--model_type=dfine"
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
@@ -118,8 +111,7 @@
             "--serverAddress=localhost",
             "--labelsFile=labels/coco.txt",
             "--model=rtdetr_r18vd_6x_coco",
-            "--model_type=rtdetr",
-            "--task_type=detection"
+            "--model_type=rtdetr"
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
@@ -133,12 +125,24 @@
             "--serverAddress=localhost",
             "--labelsFile=labels/coco.txt",
             "--model=rtdetr-l",
-            "--model_type=rtdetrul",
-            "--task_type=detection"
+            "--model_type=rtdetrul"
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-        },         
+        },   
+        {
+            "name": "raft-small-libtorch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/computer-vision-triton-cpp-client",
+            "args": ["--source=data/raft", 
+            "--serverAddress=localhost",
+            "--model=raft-small-litorch",
+            "--model_type=raft"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+            },              
 
     ]
 

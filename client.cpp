@@ -13,56 +13,66 @@ std::vector<Result> processSource(const std::vector<cv::Mat>& source,
     return task->postprocess(cv::Size(source.front().cols, source.front().rows), infer_results, infer_shapes);
 }
 
-
-// Define a function to perform inference on an image
-void ProcessImage(const std::string& sourceName,
+void ProcessImage(const std::vector<std::string>& sourceNames,
     const std::unique_ptr<TaskInterface>& task, 
     const std::unique_ptr<Triton>&  tritonClient,
-    const std::vector<std::string>& class_names, const std::string& model_name) {
-    std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
-    cv::Mat image = cv::imread(sourceName);
-    if (image.empty()) {
-        std::cerr << "Could not open or read the image: " << sourceName << std::endl;
+    const std::vector<std::string>& class_names, 
+    const std::string& model_name) {
+    
+    std::vector<cv::Mat> images;
+    images.reserve(sourceNames.size());
+    
+    // Load all images
+    for (const auto& sourceName : sourceNames) {
+        cv::Mat image = cv::imread(sourceName);
+        if (image.empty()) {
+            std::cerr << "Could not open or read the image: " << sourceName << std::endl;
+            continue;
+        }
+        images.push_back(image);
+    }
+    
+    if (images.empty()) {
+        std::cerr << "No valid images to process" << std::endl;
         return;
-    }    
-    std::vector<cv::Mat> images = {image};
-
+    }
 
     auto start = std::chrono::steady_clock::now();
-    // Call your processSource function here
-    std::vector<Result> predictions = processSource(images, task,  tritonClient);
+    // Process all images at once
+    std::vector<Result> predictions = processSource(images, task, tritonClient);
     auto end = std::chrono::steady_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    std::cout << "Infer time: " << diff << " ms" << std::endl;
+    std::cout << "Infer time for " << images.size() << " images: " << diff << " ms" << std::endl;
 
-    for (const Result& prediction : predictions) 
-    {
+    // Process predictions for each image
+    for (size_t i = 0; i < images.size(); ++i) {
+        const Result& prediction = predictions[i];
+        cv::Mat& image = images[i];
+        const std::string& sourceName = sourceNames[i];
+        std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
+        
         if (std::holds_alternative<Classification>(prediction)) {
             Classification classification = std::get<Classification>(prediction);
-            std::cout << class_names[classification.class_id] << ": " << classification.class_confidence << std::endl; 
-            draw_label(image, class_names[classification.class_id] , classification.class_confidence, 30, 30); 
+            std::cout << "Image " << sourceName << ": " << class_names[classification.class_id] 
+                     << ": " << classification.class_confidence << std::endl;
+            draw_label(image, class_names[classification.class_id], classification.class_confidence, 30, 30);
         } 
-        else if (std::holds_alternative<Detection>(prediction)) 
-        {
+        else if (std::holds_alternative<Detection>(prediction)) {
             Detection detection = std::get<Detection>(prediction);
             cv::rectangle(image, detection.bbox, cv::Scalar(255, 0, 0), 2);
-            draw_label(image,  class_names[detection.class_id], detection.class_confidence, detection.bbox.x, detection.bbox.y - 1);
+            draw_label(image, class_names[detection.class_id], detection.class_confidence, 
+                      detection.bbox.x, detection.bbox.y - 1);
         }
-
-        else if (std::holds_alternative<InstanceSegmentation>(prediction)) 
-        {
+        else if (std::holds_alternative<InstanceSegmentation>(prediction)) {
             InstanceSegmentation segmentation = std::get<InstanceSegmentation>(prediction);
             
-            // Draw bounding box
             cv::rectangle(image, segmentation.bbox, cv::Scalar(255, 0, 0), 2);
+            draw_label(image, class_names[segmentation.class_id], segmentation.class_confidence, 
+                      segmentation.bbox.x, segmentation.bbox.y - 1);
             
-            // Draw label
-            draw_label(image, class_names[segmentation.class_id], segmentation.class_confidence, segmentation.bbox.x, segmentation.bbox.y - 1);
+            cv::Mat mask = cv::Mat(segmentation.mask_height, segmentation.mask_width, 
+                                 CV_8UC1, segmentation.mask_data.data());
             
-            // Create mask from stored data
-            cv::Mat mask = cv::Mat(segmentation.mask_height, segmentation.mask_width, CV_8UC1, segmentation.mask_data.data());
-            
-            // Draw mask
             cv::Mat colorMask = cv::Mat::zeros(mask.size(), CV_8UC3);
             cv::Scalar color = cv::Scalar(rand() & 255, rand() & 255, rand() & 255);
             colorMask.setTo(color, mask);
@@ -70,11 +80,13 @@ void ProcessImage(const std::string& sourceName,
             cv::Mat roi = image(segmentation.bbox);
             cv::addWeighted(roi, 1, colorMask, 0.7, 0, roi);
         }
-    }    
 
-    std::string processedFrameFilename = sourceDir + "/processed_frame_" + model_name + ".jpg";
-    std::cout << "Saving frame to: " << processedFrameFilename << std::endl;
-    cv::imwrite(processedFrameFilename, image);
+        // Save processed image
+        std::string processedFrameFilename = sourceDir + "/processed_frame_" + 
+                                           std::to_string(i) + "_" + model_name + ".jpg";
+        std::cout << "Saving frame to: " << processedFrameFilename << std::endl;
+        cv::imwrite(processedFrameFilename, image);
+    }
 }
 
 // Define a function to perform inference on a video
@@ -176,7 +188,6 @@ static const std::string keys =
     "{ help h   | | Print help message. }"
     "{ model_type mt | yolo11 | yolo version used i.e yolov5 -> yolov10, yolo11, yolonas, yoloseg, dfine, torchvision-classifier}"
     "{ model m | yolo11x_onnx | model name of folder in triton }"
-    "{ task_type tt | | detection, classification, instance_segmentation}"
     "{ source s | data/dog.jpg | path to video or image}"
     "{ serverAddress  ip  | localhost | server address ip, default localhost}"
     "{ port  p  | 8001 | Port number(Grpc 8001, Http 8000)}"
@@ -206,11 +217,7 @@ int main(int argc, const char* argv[]) {
         std::string modelVersion = "";
         std::string modelType = parser.get<std::string>("model_type");
 
-        if (!parser.has("task_type")) {
-            throw std::runtime_error("Task type (classification or detection) is required");
-        }
 
-        std::string taskType = parser.get<std::string>("task_type");
         std::string url(serverAddress + ":" + port);
         std::string labelsFile = parser.get<std::string>("labelsFile");
 
@@ -251,7 +258,6 @@ int main(int argc, const char* argv[]) {
         }
 
         std::cout << "Chosen Parameters:" << std::endl;
-        std::cout << "task_type (tt): " << parser.get<std::string>("task_type") << std::endl;
         std::cout << "model_type (mt): " << parser.get<std::string>("model_type") << std::endl;
         std::cout << "model (m): " << parser.get<std::string>("model") << std::endl;
         std::cout << "source (s): " << parser.get<std::string>("source") << std::endl;  // Changed from 'video' to 'source'
@@ -291,12 +297,28 @@ int main(int argc, const char* argv[]) {
         }
 
         const auto class_names = task->readLabelNames(labelsFile);
-        std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
-
-        if (IsImageFile(sourceName)) {
-            ProcessImage(sourceName, task, tritonClient, class_names, modelName);
-        } else {
-            ProcessVideo(sourceName, task, tritonClient, class_names);
+        std::vector<std::string> sourceNames;
+        
+        // If the source is a directory, get all image files
+        if (std::filesystem::is_directory(sourceName)) {
+            for (const auto& entry : std::filesystem::directory_iterator(sourceName)) {
+                if (IsImageFile(entry.path().string())) {
+                    sourceNames.push_back(entry.path().string());
+                }
+            }
+        } 
+        // If it's a single file, check if it's an image or video
+        else if (std::filesystem::is_regular_file(sourceName)) {
+            if (IsImageFile(sourceName)) {
+                sourceNames.push_back(sourceName);
+            } else {
+                // Handle video file
+                ProcessVideo(sourceName, task, tritonClient, class_names);
+                return 0;
+            }
+        }
+        if (!sourceNames.empty()) {
+            ProcessImage(sourceNames, task, tritonClient, class_names, modelName);
         }
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
