@@ -80,6 +80,10 @@ void ProcessImage(const std::vector<std::string>& sourceNames,
             cv::Mat roi = image(segmentation.bbox);
             cv::addWeighted(roi, 1, colorMask, 0.7, 0, roi);
         }
+        else if(std::holds_alternative<OpticalFlow>(prediction)) {
+            OpticalFlow flow = std::get<OpticalFlow>(prediction);
+            // TODO: Visualize flow
+        }
 
         // Save processed image
         std::string processedFrameFilename = sourceDir + "/processed_frame_" + 
@@ -221,39 +225,28 @@ int main(int argc, const char* argv[]) {
         std::string url(serverAddress + ":" + port);
         std::string labelsFile = parser.get<std::string>("labelsFile");
 
-        if (!std::filesystem::exists(labelsFile)) {
-            throw std::runtime_error("Labels file " + labelsFile + " does not exist");
-        }
-
         if (!std::filesystem::exists(sourceName)) {
             throw std::runtime_error("Source file " + sourceName + " does not exist");
         }
 
         std::vector<std::vector<int64_t>> input_sizes;
-        if (parser.has("input_sizes")) {
-            std::string sizes_str = parser.get<std::string>("input_sizes");
-            std::istringstream sizes_stream(sizes_str);
-            std::string size;
-            while (std::getline(sizes_stream, size, ';')) {
-                std::vector<int64_t> dims;
-                std::istringstream dim_stream(size);
-                std::string dim;
-                while (std::getline(dim_stream, dim, ',')) {
-                    dims.push_back(std::stoll(dim));
+        if(parser.has("input_sizes")) {
+            std::cout << "Parsing input sizes..." << parser.get<std::string>("input_sizes") << std::endl;
+            input_sizes = parseInputSizes(parser.get<std::string>("input_sizes"));
+            // Output the parsed sizes
+            std::cout << "Parsed input sizes:\n";
+            for (const auto& size : input_sizes) {
+                std::cout << "(";
+                for (size_t i = 0; i < size.size(); ++i) {
+                    std::cout << size[i];
+                    if (i < size.size() - 1) {
+                        std::cout << ",";
+                    }
                 }
-                input_sizes.push_back(dims);
-            }
-
-            // Print parsed input information
-            std::cout << "Parsed input sizes:" << std::endl;
-            for (size_t i = 0; i < input_sizes.size(); ++i) {
-                std::cout << "Input " << i << " - Shape: ";
-                for (const auto& dim : input_sizes[i]) {
-                    std::cout << dim << " ";
-                }
-                std::cout << std::endl;
-            }
-        } else {
+                std::cout << ")\n";
+            }               
+        }
+        else {
             std::cout << "No input sizes provided. Will use default model configuration." << std::endl;
         }
 
@@ -267,11 +260,6 @@ int main(int argc, const char* argv[]) {
         std::cout << "labelsFile (l): " << parser.get<std::string>("labelsFile") << std::endl;
         std::cout << "batch (b): " << parser.get<size_t>("batch") << std::endl;
 
-        if(!std::filesystem::exists(labelsFile))
-        {
-            std::cerr << "Labels file " << labelsFile << " does not exist" << std::endl;
-            std::exit(1);
-        }
 
         if(!std::filesystem::exists(sourceName))
         {
@@ -317,9 +305,11 @@ int main(int argc, const char* argv[]) {
                 return 0;
             }
         }
-        if (!sourceNames.empty()) {
-            ProcessImage(sourceNames, task, tritonClient, class_names, modelName);
+        if (sourceNames.empty()) {
+            throw std::runtime_error("No valid source files found");
         }
+        ProcessImage(sourceNames, task, tritonClient, class_names, modelName);
+
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;

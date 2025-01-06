@@ -131,14 +131,15 @@
             "cwd": "${workspaceFolder}" 
         },   
         {
-            "name": "raft-small-libtorch",
+            "name": "raft_large_onnx",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/computer-vision-triton-cpp-client",
             "args": ["--source=data/raft", 
-            "--serverAddress=localhost",
-            "--model=raft-small-litorch",
-            "--model_type=raft"
+            "--serverAddress=192.168.1.212",
+            "--model=raft_large_onnx",
+            "--model_type=raft",
+            "--input_sizes='3,256,256;3,256,256'"
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
