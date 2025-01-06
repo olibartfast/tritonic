@@ -1,24 +1,24 @@
 {
-    "name": "C++ DevContainer",
-    // docker build --rm -t computer-vision-triton-cpp-client .
-    "image": "computer-vision-triton-cpp-client:latest",
-    "runArgs": [
-      "--rm",
-      "--network", "host",
-      "-v", "data:/app/data"
-    ],
-    "overrideCommand": true, 
-    "entrypoint": "/bin/bash", 
-    "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind",
-    "workspaceFolder": "/app",
-    "customizations": {
-      "vscode": {
-        "extensions": [
-            "ms-vscode.cpptools",
-            "ms-vscode.cmake-tools",
-            "franneck94.c-cpp-runner"
-        ]
-      }
+  "name": "C++ DevContainer",
+  // docker build --rm -t computer-vision-triton-cpp-client .
+  "image": "computer-vision-triton-cpp-client:latest",
+  "runArgs": [
+    "--rm",
+    "--network", "host",
+    "-v", "data:/app/data"
+  ],
+  "overrideCommand": true,
+  "entrypoint": ["/bin/bash"],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+          "ms-vscode.cpptools",
+          "ms-vscode.cmake-tools",
+          "franneck94.c-cpp-runner"
+      ]
     }
   }
+}
   
