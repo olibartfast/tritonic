@@ -7,7 +7,8 @@
 #TRITON_VERSION=24.12
 #./docker_triton_run.sh $MODEL_REPOSITORY_HOST $TRITON_VERSION
 
-docker run --rm -p8000:8000 -p8001:8001 -p8002:8002 \
+docker run --gpus=all --rm -p8000:8000 -p8001:8001 -p8002:8002 \
 -v $1:/models \
 nvcr.io/nvidia/tritonserver:$2-py3 tritonserver \
---model-repository=/models --log-verbose 1
+--model-repository=/models 
+#--log-verbose 1
