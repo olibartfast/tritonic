@@ -139,7 +139,7 @@
             "--serverAddress=192.168.1.212",
             "--model=raft_large_onnx",
             "--model_type=raft",
-            "--input_sizes='3,256,256;3,256,256'"
+            "--input_sizes='3,520,960;3,520,960'"
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 

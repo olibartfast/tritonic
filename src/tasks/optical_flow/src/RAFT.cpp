@@ -28,6 +28,102 @@ std::vector<std::vector<uint8_t>>  RAFT::preprocess(const std::vector<cv::Mat>& 
 }
 
 
+
+static cv::Mat makeColorwheel() {
+    const int RY = 15;
+    const int YG = 6;
+    const int GC = 4;
+    const int CB = 11;
+    const int BM = 13;
+    const int MR = 6;
+
+    int ncols = RY + YG + GC + CB + BM + MR;
+    cv::Mat colorwheel(ncols, 1, CV_8UC3);
+
+    int col = 0;
+    // RY
+    for (int i = 0; i < RY; ++i, ++col) {
+        colorwheel.at<cv::Vec3b>(col, 0) = cv::Vec3b(255, 255 * i / RY, 0);
+    }
+    // YG
+    for (int i = 0; i < YG; ++i, ++col) {
+        colorwheel.at<cv::Vec3b>(col, 0) = cv::Vec3b(255 - 255 * i / YG, 255, 0);
+    }
+    // GC
+    for (int i = 0; i < GC; ++i, ++col) {
+        colorwheel.at<cv::Vec3b>(col, 0) = cv::Vec3b(0, 255, 255 * i / GC);
+    }
+    // CB
+    for (int i = 0; i < CB; ++i, ++col) {
+        colorwheel.at<cv::Vec3b>(col, 0) = cv::Vec3b(0, 255 - 255 * i / CB, 255);
+    }
+    // BM
+    for (int i = 0; i < BM; ++i, ++col) {
+        colorwheel.at<cv::Vec3b>(col, 0) = cv::Vec3b(255 * i / BM, 0, 255);
+    }
+    // MR
+    for (int i = 0; i < MR; ++i, ++col) {
+        colorwheel.at<cv::Vec3b>(col, 0) = cv::Vec3b(255, 0, 255 - 255 * i / MR);
+    }
+
+    return colorwheel;
+}
+
+static cv::Mat visualizeFlow(const cv::Mat& flow_mat) {
+
+    cv::Mat flow_parts[2];
+    cv::split(flow_mat, flow_parts);
+    cv::Mat u = flow_parts[0], v = flow_parts[1];
+
+    cv::Mat magnitude, angle;
+    cv::cartToPolar(u, v, magnitude, angle);
+
+    // Normalize magnitude
+    double mag_max;
+    cv::minMaxLoc(magnitude, 0, &mag_max);
+    if (mag_max > 0) {
+        magnitude /= mag_max;
+    }
+
+    // Convert angle to [0, 1] range
+    angle *= (1.0 / (2 * CV_PI));
+    angle += 0.5;
+
+    // Apply color wheel
+    cv::Mat colorwheel = makeColorwheel();
+    const int ncols = colorwheel.rows;
+    cv::Mat flow_color(flow_mat.size(), CV_8UC3);
+
+    for (int i = 0; i < flow_mat.rows; ++i) {
+        for (int j = 0; j < flow_mat.cols; ++j) {
+            float mag = magnitude.at<float>(i, j);
+            float ang = angle.at<float>(i, j);
+
+            int k0 = static_cast<int>(ang * (ncols - 1));
+            int k1 = (k0 + 1) % ncols;
+            float f = (ang * (ncols - 1)) - k0;
+
+            cv::Vec3b col0 = colorwheel.at<cv::Vec3b>(k0);
+            cv::Vec3b col1 = colorwheel.at<cv::Vec3b>(k1);
+
+            cv::Vec3b color;
+            for (int ch = 0; ch < 3; ++ch) {
+                float col = (1 - f) * col0[ch] + f * col1[ch];
+                if (mag <= 1) {
+                    col = 255 - mag * (255 - col);
+                } else {
+                    col *= 0.75;
+                }
+                color[ch] = static_cast<uchar>(col);
+            }
+
+            flow_color.at<cv::Vec3b>(i, j) = color;
+        }
+    }
+
+    return flow_color;
+}
+
 std::vector<Result> RAFT::postprocess(const cv::Size& frame_size, 
                                 const std::vector<std::vector<TensorElement>>& infer_results,
                                 const std::vector<std::vector<int64_t>>& infer_shapes) {
@@ -36,8 +132,8 @@ std::vector<Result> RAFT::postprocess(const cv::Size& frame_size,
     }
 
     // Assume the flow is in the first output tensor
-    const auto& flow_data = infer_results[0];
-    const auto& flow_shape = infer_shapes[0];
+    const auto& flow_data = infer_results[output_idx_.value()];
+    const auto& flow_shape = infer_shapes[output_idx_.value()];
 
     if (flow_shape.size() != 4) { // Expecting [1, 2, H, W]
         throw std::runtime_error("Unexpected flow shape");
@@ -71,7 +167,7 @@ std::vector<Result> RAFT::postprocess(const cv::Size& frame_size,
 
     // Create OpticalFlow result
     OpticalFlow result;
-    result.flow = flow_mat;
+    result.flow = visualizeFlow(flow_mat);
     result.max_displacement = static_cast<float>(mag_max);
 
     // Resize flow to original frame size if necessary

@@ -295,7 +295,8 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
                                  ", but got " + std::to_string(input_data.size()));
     }
 
-    for (size_t i = 0; i < model_info_.input_names.size(); ++i) {
+    for (size_t i = 0; i < model_info_.input_names.size(); ++i) 
+    {
         tc::InferInput* input;
         err = tc::InferInput::Create(&input, model_info_.input_names[i], model_info_.input_shapes[i], model_info_.input_datatypes[i]);
         if (!err.IsOk()) {

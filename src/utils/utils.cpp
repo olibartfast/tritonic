@@ -1,5 +1,5 @@
 #include "utils.hpp"
-
+#include <cmath>
 
 std::string ToLower(const std::string& str) {
     std::string lowerStr = str;
@@ -91,3 +91,98 @@ void draw_label(cv::Mat& input_image, const std::string& label, float confidence
     cv::putText(input_image, display_text, cv::Point(left, top + label_size.height), FONT_FACE, FONT_SCALE, YELLOW, THICKNESS);
 }
 
+
+cv::Mat makeColorwheel() {
+    const int RY = 15;
+    const int YG = 6;
+    const int GC = 4;
+    const int CB = 11;
+    const int BM = 13;
+    const int MR = 6;
+
+    int ncols = RY + YG + GC + CB + BM + MR;
+    cv::Mat colorwheel(ncols, 1, CV_8UC3);
+
+    int col = 0;
+    // RY
+    for (int i = 0; i < RY; ++i, ++col) {
+        colorwheel.at<cv::Vec3b>(col, 0) = cv::Vec3b(255, 255 * i / RY, 0);
+    }
+    // YG
+    for (int i = 0; i < YG; ++i, ++col) {
+        colorwheel.at<cv::Vec3b>(col, 0) = cv::Vec3b(255 - 255 * i / YG, 255, 0);
+    }
+    // GC
+    for (int i = 0; i < GC; ++i, ++col) {
+        colorwheel.at<cv::Vec3b>(col, 0) = cv::Vec3b(0, 255, 255 * i / GC);
+    }
+    // CB
+    for (int i = 0; i < CB; ++i, ++col) {
+        colorwheel.at<cv::Vec3b>(col, 0) = cv::Vec3b(0, 255 - 255 * i / CB, 255);
+    }
+    // BM
+    for (int i = 0; i < BM; ++i, ++col) {
+        colorwheel.at<cv::Vec3b>(col, 0) = cv::Vec3b(255 * i / BM, 0, 255);
+    }
+    // MR
+    for (int i = 0; i < MR; ++i, ++col) {
+        colorwheel.at<cv::Vec3b>(col, 0) = cv::Vec3b(255, 0, 255 - 255 * i / MR);
+    }
+
+    return colorwheel;
+}
+
+cv::Mat visualizeFlow(const cv::Mat& flow_mat) {
+
+    cv::Mat flow_parts[2];
+    cv::split(flow_mat, flow_parts);
+    cv::Mat u = flow_parts[0], v = flow_parts[1];
+
+    cv::Mat magnitude, angle;
+    cv::cartToPolar(u, v, magnitude, angle);
+
+    // Normalize magnitude
+    double mag_max;
+    cv::minMaxLoc(magnitude, 0, &mag_max);
+    if (mag_max > 0) {
+        magnitude /= mag_max;
+    }
+
+    // Convert angle to [0, 1] range
+    angle *= (1.0 / (2 * CV_PI));
+    angle += 0.5;
+
+    // Apply color wheel
+    cv::Mat colorwheel = makeColorwheel();
+    const int ncols = colorwheel.rows;
+    cv::Mat flow_color(flow_mat.size(), CV_8UC3);
+
+    for (int i = 0; i < flow_mat.rows; ++i) {
+        for (int j = 0; j < flow_mat.cols; ++j) {
+            float mag = magnitude.at<float>(i, j);
+            float ang = angle.at<float>(i, j);
+
+            int k0 = static_cast<int>(ang * (ncols - 1));
+            int k1 = (k0 + 1) % ncols;
+            float f = (ang * (ncols - 1)) - k0;
+
+            cv::Vec3b col0 = colorwheel.at<cv::Vec3b>(k0);
+            cv::Vec3b col1 = colorwheel.at<cv::Vec3b>(k1);
+
+            cv::Vec3b color;
+            for (int ch = 0; ch < 3; ++ch) {
+                float col = (1 - f) * col0[ch] + f * col1[ch];
+                if (mag <= 1) {
+                    col = 255 - mag * (255 - col);
+                } else {
+                    col *= 0.75;
+                }
+                color[ch] = static_cast<uchar>(col);
+            }
+
+            flow_color.at<cv::Vec3b>(i, j) = color;
+        }
+    }
+
+    return flow_color;
+}

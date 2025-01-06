@@ -13,7 +13,7 @@ std::vector<Result> processSource(const std::vector<cv::Mat>& source,
     return task->postprocess(cv::Size(source.front().cols, source.front().rows), infer_results, infer_shapes);
 }
 
-void ProcessImage(const std::vector<std::string>& sourceNames,
+void ProcessImages(const std::vector<std::string>& sourceNames,
     const std::unique_ptr<TaskInterface>& task, 
     const std::unique_ptr<Triton>&  tritonClient,
     const std::vector<std::string>& class_names, 
@@ -44,8 +44,10 @@ void ProcessImage(const std::vector<std::string>& sourceNames,
     auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "Infer time for " << images.size() << " images: " << diff << " ms" << std::endl;
 
+
     // Process predictions for each image
-    for (size_t i = 0; i < images.size(); ++i) {
+    for (size_t i = 0; i < images.size(); ++i) 
+    {
         const Result& prediction = predictions[i];
         cv::Mat& image = images[i];
         const std::string& sourceName = sourceNames[i];
@@ -80,14 +82,16 @@ void ProcessImage(const std::vector<std::string>& sourceNames,
             cv::Mat roi = image(segmentation.bbox);
             cv::addWeighted(roi, 1, colorMask, 0.7, 0, roi);
         }
-        else if(std::holds_alternative<OpticalFlow>(prediction)) {
-            OpticalFlow flow = std::get<OpticalFlow>(prediction);
-            // TODO: Visualize flow
+        else if (std::holds_alternative<OpticalFlow>(prediction))
+        {
+            OpticalFlow flow = std::get<OpticalFlow>(predictions[0]);
+            image = flow.flow;
+            i++;
+            
         }
 
-        // Save processed image
         std::string processedFrameFilename = sourceDir + "/processed_frame_" + 
-                                           std::to_string(i) + "_" + model_name + ".jpg";
+        std::to_string(i) + "_" + model_name + ".jpg";
         std::cout << "Saving frame to: " << processedFrameFilename << std::endl;
         cv::imwrite(processedFrameFilename, image);
     }
@@ -308,7 +312,7 @@ int main(int argc, const char* argv[]) {
         if (sourceNames.empty()) {
             throw std::runtime_error("No valid source files found");
         }
-        ProcessImage(sourceNames, task, tritonClient, class_names, modelName);
+        ProcessImages(sourceNames, task, tritonClient, class_names, modelName);
 
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
