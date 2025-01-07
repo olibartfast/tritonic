@@ -25,8 +25,9 @@ struct InstanceSegmentation : public Detection {
 };
 
 struct OpticalFlow {
-    cv::Mat flow;  // Store the optical flow result
-    float max_displacement;  // Maximum displacement in the flow field
+    cv::Mat flow;           // Colored visualization
+    cv::Mat raw_flow;       // Raw flow field (CV_32FC2)
+    float max_displacement; // Maximum flow magnitude
 };
 
 
@@ -82,8 +83,8 @@ private:
         for (size_t i = 0; i < model_info.input_shapes.size(); i++) {
             if (model_info.input_shapes[i].size() >= 3) {
                 int channels = model_info.input_formats[i] == "FORMAT_NHWC" ? model_info.input_shapes[i][3] : model_info.input_shapes[i][1];
-                int height = model_info.input_formats[i] == "FORMAT_NHWC" ? model_info.input_shapes[i][1] : model_info.input_shapes[i][3];
-                int width = model_info.input_shapes[i][2];
+                int height = model_info.input_formats[i] == "FORMAT_NHWC" ? model_info.input_shapes[i][1] : model_info.input_shapes[i][2];
+                int width = model_info.input_formats[i] == "FORMAT_NHWC" ? model_info.input_shapes[i][2] : model_info.input_shapes[i][3];
                 return std::make_tuple(width, height, channels);
             }
         }
