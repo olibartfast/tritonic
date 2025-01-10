@@ -3,22 +3,6 @@
 #include "Triton.hpp"
 
 
-std::vector<std::string> splitString(const std::string& str, char delimiter) {
-    std::vector<std::string> result;
-    std::stringstream ss(str);
-    std::string item;
-
-    while (std::getline(ss, item, delimiter)) {
-        result.push_back(item);
-    }
-
-    return result;
-}
-
-std::string get_task_type(const TaskInterface& task) {
-    return std::string();
-}
-
 std::vector<Result> processSource(const std::vector<cv::Mat>& source, 
     const std::unique_ptr<TaskInterface>& task, 
     const std::unique_ptr<Triton>&  tritonClient)
@@ -237,7 +221,7 @@ int main(int argc, const char* argv[]) {
         std::string port = parser.get<std::string>("port");
         bool verbose = parser.get<bool>("verbose");
 
-        std::vector<std::string> sourceNames = splitString(parser.get<std::string>("source"), ',');
+        std::vector<std::string> sourceNames = split(parser.get<std::string>("source"), ',');
         ProtocolType protocol = parser.get<std::string>("protocol") == "grpc" ? ProtocolType::GRPC : ProtocolType::HTTP;
         const size_t batch_size = parser.get<size_t>("batch");
 

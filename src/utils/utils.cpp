@@ -1,6 +1,7 @@
 #include "utils.hpp"
 #include <cmath>
 
+
 std::string ToLower(const std::string& str) {
     std::string lowerStr = str;
     std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), [](unsigned char c) {
@@ -8,6 +9,7 @@ std::string ToLower(const std::string& str) {
     });
     return lowerStr;
 }
+
 
 // Function to split a string by a delimiter and return a vector of strings
 std::vector<std::string> split(const std::string& s, char delimiter) {
