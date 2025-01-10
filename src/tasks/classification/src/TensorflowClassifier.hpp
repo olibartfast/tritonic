@@ -12,6 +12,7 @@ public:
     std::vector<std::vector<uint8_t>> preprocess(const std::vector<cv::Mat>& imgs) override;   
     std::vector<Result> postprocess(const cv::Size& frame_size, const std::vector<std::vector<TensorElement>>& infer_results,
                                     const std::vector<std::vector<int64_t>>& infer_shapes) override;
+    TaskType getTaskType() override { return TaskType::Classification; }                                
 
 private:
     std::vector<uint8_t> preprocess_image(const cv::Mat& img, const std::string& format, int img_type1, int img_type3,

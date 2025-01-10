@@ -30,9 +30,16 @@ struct OpticalFlow {
     float max_displacement; // Maximum flow magnitude
 };
 
-
 using Result = std::variant<Classification, Detection, InstanceSegmentation, OpticalFlow>;
 using TensorElement = std::variant<float, int32_t, int64_t>;
+
+
+enum class TaskType {
+    OpticalFlow,
+    Classification,
+    Detection,
+    InstanceSegmentation
+};
 
 class InputDimensionError : public std::runtime_error {
 public:
@@ -51,6 +58,8 @@ public:
     }
 
     virtual ~TaskInterface() = default;
+
+    virtual TaskType getTaskType() = 0;
 
     // Pure virtual functions
     virtual std::vector<Result> postprocess(

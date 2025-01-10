@@ -17,6 +17,8 @@ public:
         }  
     }
 
+    TaskType getTaskType() override { return TaskType::OpticalFlow; }
+
     std::vector<std::vector<uint8_t>>  preprocess(const std::vector<cv::Mat>& imgs) override;
 
     std::vector<Result> postprocess(const cv::Size& frame_size, 
