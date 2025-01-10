@@ -38,7 +38,6 @@ void ProcessImages(const std::vector<std::string>& sourceNames,
     }
 
     auto start = std::chrono::steady_clock::now();
-    // Process all images at once
     std::vector<Result> predictions = processSource(images, task, tritonClient);
     auto end = std::chrono::steady_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
