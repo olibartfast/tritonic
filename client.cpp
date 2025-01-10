@@ -296,6 +296,10 @@ int main(int argc, const char* argv[]) {
                 std::cerr << "Unknown file type: " << sourceName << std::endl;
             }
         }
+
+        if (image_list.empty() && video_list.empty()) {
+            throw std::runtime_error("No valid image or video files provided");
+        }
         
         if (task->getTaskType() == TaskType::OpticalFlow )
         {

@@ -42,8 +42,16 @@ std::vector<std::vector<int64_t>> parseInputSizes(const std::string& input) {
 bool IsImageFile(const std::string& fileName) {
     static const std::set<std::string> imageExtensions = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp"};
     
-    // Extract the file extension
-    std::string extension = fileName.substr(fileName.find_last_of("."));
+    // Find the last occurrence of a period
+    size_t lastDot = fileName.find_last_of(".");
+    
+    // If no period is found, or it's the last character, it's not an image file
+    if (lastDot == std::string::npos || lastDot == fileName.length() - 1) {
+        return false;
+    }
+    
+    // Extract the file extension (including the period)
+    std::string extension = fileName.substr(lastDot);
     
     // Convert the extension to lowercase and check if it's in the set of image extensions
     return imageExtensions.find(ToLower(extension)) != imageExtensions.end();
