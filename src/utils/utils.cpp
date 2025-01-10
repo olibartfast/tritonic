@@ -47,6 +47,20 @@ bool IsImageFile(const std::string& fileName) {
     return imageExtensions.find(ToLower(extension)) != imageExtensions.end();
 }
 
+bool IsVideoFile(const std::string& fileName) {
+    static const std::set<std::string> videoExtensions = {".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".3gp"};
+
+    // Extract the file extension
+    size_t dotPos = fileName.find_last_of(".");
+    if (dotPos == std::string::npos) {
+        return false; // No extension found
+    }
+    std::string extension = fileName.substr(dotPos);
+
+    // Convert the extension to lowercase and check if it's in the set of video extensions
+    return videoExtensions.find(ToLower(extension)) != videoExtensions.end();
+}
+
 std::vector<cv::Scalar> generateRandomColors(size_t size) {
     std::vector<cv::Scalar> colors;
     colors.reserve(size); // Reserve space to avoid reallocations

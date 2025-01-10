@@ -3,6 +3,21 @@
 #include "Triton.hpp"
 
 
+std::vector<std::string> splitString(const std::string& str, char delimiter) {
+    std::vector<std::string> result;
+    std::stringstream ss(str);
+    std::string item;
+
+    while (std::getline(ss, item, delimiter)) {
+        result.push_back(item);
+    }
+
+    return result;
+}
+
+std::string get_task_type(const TaskInterface& task) {
+    return std::string();
+}
 
 std::vector<Result> processSource(const std::vector<cv::Mat>& source, 
     const std::unique_ptr<TaskInterface>& task, 
@@ -37,20 +52,27 @@ void ProcessImages(const std::vector<std::string>& sourceNames,
         return;
     }
 
+    if (task->getTaskType() == TaskType::OpticalFlow) {
+        if (images.size() != 2) {
+            throw std::runtime_error("Optical flow task requires exactly 2 images");
+        }
+        } else {
+        if (images.size() != 1) {
+            throw std::runtime_error("Non-optical flow task requires exactly 1 image");
+        }
+    }
+
     auto start = std::chrono::steady_clock::now();
-    // Process all images at once
     std::vector<Result> predictions = processSource(images, task, tritonClient);
     auto end = std::chrono::steady_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "Infer time for " << images.size() << " images: " << diff << " ms" << std::endl;
 
-
-    // Process predictions for each image
-    for (size_t i = 0; i < images.size(); ++i) 
+    // Process predictions 
+    cv::Mat& image = images[0];
+    const std::string& sourceName = sourceNames[0];
+    for (const Result& prediction : predictions)  
     {
-        const Result& prediction = predictions[i];
-        cv::Mat& image = images[i];
-        const std::string& sourceName = sourceNames[i];
         std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
         
         if (std::holds_alternative<Classification>(prediction)) {
@@ -85,13 +107,10 @@ void ProcessImages(const std::vector<std::string>& sourceNames,
         else if (std::holds_alternative<OpticalFlow>(prediction))
         {
             OpticalFlow flow = std::get<OpticalFlow>(predictions[0]);
-            image = flow.flow;
-            i++;
-            
+            flow.flow.copyTo(image);
         }
 
-        std::string processedFrameFilename = sourceDir + "/processed_frame_" + 
-        std::to_string(i) + "_" + model_name + ".jpg";
+        std::string processedFrameFilename = sourceDir + "/processed" +"/processed_frame_" + model_name + ".jpg";
         std::cout << "Saving frame to: " << processedFrameFilename << std::endl;
         cv::imwrite(processedFrameFilename, image);
     }
@@ -196,7 +215,7 @@ static const std::string keys =
     "{ help h   | | Print help message. }"
     "{ model_type mt | yolo11 | yolo version used i.e yolov5 -> yolov10, yolo11, yolonas, yoloseg, dfine, torchvision-classifier}"
     "{ model m | yolo11x_onnx | model name of folder in triton }"
-    "{ source s | data/dog.jpg | path to video or image}"
+    "{ source s | data/dog.jpg | comma separated list of source images o videos}"
     "{ serverAddress  ip  | localhost | server address ip, default localhost}"
     "{ port  p  | 8001 | Port number(Grpc 8001, Http 8000)}"
     "{ verbose vb | false | Verbose mode, true or false}"
@@ -217,7 +236,8 @@ int main(int argc, const char* argv[]) {
         std::string serverAddress = parser.get<std::string>("serverAddress");
         std::string port = parser.get<std::string>("port");
         bool verbose = parser.get<bool>("verbose");
-        std::string sourceName = parser.get<std::string>("source");
+
+        std::vector<std::string> sourceNames = splitString(parser.get<std::string>("source"), ',');
         ProtocolType protocol = parser.get<std::string>("protocol") == "grpc" ? ProtocolType::GRPC : ProtocolType::HTTP;
         const size_t batch_size = parser.get<size_t>("batch");
 
@@ -228,10 +248,6 @@ int main(int argc, const char* argv[]) {
 
         std::string url(serverAddress + ":" + port);
         std::string labelsFile = parser.get<std::string>("labelsFile");
-
-        if (!std::filesystem::exists(sourceName)) {
-            throw std::runtime_error("Source file " + sourceName + " does not exist");
-        }
 
         std::vector<std::vector<int64_t>> input_sizes;
         if(parser.has("input_sizes")) {
@@ -257,19 +273,12 @@ int main(int argc, const char* argv[]) {
         std::cout << "Chosen Parameters:" << std::endl;
         std::cout << "model_type (mt): " << parser.get<std::string>("model_type") << std::endl;
         std::cout << "model (m): " << parser.get<std::string>("model") << std::endl;
-        std::cout << "source (s): " << parser.get<std::string>("source") << std::endl;  // Changed from 'video' to 'source'
+        std::cout << "source (s): " << parser.get<std::string>("source") << std::endl; 
         std::cout << "serverAddress (ip): " << parser.get<std::string>("serverAddress") << std::endl;
         std::cout << "verbose (vb): " << parser.get<bool>("verbose") << std::endl;
         std::cout << "protocol (pt): " << parser.get<std::string>("protocol") << std::endl;
         std::cout << "labelsFile (l): " << parser.get<std::string>("labelsFile") << std::endl;
         std::cout << "batch (b): " << parser.get<size_t>("batch") << std::endl;
-
-
-        if(!std::filesystem::exists(sourceName))
-        {
-            std::cerr << "Source file " << sourceName << " does not exist" << std::endl;
-            std::exit(1);
-        }
 
    
 
@@ -289,30 +298,43 @@ int main(int argc, const char* argv[]) {
         }
 
         const auto class_names = task->readLabelNames(labelsFile);
-        std::vector<std::string> sourceNames;
-        
-        // If the source is a directory, get all image files
-        if (std::filesystem::is_directory(sourceName)) {
-            for (const auto& entry : std::filesystem::directory_iterator(sourceName)) {
-                if (IsImageFile(entry.path().string())) {
-                    sourceNames.push_back(entry.path().string());
-                }
-            }
-        } 
-        // If it's a single file, check if it's an image or video
-        else if (std::filesystem::is_regular_file(sourceName)) {
+
+        std::vector<std::string> image_list;
+        std::vector<std::string> video_list;
+        for (const auto& sourceName : sourceNames) {
             if (IsImageFile(sourceName)) {
-                sourceNames.push_back(sourceName);
-            } else {
-                // Handle video file
-                ProcessVideo(sourceName, task, tritonClient, class_names);
-                return 0;
+                image_list.push_back(sourceName);
+            } else if (IsVideoFile(sourceName)) {
+                video_list.push_back(sourceName);
+            }
+            else
+            {
+                std::cerr << "Unknown file type: " << sourceName << std::endl;
             }
         }
-        if (sourceNames.empty()) {
-            throw std::runtime_error("No valid source files found");
+        
+        if (task->getTaskType() == TaskType::OpticalFlow )
+        {
+            for(size_t i = 0; i < image_list.size() - 1 ; i++) {
+                std::vector<std::string> flowInputs = {image_list[i], image_list[i+1]};
+                ProcessImages(flowInputs, task, tritonClient, class_names, modelName);
+                
+            }
+            
         }
-        ProcessImages(sourceNames, task, tritonClient, class_names, modelName);
+        else{
+            for (const auto& sourceName : image_list) {
+                ProcessImages({sourceName}, task, tritonClient, class_names, modelName);
+            }
+
+        }
+
+
+        for (const auto& sourceName : video_list) {
+            ProcessVideo(sourceName, task, tritonClient, class_names);
+        }
+
+
 
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
