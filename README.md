@@ -1,6 +1,6 @@
 # C++ Triton Client for Computer Vision Models
 
-This C++ application enables machine learning tasks, such as object detection, classification, optical flow, using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
+This C++ application enables machine learning tasks (e.g. object detection, classification, optical flow ...) using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
 
 ## Table of Contents
 - [Supported Models](#supported-models)
