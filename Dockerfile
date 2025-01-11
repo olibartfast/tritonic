@@ -1,5 +1,6 @@
 # Use an official Nvidia Triton Inference Server image as the base image
-ARG TRITON_VERSION=24.09
+# docker build --rm -t computer-vision-triton-cpp-client .
+ARG TRITON_VERSION=24.12
 FROM nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3-sdk
 
 # Install any additional dependencies if needed
