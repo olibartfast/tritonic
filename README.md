@@ -1,6 +1,6 @@
 # C++ Triton Client for Computer Vision Models
 
-This C++ application enables machine learning tasks, such as object detection and classification, using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
+This C++ application enables machine learning tasks (e.g. object detection, classification, optical flow ...) using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
 
 ## Table of Contents
 - [Supported Models](#supported-models)
@@ -16,31 +16,35 @@ This C++ application enables machine learning tasks, such as object detection an
 - [References](#references)
 - [Feedback](#feedback)
 
-## Supported(Tested) Models
+# Supported (Tested) Models
 
-### Object Detection
-- YOLOv5
-- YOLOv6
-- YOLOv7
-- YOLOv8
-- YOLOv9
-- YOLOv10
-- YOLO11
-- YOLO-NAS
-- RT-DETR
-- D-FINE
+## Object Detection
 
-### Instance Segmentation
-- YOLOv5
-- YOLOv8
-- YOLO11
+- [YOLOv5](https://github.com/ultralytics/yolov5)
+- [YOLOv6](https://github.com/meituan/YOLOv6)
+- [YOLOv7](https://github.com/WongKinYiu/yolov7)
+- [YOLOv8](https://github.com/ultralytics/ultralytics)
+- [YOLOv9](https://github.com/WongKinYiu/yolov9)
+- [YOLOv10](https://github.com/THU-MIG/yolov10)
+- [YOLO11](https://github.com/ultralytics/ultralytics)
+- [YOLO-NAS](https://github.com/Deci-AI/super-gradients)
+- [RT-DETR](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetr_pytorch)
+- [D-FINE](https://github.com/Peterande/D-FINE)
 
-### Classification
-- Torchvision API-based models
-- Tensorflow-Keras API(saved_model export)
+## Instance Segmentation
 
-### Optical Flow
-- RAFT from Torchvision API
+- [YOLOv5](https://github.com/ultralytics/yolov5)
+- [YOLOv8](https://github.com/ultralytics/ultralytics)
+- [YOLO11](https://github.com/ultralytics/ultralytics)
+
+## Classification
+
+- [Torchvision Models](https://pytorch.org/vision/stable/models.html)
+- [TensorFlow-Keras Models](https://www.tensorflow.org/api_docs/python/tf/keras/applications)
+
+## Optical Flow
+
+- [RAFT](https://pytorch.org/vision/stable/models/raft.html)
 
 
 ## Build Client Libraries
@@ -154,6 +158,8 @@ For dynamic input sizes:
 ```bash
     --input_sizes="c,w,h"
 ```
+#### Debugging Tips
+Check [`.vscode/launch.json`](.vscode/launch.json) for additional configuration examples
 
 #### Placeholder Descriptions
 - **`/path/to/source.format`**: Path to the input video or image file, for optical flow you must pass two images as comma separated list
