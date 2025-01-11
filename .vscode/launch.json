@@ -150,7 +150,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/computer-vision-triton-cpp-client",
             "args": ["--source='data/raft/frame_001.png,data/raft/frame_002.png'", 
-            "--serverAddress=192.168.1.212",
+            "--serverAddress=localhost",
             "--model=raft_large_onnx",
             "--model_type=raft",
             "--input_sizes='3,520,960;3,520,960'"

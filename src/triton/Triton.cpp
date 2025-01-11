@@ -48,9 +48,9 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
     info.max_batch_size_ = responseJson["max_batch_size"].GetInt();
 
     const auto& inputs = responseJson["input"].GetArray();
-    for (size_t i = 0; i < inputs.Size(); ++i) {
-        const auto& input = inputs[i];
-        std::cout << "Input " << i << ": " << input["name"].GetString() << std::endl;
+    size_t inputIndex = 0;  // Keep track of index for error messages and input_sizes access
+    for (const auto& input : inputs) {
+        std::cout << "Input " << inputIndex << ": " << input["name"].GetString() << std::endl;
         info.input_names.push_back(input["name"].GetString());
         
         std::string format = input["format"].GetString();
@@ -71,11 +71,11 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
         }
 
         if (hasDynamicDim) {
-            if (input_sizes.empty() || i >= input_sizes.size()) {
-                throw std::runtime_error("Dynamic input dimension detected for input " + std::to_string(i) + 
-                                         ", but no input sizes provided. Please specify input sizes.");
+            if (input_sizes.empty() || inputIndex >= input_sizes.size()) {
+                throw std::runtime_error("Dynamic input dimension detected for input " + std::to_string(inputIndex) + 
+                                        ", but no input sizes provided. Please specify input sizes.");
             }
-            shape = input_sizes[i];
+            shape = input_sizes[inputIndex];
         } else if (!input_sizes.empty()) {
             std::cout << "Warning: Input sizes provided, but model does not have dynamic shapes. Ignoring provided input sizes." << std::endl;
         }
@@ -96,10 +96,12 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
         } else if (datatype == "INT64") {
             info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
             std::cerr << "Warning: INT64 type detected for input '" << info.input_names.back() 
-                      << "'. Will be mapped to CV_32S." << std::endl;
+                    << "'. Will be mapped to CV_32S." << std::endl;
         } else {
             throw std::runtime_error("Unsupported data type: " + datatype);
         }
+        
+        ++inputIndex;
     }
 
     for (const auto& output : responseJson["output"].GetArray()) {
