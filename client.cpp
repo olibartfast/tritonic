@@ -173,10 +173,8 @@ void ProcessVideo(const std::string& sourceName,
                         // Draw bounding box with class-specific color
                         cv::rectangle(visualization_frame, safeBbox, colors[detection.class_id], 2);
                         
-                        // Draw label with confidence
-                        std::string label = class_names[detection.class_id] + ": " + 
-                                          std::to_string(detection.class_confidence).substr(0, 4);
-                        draw_label(visualization_frame, label, detection.class_confidence, 
+                    
+                        draw_label(visualization_frame, class_names[detection.class_id], detection.class_confidence, 
                                  safeBbox.x, safeBbox.y - 1);
                     }
                 }
