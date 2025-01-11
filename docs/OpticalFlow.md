@@ -2,6 +2,7 @@
 
 ## RAFT
 ## Export Options
+To export use [raft_exporter.py](scripts/optical_flow/raft_exporter.py)  inside script folder.  
 
 The export script supports several configuration options:
 
