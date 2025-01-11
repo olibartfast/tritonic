@@ -39,6 +39,8 @@ This C++ application enables machine learning tasks, such as object detection an
 - Torchvision API-based models
 - Tensorflow-Keras API(saved_model export)
 
+### Optical Flow
+- RAFT from Torchvision API
 
 
 ## Build Client Libraries
@@ -102,6 +104,7 @@ cmake --build .
 - [Object Detection](docs/ObjectDetection.md)
 - [Classification](docs/Classification.md)
 - [Instance Segmentation](docs/InstanceSegmentation.md)
+- [Optical Flow](docs/OpticalFlow.md)
 
 *Other tasks like Pose Estimation, Optical Flow, LLM are in TODO list.*
 
@@ -149,11 +152,11 @@ docker run --gpus=1 --rm \
 
 For dynamic input sizes:
 ```bash
-    --input_sizes="c w h"
+    --input_sizes="c,w,h"
 ```
 
 #### Placeholder Descriptions
-- **`/path/to/source.format`**: Path to the input video or image file
+- **`/path/to/source.format`**: Path to the input video or image file, for optical flow you must pass two images as comma separated list
 - **`<model_type>`**: Model type (e.g., `yolov5`, `yolov8`, `yolo11`, `yoloseg`, `torchvision-classifier`, `tensorflow-classifier`, check below [Model Type Parameters](#model-type-tag-parameters))
 - **`<model_name_folder_on_triton>`**: Name of the model folder on the Triton server
 - **`/path/to/labels/coco.names`**: Path to the label file (e.g., COCO labels)
@@ -187,6 +190,7 @@ To view all available parameters, run:
 | YOLOv5 Segmentation    | yoloseg                |
 | YOLOv8 Segmentation    | yoloseg                |
 | YOLO11 Segmentation    | yoloseg                |
+| RAFT Optical Flow      | raft                   |
 
 
 ## Docker Support  
