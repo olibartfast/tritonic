@@ -106,7 +106,7 @@ cmake --build .
 - [Instance Segmentation](docs/InstanceSegmentation.md)
 - [Optical Flow](docs/OpticalFlow.md)
 
-*Other tasks like Pose Estimation, Optical Flow, LLM are in TODO list.*
+*Other tasks are in TODO list.*
 
 ## Notes
 
