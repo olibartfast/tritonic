@@ -4,7 +4,6 @@ docker run --rm \
 --network host \
 -v ${PWD}/data:/app/data computer-vision-triton-cpp-client \
   --source=/app/data/person.jpg \
-  --task_type=instance_segmentation \
   --model_type=yoloseg \
   --model=yolo11s-seg_onnx  \
   --labelsFile=/app/labels/coco.txt \
