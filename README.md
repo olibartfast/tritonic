@@ -29,7 +29,7 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 - [YOLO11](https://github.com/ultralytics/ultralytics)
 - [YOLO-NAS](https://github.com/Deci-AI/super-gradients)
 - [RT-DETR](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetr_pytorch)
-- [D-FINE]([https://github.com/YOLOv8/D-FINE](https://github.com/Peterande/D-FINE))
+- [D-FINE](https://github.com/Peterande/D-FINE)
 
 ## Instance Segmentation
 
