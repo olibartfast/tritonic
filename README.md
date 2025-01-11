@@ -156,7 +156,7 @@ docker run --gpus=1 --rm \
 
 For dynamic input sizes:
 ```bash
-    --input_sizes="c,w,h"
+    --input_sizes="c,h,w"
 ```
 #### Debugging Tips
 Check [`.vscode/launch.json`](.vscode/launch.json) for additional configuration examples
@@ -228,7 +228,7 @@ docker run --rm \
 Real-time inference test (GPU RTX 3060):
 - YOLOv7-tiny exported to ONNX: [Demo Video](https://youtu.be/lke5TcbP2a0)
 - YOLO11s exported to onnx: [Demo Video](https://youtu.be/whP-FF__4IM)
-- RAFT Optical Flow Large(exported to traced torchscript) [Demo Video](https://www.youtube.com/watch?v=UvKCjYI_9aQ)
+- RAFT Optical Flow Large(exported to traced torchscript): [Demo Video](https://www.youtube.com/watch?v=UvKCjYI_9aQ)
 
 ## References
 - [Triton Inference Server Client Example](https://github.com/triton-inference-server/client/blob/r21.08/src/c%2B%2B/examples/image_client.cc)
