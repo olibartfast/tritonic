@@ -50,6 +50,7 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
     const auto& inputs = responseJson["input"].GetArray();
     for (size_t i = 0; i < inputs.Size(); ++i) {
         const auto& input = inputs[i];
+        std::cout << "Input " << i << ": " << input["name"].GetString() << std::endl;
         info.input_names.push_back(input["name"].GetString());
         
         std::string format = input["format"].GetString();

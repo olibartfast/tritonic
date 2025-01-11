@@ -179,12 +179,9 @@ std::vector<Result> RAFT::postprocess(const cv::Size& frame_size,
         throw std::runtime_error("Empty inference results");
     }
 
-    if (!output_idx_.has_value()) {
-        throw std::runtime_error("Output index not set");
-    }
 
-    const auto& flow_data = infer_results[output_idx_.value()];
-    const auto& flow_shape = infer_shapes[output_idx_.value()];
+    const auto& flow_data = infer_results.front();
+    const auto& flow_shape = infer_shapes.front();
 
     if (flow_shape.size() != 4 || flow_shape[1] != 2) {
         throw std::runtime_error("Unexpected flow shape. Expected [1,2,H,W]");
