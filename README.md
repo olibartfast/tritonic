@@ -154,6 +154,8 @@ For dynamic input sizes:
 ```bash
     --input_sizes="c,w,h"
 ```
+#### Debugging Tips
+Check [`.vscode/launch.json`](.vscode/launch.json) for additional configuration examples
 
 #### Placeholder Descriptions
 - **`/path/to/source.format`**: Path to the input video or image file, for optical flow you must pass two images as comma separated list
