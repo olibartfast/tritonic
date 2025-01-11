@@ -131,11 +131,25 @@
             "cwd": "${workspaceFolder}" 
         },   
         {
+            "name": "raft_large_torchscript",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/computer-vision-triton-cpp-client",
+            "args": ["--source='data/raft/frame_001.png,data/raft/frame_002.png'", 
+            "--serverAddress=192.168.1.212",
+            "--model=raft_large_torchscript",
+            "--model_type=raft",
+            "--input_sizes='3,520,960;3,520,960'"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        }, 
+        {
             "name": "raft_large_onnx",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/computer-vision-triton-cpp-client",
-            "args": ["--source=data/raft", 
+            "args": ["--source='data/raft/frame_001.png,data/raft/frame_002.png'", 
             "--serverAddress=192.168.1.212",
             "--model=raft_large_onnx",
             "--model_type=raft",
@@ -143,7 +157,7 @@
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-            },              
+        },                       
 
     ]
 
