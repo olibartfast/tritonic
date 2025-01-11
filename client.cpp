@@ -99,12 +99,10 @@ void ProcessImages(const std::vector<std::string>& sourceNames,
     std::cout << "Saving frame to: " << processedFrameFilename << std::endl;
     cv::imwrite(processedFrameFilename, image);
 }
-
-// Define a function to perform inference on a video
 void ProcessVideo(const std::string& sourceName,
     const std::unique_ptr<TaskInterface>& task, 
     const std::unique_ptr<Triton>&  tritonClient, 
-     const std::vector<std::string>& class_names) {
+    const std::vector<std::string>& class_names) {
     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
     cv::VideoCapture cap(sourceName);
 
@@ -125,75 +123,129 @@ void ProcessVideo(const std::string& sourceName,
     }
 #endif
 
-    cv::Mat frame;
-    std::vector<cv::Scalar> colors = generateRandomColors(class_names.size()); 
-    while (cap.read(frame)) {
+    cv::Mat current_frame, previous_frame, visualization_frame;
+    std::vector<cv::Scalar> colors = generateRandomColors(class_names.size());
+    
+    // Read first frame
+    if (!cap.read(current_frame)) {
+        std::cout << "Failed to read first frame" << std::endl;
+        return;
+    }
+
+    while (true) {
         auto start = std::chrono::steady_clock::now();
-        // Call your processSource function here
-        std::vector<Result> predictions = processSource(frame, task, tritonClient);
+        std::vector<Result> predictions;
+
+        if (task->getTaskType() == TaskType::OpticalFlow) {
+            if (!previous_frame.empty()) {
+                // Process optical flow between previous and current frame
+                std::vector<cv::Mat> frame_pair = {previous_frame, current_frame};
+                predictions = processSource(frame_pair, task, tritonClient);
+            }
+        } else {
+            // Process single frame for other tasks
+            predictions = processSource({current_frame}, task, tritonClient);
+        }
+
         auto end = std::chrono::steady_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         std::cout << "Infer time: " << diff << " ms" << std::endl;
 
-
 #if defined(SHOW_FRAME) || defined(WRITE_FRAME)
-        double fps = 1000.0 / static_cast<double>(diff);
-        std::string fpsText = "FPS: " + std::to_string(fps).substr(0, 4);
-        cv::putText(frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
-        for (const auto& prediction : predictions) 
-        {
-            if (std::holds_alternative<InstanceSegmentation>(prediction)) 
-            {
-                InstanceSegmentation segmentation = std::get<InstanceSegmentation>(prediction);
-                
-                // Ensure the bounding box is within the frame boundaries
-                cv::Rect safeBbox = segmentation.bbox & cv::Rect(0, 0, frame.cols, frame.rows);
-                
-                if (safeBbox.width > 0 && safeBbox.height > 0) {
-                    // Draw bounding box
-                    cv::rectangle(frame, safeBbox, cv::Scalar(255, 0, 0), 2);
+        // Create visualization frame
+        if (task->getTaskType() == TaskType::OpticalFlow) {
+            visualization_frame = cv::Mat::zeros(current_frame.size(), current_frame.type());
+            for (const auto& prediction : predictions) {
+                if (std::holds_alternative<OpticalFlow>(prediction)) {
+                    OpticalFlow flow = std::get<OpticalFlow>(prediction);
+                    flow.flow.copyTo(visualization_frame);
+                }
+            }
+        } else {
+            current_frame.copyTo(visualization_frame);
+            for (const auto& prediction : predictions) {
+                if (std::holds_alternative<Detection>(prediction)) {
+                    Detection detection = std::get<Detection>(prediction);
+                    // Ensure bounding box is within frame boundaries
+                    cv::Rect safeBbox = detection.bbox & cv::Rect(0, 0, visualization_frame.cols, visualization_frame.rows);
                     
-                    // Draw label
-                    draw_label(frame, class_names[segmentation.class_id], segmentation.class_confidence, safeBbox.x, safeBbox.y - 1);
-                    
-                    // Create mask from stored data
-                    cv::Mat mask = cv::Mat(segmentation.mask_height, segmentation.mask_width, CV_8UC1, segmentation.mask_data.data());
-                    
-                    // Resize mask to match the safe bounding box size
-                    cv::resize(mask, mask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
-                    
-                    // Draw mask
-                    cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
-                    cv::Scalar color = colors[segmentation.class_id];
-                    colorMask.setTo(color, mask);
-                    
-                    // Get the ROI from the frame
-                    cv::Mat roi = frame(safeBbox);
-                    
-                    // Ensure colorMask and roi have the same size
-                    if (roi.size() == colorMask.size()) {
-                        cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
-                    } else {
-                        std::cerr << "ROI and color mask size mismatch. Skipping mask overlay." << std::endl;
+                    if (safeBbox.width > 0 && safeBbox.height > 0) {
+                        // Draw bounding box with class-specific color
+                        cv::rectangle(visualization_frame, safeBbox, colors[detection.class_id], 2);
+                        
+                        // Draw label with confidence
+                        std::string label = class_names[detection.class_id] + ": " + 
+                                          std::to_string(detection.class_confidence).substr(0, 4);
+                        draw_label(visualization_frame, label, detection.class_confidence, 
+                                 safeBbox.x, safeBbox.y - 1);
                     }
-                } else {
-                    std::cerr << "Bounding box is outside the frame. Skipping this instance." << std::endl;
+                }
+                else if (std::holds_alternative<InstanceSegmentation>(prediction)) {
+                    InstanceSegmentation segmentation = std::get<InstanceSegmentation>(prediction);
+                    
+                    // Ensure the bounding box is within the frame boundaries
+                    cv::Rect safeBbox = segmentation.bbox & cv::Rect(0, 0, visualization_frame.cols, visualization_frame.rows);
+                    
+                    if (safeBbox.width > 0 && safeBbox.height > 0) {
+                        // Draw bounding box
+                        cv::rectangle(visualization_frame, safeBbox, colors[segmentation.class_id], 2);
+                        
+                        // Draw label
+                        draw_label(visualization_frame, class_names[segmentation.class_id], segmentation.class_confidence, 
+                                 safeBbox.x, safeBbox.y - 1);
+                        
+                        // Create mask from stored data
+                        cv::Mat mask = cv::Mat(segmentation.mask_height, segmentation.mask_width, 
+                                             CV_8UC1, segmentation.mask_data.data());
+                        
+                        // Resize mask to match the safe bounding box size
+                        cv::resize(mask, mask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
+                        
+                        // Draw mask
+                        cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
+                        cv::Scalar color = colors[segmentation.class_id];
+                        colorMask.setTo(color, mask);
+                        
+                        // Get the ROI from the frame
+                        cv::Mat roi = visualization_frame(safeBbox);
+                        
+                        // Ensure colorMask and roi have the same size
+                        if (roi.size() == colorMask.size()) {
+                            cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
+                        } else {
+                            std::cerr << "ROI and color mask size mismatch. Skipping mask overlay." << std::endl;
+                        }
+                    } else {
+                        std::cerr << "Bounding box is outside the frame. Skipping this instance." << std::endl;
+                    }
                 }
             }
         }
+
+        // Add FPS counter to visualization frame
+        double fps = 1000.0 / static_cast<double>(diff);
+        std::string fpsText = "FPS: " + std::to_string(fps).substr(0, 4);
+        cv::putText(visualization_frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
 #endif
 
 #ifdef SHOW_FRAME
-        cv::imshow("video feed", frame);
+        cv::imshow("video feed", visualization_frame);
         cv::waitKey(1);
 #endif
 
 #ifdef WRITE_FRAME
-        outputVideo.write(frame);
+        outputVideo.write(visualization_frame);
 #endif
+
+        // Store current frame as previous frame
+        current_frame.copyTo(previous_frame);
+        
+        // Read next frame
+        if (!cap.read(current_frame)) {
+            break;
+        }
     }
 }
-
 
 static const std::string keys =
     "{ help h   | | Print help message. }"
@@ -303,26 +355,32 @@ int main(int argc, const char* argv[]) {
                 throw std::runtime_error("No valid image or video files provided");
             }
             
-            switch(task->getTaskType())
-            {
-                case TaskType::OpticalFlow:
-                    {
-                        for(size_t i = 0; i < image_list.size() - 1 ; i++) {
-                        std::vector<std::string> flowInputs = {image_list[i], image_list[i+1]};
-                        ProcessImages(flowInputs, task, tritonClient, class_names, modelName);
+            if(image_list.size() > 0){
+                switch(task->getTaskType())
+                {
+                    case TaskType::OpticalFlow:
+                        {
+                            for(size_t i = 0; i < image_list.size() - 1 ; i++) {
+                            std::vector<std::string> flowInputs = {image_list[i], image_list[i+1]};
+                            ProcessImages(flowInputs, task, tritonClient, class_names, modelName);
+                            }
                         }
-                    }
-                    break;        
-                default:
-                    {
-                        for (const auto& sourceName : image_list) 
-                            ProcessImages({sourceName}, task, tritonClient, class_names, modelName);
-                    }
-                    break;
-            } 
+                        break;        
+                    default:
+                        {
+                            for (const auto& sourceName : image_list) 
+                                ProcessImages({sourceName}, task, tritonClient, class_names, modelName);
+                        }
+                        break;
+                } 
 
-            for (const auto& sourceName : video_list) 
-                ProcessVideo(sourceName, task, tritonClient, class_names);
+            }
+            if(video_list.size() > 0){
+                for (const auto& sourceName : video_list) 
+                    ProcessVideo(sourceName, task, tritonClient, class_names);
+            }
+
+
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
