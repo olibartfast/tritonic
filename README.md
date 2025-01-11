@@ -53,10 +53,10 @@ Ensure the following dependencies are installed:
 
 1. **Nvidia Triton Inference Server**:
 ```bash
-docker pull nvcr.io/nvidia/tritonserver:24.09-py3
+docker pull nvcr.io/nvidia/tritonserver:24.12-py3
 ```
 
-2. **Triton client libraries**: Tested on Release r24.09
+2. **Triton client libraries**: Tested on Release r24.12
 3. **Protobuf and gRPC++**: Versions compatible with Triton
 4. **RapidJSON**:
 ```bash
