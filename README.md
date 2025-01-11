@@ -35,7 +35,7 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 
 - [YOLOv5](https://github.com/ultralytics/yolov5)
 - [YOLOv8](https://github.com/ultralytics/ultralytics)
-- [YOLO11]([https://github.com/ultralytics/yolov11](https://github.com/ultralytics/ultralytics))
+- [YOLO11](https://github.com/ultralytics/ultralytics)
 
 ## Classification
 
