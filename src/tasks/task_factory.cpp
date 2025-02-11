@@ -23,6 +23,7 @@ std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
     {"yolo11", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLO>(modelInfo); }},
     {"yolov10", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLOv10>(modelInfo); }},
     {"rtdetr", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetr>(modelInfo); }},
+    {"rtdetrv2", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetr>(modelInfo); }},
     {"rtdetrul", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetrUltralytics>(modelInfo); }},
     {"dfine", [](const TritonModelInfo& modelInfo) { return std::make_unique<DFine>(modelInfo); }},
     {"raft",  [](const TritonModelInfo& modelInfo) { return std::make_unique<RAFT>(modelInfo); }}

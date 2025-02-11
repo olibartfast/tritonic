@@ -84,20 +84,21 @@ models.convert_to_onnx(model=net, input_shape=(3,640,640), out_path="yolo_nas_s.
 ```
 
 
-# RT-DETR Export Instructions
+# RT-DETR/RT-DETRV2 Export Instructions
 
-From the [lyuwenyu RT-DETR repository](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetr_pytorch):
+From the [lyuwenyu RT-DETR repository](https://github.com/lyuwenyu/RT-DETR/):
 
 ## OnnxRuntime
 ```bash
-cd RT-DETR/rtdetr_pytorch
-python tools/export_onnx.py -c configs/rtdetr/rtdetr_r18vd_6x_coco.yml -r path/to/checkpoint --check
+export RTDETR_VERSION=rtdetr # or rtdetrv2
+export MODEL_VERSION=rtdetr_r18vd_6x_coco # or select other from RT-DETR/RT-DETRV2 model zoo
+cd RT-DETR/${RTDETR_VERSION}_pytorch
+python tools/export_onnx.py -c configs/${RTDETR_VERSION}/${MODEL_VERSION}.yml -r path/to/checkpoint --check
 ```
-Note: You can use other versions instead of `rtdetr_r18vd_6x_coco.yml`.
 
 ## TensorRT
 ```bash
-trtexec --onnx=<model>.onnx --saveEngine=rtdetr_r18vd_dec3_6x_coco_from_paddle.engine --minShapes=images:1x3x640x640,orig_target_sizes:1x2 --optShapes=images:1x3x640x640,orig_target_sizes:1x2 --maxShapes=images:1x3x640x640,orig_target_sizes:1x2
+trtexec --onnx=<model>.onnx --saveEngine=<model>.engine --minShapes=images:1x3x640x640,orig_target_sizes:1x2 --optShapes=images:1x3x640x640,orig_target_sizes:1x2 --maxShapes=images:1x3x640x640,orig_target_sizes:1x2
 ```
 Note: This assumes you exported the ONNX model in the previous step.
 

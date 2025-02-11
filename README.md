@@ -29,6 +29,7 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 - [YOLO11](https://github.com/ultralytics/ultralytics)
 - [YOLO-NAS](https://github.com/Deci-AI/super-gradients)
 - [RT-DETR](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetr_pytorch)
+- [RT-DETRv2](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetrv2_pytorch)
 - [D-FINE](https://github.com/Peterande/D-FINE)
 
 ## Instance Segmentation
@@ -156,7 +157,7 @@ docker run --gpus=1 --rm \
 
 For dynamic input sizes:
 ```bash
-    --input_sizes="c,w,h"
+    --input_sizes="c,h,w"
 ```
 #### Debugging Tips
 Check [`.vscode/launch.json`](.vscode/launch.json) for additional configuration examples
@@ -189,6 +190,7 @@ To view all available parameters, run:
 | YOLOv10                | yolov10                |
 | YOLO11                 | yolo11                 |
 | RT-DETR                | rtdetr                 |
+| RT-DETRV2              | rtdetrv2               |
 | RT-DETR Ultralytics    | rtdetrul               |
 | D-FINE                 | dfine                  |
 | Torchvision Classifier | torchvision-classifier |
