@@ -101,7 +101,21 @@
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-        },     
+        },  
+        {
+            "name": "deim_dfine_hgnetv2_s_coco",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/computer-vision-triton-cpp-client",
+            "args": ["--source=data/person.jpg", 
+            "--serverAddress=localhost",
+            "--labelsFile=labels/coco.txt",
+            "--model=deim_dfine_hgnetv2_s_coco",
+            "--model_type=deim"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        },            
         {
             "name": "rtdetr_r18vd_6x_coco onnx",
             "type": "cppdbg",
@@ -135,7 +149,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/computer-vision-triton-cpp-client",
-            "args": ["--source='data/raft/frame_001.png,data/raft/frame_002.png'", 
+            "args": ["--source=/home/oli/Videos/12408393_3840_2160_24fps.mp4", 
             "--serverAddress=192.168.1.212",
             "--model=raft_large_torchscript",
             "--model_type=raft",

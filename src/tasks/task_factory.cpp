@@ -25,7 +25,8 @@ std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
     {"rtdetr", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetr>(modelInfo); }},
     {"rtdetrv2", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetr>(modelInfo); }},
     {"rtdetrul", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetrUltralytics>(modelInfo); }},
-    {"dfine", [](const TritonModelInfo& modelInfo) { return std::make_unique<DFine>(modelInfo); }},
+    {"dfine", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetr>(modelInfo); }},
+    {"deim", [](const TritonModelInfo& modelInfo) { return std::make_unique<RTDetr>(modelInfo); }},
     {"raft",  [](const TritonModelInfo& modelInfo) { return std::make_unique<RAFT>(modelInfo); }}
 };
 
