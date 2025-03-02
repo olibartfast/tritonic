@@ -27,6 +27,7 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 - [YOLOv9](https://github.com/WongKinYiu/yolov9)
 - [YOLOv10](https://github.com/THU-MIG/yolov10)
 - [YOLO11](https://github.com/ultralytics/ultralytics)
+- [YOLOv12](https://github.com/sunsmarterjie/yolov12)
 - [YOLO-NAS](https://github.com/Deci-AI/super-gradients)
 - [RT-DETR](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetr_pytorch)
 - [RT-DETRv2](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetrv2_pytorch)
@@ -190,6 +191,7 @@ To view all available parameters, run:
 | YOLOv9                 | yolov9                 |
 | YOLOv10                | yolov10                |
 | YOLO11                 | yolo11                 |
+| YOLOv12                | yolov12                 |
 | RT-DETR                | rtdetr                 |
 | RT-DETRV2              | rtdetrv2               |
 | RT-DETR Ultralytics    | rtdetrul               |

@@ -1,6 +1,6 @@
 # Object Detection Model Export Guide for Triton Server Deployment
 
-## YOLOv8/YOLO11
+## YOLOv8/YOLO11/YOLOv12
 Install using [Ultralytics official documentation (pip ultralytics package version >= 8.3.0)](https://docs.ultralytics.com/quickstart/)
 
 ### OnnxRuntime/TorchScript
