@@ -196,6 +196,7 @@ To view all available parameters, run:
 | RT-DETR                | rtdetr                 |
 | RT-DETRV2              | rtdetrv2               |
 | RT-DETR Ultralytics    | rtdetrul               |
+| RF-DETR                | rfdetr                 |
 | D-FINE                 | dfine                  |
 | DEIM                   | deim                   |
 | Torchvision Classifier | torchvision-classifier |
