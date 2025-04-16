@@ -8,11 +8,14 @@
 #include "TensorflowClassifier.hpp"
 #include "YOLOSeg.hpp"
 #include "RAFT.hpp"
+#include "RFDetr.hpp"
+
 // Define the map of task creators
 std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
     {"torchvision-classifier", [](const TritonModelInfo& modelInfo) { return std::make_unique<TorchvisionClassifier>(modelInfo); }},
     {"tensorflow-classifier", [](const TritonModelInfo& modelInfo) { return std::make_unique<TensorflowClassifier>(modelInfo); }},
     {"yoloseg", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLOSeg>(modelInfo); }},
+    {"rfdetr", [](const TritonModelInfo& modelInfo) { return std::make_unique<RFDetr>(modelInfo); }},
     {"yolonas", [](const TritonModelInfo& modelInfo) { return std::make_unique<YoloNas>(modelInfo); }},
     {"yolov5", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLO>(modelInfo); }},
     {"yolov6", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLO>(modelInfo); }},

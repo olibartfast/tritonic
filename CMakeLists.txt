@@ -39,6 +39,7 @@ set(DETECTOR_SOURCES ${PROJECT_SOURCE_DIR}
   src/tasks/object_detection/src/YoloNas.cpp
   src/tasks/object_detection/src/YOLOv10.cpp 
   src/tasks/object_detection/src/RTDetr.cpp
+  src/tasks/object_detection/src/RFDetr.cpp
   src/tasks/object_detection/src/RTDetrUltralytics.cpp
   )
 
