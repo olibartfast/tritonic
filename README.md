@@ -33,7 +33,7 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 - [RT-DETRv2](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetrv2_pytorch)
 - [D-FINE](https://github.com/Peterande/D-FINE)
 - [DEIM](https://github.com/ShihuaHuang95/DEIM)
-- [RF-Detr](https://github.com/roboflow/rf-detr)
+- [RF-DETR](https://github.com/roboflow/rf-detr)
 
 ## Instance Segmentation
 
@@ -197,6 +197,7 @@ To view all available parameters, run:
 | RT-DETR                | rtdetr                 |
 | RT-DETRV2              | rtdetrv2               |
 | RT-DETR Ultralytics    | rtdetrul               |
+| RF-DETR                | rfdetr                 |
 | D-FINE                 | dfine                  |
 | DEIM                   | deim                   |
 | Torchvision Classifier | torchvision-classifier |
