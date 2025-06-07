@@ -84,7 +84,7 @@ std::vector<Result> YOLOSeg::postprocess(const cv::Size& frame_size,
             }
         }
     }
-    else // yolov8/v9 and yolo11
+    else // yolov8/v9/v11/v12
     {
         const int numClasses = infer_shape[1] - 32 - 4;
         std::vector<std::vector<float>> output(infer_shape[1], std::vector<float>(infer_shape[2]));
