@@ -1,6 +1,8 @@
 #include "task_factory.hpp"
 #include "utils.hpp"
 #include "Triton.hpp"
+#include "Config.hpp"
+#include "Logger.hpp"
 
 
 std::vector<Result> processSource(const std::vector<cv::Mat>& source, 
@@ -245,144 +247,133 @@ void ProcessVideo(const std::string& sourceName,
     }
 }
 
-static const std::string keys =
-    "{ help h   | | Print help message. }"
-    "{ model_type mt | yolo11 | yolo version used i.e yolov5 -> yolov10, yolo11, yolonas, yoloseg, dfine, torchvision-classifier}"
-    "{ model m | yolo11x_onnx | model name of folder in triton }"
-    "{ source s | data/dog.jpg | comma separated list of source images o videos}"
-    "{ serverAddress  ip  | localhost | server address ip, default localhost}"
-    "{ port  p  | 8001 | Port number(Grpc 8001, Http 8000)}"
-    "{ verbose vb | false | Verbose mode, true or false}"
-    "{ protocol pt | grpc | Protocol type, grpc or http}"
-    "{ labelsFile l | ../coco.names | path to coco labels names}"
-    "{ batch b | 1 | Batch size}"
-    "{ input_sizes is | | Input sizes for each model input. Format: CHW;CHW;... (e.g., '3,224,224' for single input or '3,224,224;3,224,224' for two inputs, '3,640,640;2' for rtdetr/dfine models) }";
-    
 int main(int argc, const char* argv[]) {
-
     try {
-            cv::CommandLineParser parser(argc, argv, keys);
-            if (parser.has("help")) 
-            {
-                parser.printMessage();
-                return 0;
+        // Initialize logging
+        auto& logger = Logger::getInstance();
+        logger.setLogLevel(LogLevel::INFO);
+        logger.setConsoleOutput(true);
+        
+        logger.info("Starting Triton Client Application");
+        
+        // Load configuration
+        std::unique_ptr<Config> config;
+        
+        // Try to load from command line first
+        config = ConfigManager::loadFromCommandLine(argc, argv);
+        
+        if (!config) {
+            // Try to load from environment variables
+            config = ConfigManager::loadFromEnvironment();
+        }
+        
+        if (!config) {
+            // Use default configuration
+            config = ConfigManager::createDefault();
+            logger.warn("Using default configuration");
+        }
+        
+        // Set up logging based on configuration
+        if (!config->log_file.empty()) {
+            logger.setLogFile(config->log_file);
+        }
+        
+        if (config->log_level == "debug") logger.setLogLevel(LogLevel::DEBUG);
+        else if (config->log_level == "warn") logger.setLogLevel(LogLevel::WARN);
+        else if (config->log_level == "error") logger.setLogLevel(LogLevel::ERROR);
+        else logger.setLogLevel(LogLevel::INFO);
+        
+        // Print configuration
+        ConfigManager::printConfig(*config);
+        
+        logger.info("Current path is " + std::string(std::filesystem::current_path()));
+        
+        // Parse source files
+        std::vector<std::string> sourceNames = split(config->source, ',');
+        
+        // Determine protocol
+        ProtocolType protocol = config->protocol == "grpc" ? ProtocolType::GRPC : ProtocolType::HTTP;
+        
+        // Build URL
+        std::string url = config->server_address + ":" + std::to_string(config->port);
+        
+        logger.infof("Connecting to Triton server at {} using {} protocol", url, config->protocol);
+        
+        // Create Triton client
+        std::unique_ptr<Triton> tritonClient = std::make_unique<Triton>(url, protocol, config->model_name, config->model_version, config->verbose);
+        tritonClient->createTritonClient();
+
+        logger.infof("Getting model info for: {}", config->model_name);
+        TritonModelInfo modelInfo = tritonClient->getModelInfo(config->model_name, config->server_address, config->input_sizes);
+
+        // Create task instance
+        logger.infof("Creating task instance for model type: {}", config->model_type);
+        std::unique_ptr<TaskInterface> task = TaskFactory::createTaskInstance(config->model_type, modelInfo);
+
+        if (!task) {
+            throw std::runtime_error("Failed to create task instance");
+        }
+
+        // Load class names
+        const auto class_names = task->readLabelNames(config->labels_file);
+        logger.infof("Loaded {} class names from {}", class_names.size(), config->labels_file);
+
+        // Categorize source files
+        std::vector<std::string> image_list;
+        std::vector<std::string> video_list;
+        for (const auto& sourceName : sourceNames) {
+            if (IsImageFile(sourceName)) {
+                image_list.push_back(sourceName);
+                logger.debug("Added image file: " + sourceName);
+            } else if (IsVideoFile(sourceName)) {
+                video_list.push_back(sourceName);
+                logger.debug("Added video file: " + sourceName);
+            } else {
+                logger.warn("Unknown file type: " + sourceName);
             }
+        }
 
-            std::cout << "Current path is " << std::filesystem::current_path() << '\n';
-            std::string serverAddress = parser.get<std::string>("serverAddress");
-            std::string port = parser.get<std::string>("port");
-            bool verbose = parser.get<bool>("verbose");
-
-            std::vector<std::string> sourceNames = split(parser.get<std::string>("source"), ',');
-            ProtocolType protocol = parser.get<std::string>("protocol") == "grpc" ? ProtocolType::GRPC : ProtocolType::HTTP;
-            const size_t batch_size = parser.get<size_t>("batch");
-
-            std::string modelName = parser.get<std::string>("model");
-            std::string modelVersion = "";
-            std::string modelType = parser.get<std::string>("model_type");
-
-
-            std::string url(serverAddress + ":" + port);
-            std::string labelsFile = parser.get<std::string>("labelsFile");
-
-            std::vector<std::vector<int64_t>> input_sizes;
-            if(parser.has("input_sizes")) {
-                std::cout << "Parsing input sizes..." << parser.get<std::string>("input_sizes") << std::endl;
-                input_sizes = parseInputSizes(parser.get<std::string>("input_sizes"));
-                // Output the parsed sizes
-                std::cout << "Parsed input sizes:\n";
-                for (const auto& size : input_sizes) {
-                    std::cout << "(";
-                    for (size_t i = 0; i < size.size(); ++i) {
-                        std::cout << size[i];
-                        if (i < size.size() - 1) {
-                            std::cout << ",";
-                        }
+        if (image_list.empty() && video_list.empty()) {
+            throw std::runtime_error("No valid image or video files provided");
+        }
+        
+        logger.infof("Processing {} images and {} videos", image_list.size(), video_list.size());
+        
+        // Process images
+        if (!image_list.empty()) {
+            switch(task->getTaskType()) {
+                case TaskType::OpticalFlow:
+                    logger.info("Processing optical flow for image pairs");
+                    for(size_t i = 0; i < image_list.size() - 1; i++) {
+                        std::vector<std::string> flowInputs = {image_list[i], image_list[i+1]};
+                        ProcessImages(flowInputs, task, tritonClient, class_names, config->model_name);
                     }
-                    std::cout << ")\n";
-                }               
+                    break;        
+                default:
+                    logger.info("Processing individual images");
+                    for (const auto& sourceName : image_list) {
+                        ProcessImages({sourceName}, task, tritonClient, class_names, config->model_name);
+                    }
+                    break;
+            } 
+        }
+        
+        // Process videos
+        if (!video_list.empty()) {
+            logger.info("Processing videos");
+            for (const auto& sourceName : video_list) {
+                ProcessVideo(sourceName, task, tritonClient, class_names);
             }
-            else {
-                std::cout << "No input sizes provided. Will use default model configuration." << std::endl;
-            }
+        }
 
-            std::cout << "Chosen Parameters:" << std::endl;
-            std::cout << "model_type (mt): " << parser.get<std::string>("model_type") << std::endl;
-            std::cout << "model (m): " << parser.get<std::string>("model") << std::endl;
-            std::cout << "source (s): " << parser.get<std::string>("source") << std::endl; 
-            std::cout << "serverAddress (ip): " << parser.get<std::string>("serverAddress") << std::endl;
-            std::cout << "verbose (vb): " << parser.get<bool>("verbose") << std::endl;
-            std::cout << "protocol (pt): " << parser.get<std::string>("protocol") << std::endl;
-            std::cout << "labelsFile (l): " << parser.get<std::string>("labelsFile") << std::endl;
-            std::cout << "batch (b): " << parser.get<size_t>("batch") << std::endl;
-
-    
-
-            // Create Triton client
-            std::unique_ptr<Triton> tritonClient = std::make_unique<Triton>(url, protocol, modelName);
-            tritonClient->createTritonClient();
-
-            TritonModelInfo modelInfo = tritonClient->getModelInfo(modelName, serverAddress, input_sizes);
-
-
-            
-            // Use the new TaskFactory with input_sizes
-            std::unique_ptr<TaskInterface> task = TaskFactory::createTaskInstance(modelType, modelInfo);
-
-            if (!task) {
-                throw std::runtime_error("Failed to create task instance");
-            }
-
-            const auto class_names = task->readLabelNames(labelsFile);
-
-            std::vector<std::string> image_list;
-            std::vector<std::string> video_list;
-            for (const auto& sourceName : sourceNames) {
-                if (IsImageFile(sourceName)) {
-                    image_list.push_back(sourceName);
-                } else if (IsVideoFile(sourceName)) {
-                    video_list.push_back(sourceName);
-                }
-                else
-                {
-                    std::cerr << "Unknown file type: " << sourceName << std::endl;
-                }
-            }
-
-            if (image_list.empty() && video_list.empty()) {
-                throw std::runtime_error("No valid image or video files provided");
-            }
-            
-            if(image_list.size() > 0){
-                switch(task->getTaskType())
-                {
-                    case TaskType::OpticalFlow:
-                        {
-                            for(size_t i = 0; i < image_list.size() - 1 ; i++) {
-                            std::vector<std::string> flowInputs = {image_list[i], image_list[i+1]};
-                            ProcessImages(flowInputs, task, tritonClient, class_names, modelName);
-                            }
-                        }
-                        break;        
-                    default:
-                        {
-                            for (const auto& sourceName : image_list) 
-                                ProcessImages({sourceName}, task, tritonClient, class_names, modelName);
-                        }
-                        break;
-                } 
-
-            }
-            if(video_list.size() > 0){
-                for (const auto& sourceName : video_list) 
-                    ProcessVideo(sourceName, task, tritonClient, class_names);
-            }
-
+        logger.info("Application completed successfully");
 
     } catch (const std::exception& e) {
+        Logger::getInstance().error("Application error: " + std::string(e.what()));
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     } catch (...) {
+        Logger::getInstance().fatal("An unknown error occurred");
         std::cerr << "An unknown error occurred." << std::endl;
         return 1;
     }

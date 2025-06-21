@@ -25,6 +25,7 @@ find_package(OpenCV REQUIRED)
 find_package(TritonCommon REQUIRED)
 find_package(TritonClient REQUIRED)
 find_package(CURL REQUIRED)
+find_package(Protobuf REQUIRED)
 find_package(RapidJSON REQUIRED)
 
 # Set the source files
@@ -61,9 +62,15 @@ set(TRITON_SOURCES ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp)
 
 set(UTILS_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/utils.cpp)
 
+# Add configuration and logging sources
+set(CONFIG_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/ConfigManager.cpp)
+set(LOGGER_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/Logger.cpp)
+
 # Add an executable target
 add_executable(${PROJECT_NAME} ${SOURCES}
     ${UTILS_SOURCES} 
+    ${CONFIG_SOURCES}
+    ${LOGGER_SOURCES}
     ${DETECTOR_SOURCES} 
     ${CLASSIFIER_SOURCES} 
     ${INSTANCE_SEGMENTATION_SOURCES} 
@@ -106,4 +113,5 @@ target_link_libraries(${PROJECT_NAME}
     httpclient
     ${OpenCV_LIBS}
     CURL::libcurl
+    ${PROTOBUF_LIBRARIES}
 )

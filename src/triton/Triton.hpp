@@ -91,7 +91,6 @@ public:
 
     void createTritonClient();
     std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> infer(const std::vector<std::vector<uint8_t>>& input_data);
-    std::vector<const tc::InferRequestedOutput*> createInferRequestedOutput(const std::vector<std::string>& output_names_);
     std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> getInferResults(
         tc::InferResult* result,
         const size_t batch_size,

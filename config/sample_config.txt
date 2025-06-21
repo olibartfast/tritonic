@@ -1,0 +1,32 @@
+# Triton Client Configuration Sample
+# Copy this file and modify as needed
+
+# Server configuration
+server_address=localhost
+port=8000
+protocol=http
+
+# Model configuration
+model_name=yolov8s_onnx
+model_type=yolov8
+input_sizes=3,640,640
+
+# Input/Output configuration
+source=data/sample.jpg
+labels_file=labels/coco.txt
+batch_size=1
+
+# Processing configuration
+show_frame=false
+write_frame=true
+confidence_threshold=0.5
+nms_threshold=0.4
+
+# Performance configuration
+num_threads=1
+enable_async=false
+
+# Logging configuration
+log_level=info
+log_file=logs/triton_client.log
+verbose=false 
