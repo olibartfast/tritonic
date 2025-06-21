@@ -27,7 +27,7 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 - [YOLOv9](https://github.com/WongKinYiu/yolov9)
 - [YOLOv10](https://github.com/THU-MIG/yolov10)
 - [YOLO11](https://github.com/ultralytics/ultralytics)
-- [YOLOv12](https://github.com/sunsmarterjie/yolov12) or ultralytics repo
+- [YOLOv12](https://github.com/sunsmarterjie/yolov12)
 - [YOLO-NAS](https://github.com/Deci-AI/super-gradients)
 - [RT-DETR](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetr_pytorch)
 - [RT-DETRv2](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetrv2_pytorch)
@@ -40,7 +40,7 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 - [YOLOv5](https://github.com/ultralytics/yolov5)
 - [YOLOv8](https://github.com/ultralytics/ultralytics)
 - [YOLO11](https://github.com/ultralytics/ultralytics)
-- [YOLOv12](https://github.com/sunsmarterjie/yolov12) or ultralytics repo
+- [YOLOv12](https://github.com/sunsmarterjie/yolov12)
 
 ## Classification
 
