@@ -65,6 +65,7 @@ set(UTILS_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/utils.cpp)
 # Add configuration and logging sources
 set(CONFIG_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/ConfigManager.cpp)
 set(LOGGER_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/Logger.cpp)
+set(FILESYSTEM_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/FileSystem.cpp)
 
 # Add an executable target
 add_executable(${PROJECT_NAME} ${SOURCES}
@@ -115,3 +116,11 @@ target_link_libraries(${PROJECT_NAME}
     CURL::libcurl
     ${PROTOBUF_LIBRARIES}
 )
+
+# Add option for testing
+option(BUILD_TESTING "Build the testing tree." OFF)
+
+# Enable testing if requested
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()

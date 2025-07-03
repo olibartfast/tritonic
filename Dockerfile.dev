@@ -1,0 +1,47 @@
+# Development Dockerfile with Testing Support
+# Build: docker build -f Dockerfile.dev --rm -t computer-vision-triton-cpp-client:dev .
+# Run tests: docker run --rm computer-vision-triton-cpp-client:dev test
+
+ARG TRITON_VERSION=24.12
+FROM nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3-sdk
+
+# Install dependencies including testing tools
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    libcurl4-openssl-dev \
+    rapidjson-dev \
+    libgtest-dev \
+    ninja-build \
+    valgrind \
+    gdb \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set environment variables
+ENV TritonClientBuild_DIR=/workspace/install
+
+# Copy source code
+COPY . /app
+WORKDIR /app
+
+# Build application and tests
+RUN rm -rf build && \
+    mkdir build && \
+    cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON -GNinja .. && \
+    ninja && \
+    ninja run_tests
+
+# Create script for running tests
+RUN echo '#!/bin/bash\ncd /app/build && ./tests/run_tests "$@"' > /usr/local/bin/run-tests && \
+    chmod +x /usr/local/bin/run-tests
+
+# Create script for running the application
+RUN echo '#!/bin/bash\ncd /app && ./build/computer-vision-triton-cpp-client "$@"' > /usr/local/bin/run-app && \
+    chmod +x /usr/local/bin/run-app
+
+# Default entrypoint
+ENTRYPOINT ["/bin/bash"]
+
+# Support multiple commands
+CMD ["-c", "echo 'Available commands:'; echo '  run-app [args]  - Run the application'; echo '  run-tests       - Run unit tests'; echo '  bash           - Interactive shell'; echo 'Usage: docker run --rm computer-vision-triton-cpp-client:dev run-tests'"]

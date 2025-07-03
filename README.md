@@ -7,6 +7,7 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 - [Build Client Libraries](#build-client-libraries)
 - [Dependencies](#dependencies)
 - [Build and Compile](#build-and-compile)
+- [Testing](#testing)
 - [Tasks](#tasks)
 - [Notes](#notes)
 - [Deploying Models](#deploying-models)
@@ -62,10 +63,10 @@ Ensure the following dependencies are installed:
 
 1. **Nvidia Triton Inference Server**:
 ```bash
-docker pull nvcr.io/nvidia/tritonserver:24.12-py3
+docker pull nvcr.io/nvidia/tritonserver:25.06-py3
 ```
 
-2. **Triton client libraries**: Tested on Release r24.12
+2. **Triton client libraries**: Tested on Release r25.06
 3. **Protobuf and gRPC++**: Versions compatible with Triton
 4. **RapidJSON**:
 ```bash
@@ -106,6 +107,38 @@ Optional flags:
 ```bash
 cmake --build .
 ```
+
+## Testing
+
+Unit testing framework built with Google Test.
+
+### Running Tests
+
+1. **Build with testing enabled**:
+```bash
+cmake -DBUILD_TESTING=ON ..
+ninja run_tests
+```
+
+2. **Execute all tests**:
+```bash
+./tests/run_tests
+```
+
+3. **Use the automated test script**:
+```bash
+./run_tests.sh
+```
+
+### Test Coverage
+
+The test suite includes:
+- **Configuration validation tests**: Model name validation, port validation, required field checking
+- **Configuration manager tests**: Command line parsing, environment variable loading, error handling
+- **Logger functionality tests**: Singleton pattern, log level filtering, formatted logging
+- **Type safety and security validation**: Input sanitization, path traversal prevention
+
+For detailed testing documentation, see [Unit Testing Guide](docs/UNIT_TESTING.md).
 
 ## Tasks
 
@@ -212,13 +245,22 @@ To view all available parameters, run:
 ## Docker Support  
 For detailed instructions on installing Docker and the NVIDIA Container Toolkit, refer to the [Docker Setup Document](docs/Docker_setup.md).  
 
+### Production Build
+For production use with optimized release build:
 
-### Build Image
 ```bash
 docker build --rm -t computer-vision-triton-cpp-client .
 ```
 
-### Run Container
+### Development Build with Testing
+For development with testing support:
+
+```bash
+docker build -f Dockerfile.dev --rm -t computer-vision-triton-cpp-client:dev .
+```
+
+### Run Production Container
+### Run Production Container
 ```bash
 docker run --rm \
   -v /path/to/host/data:/app/data \
@@ -233,6 +275,24 @@ docker run --rm \
   --port=<8000 for http, 8001 for grpc>
 ```
 
+### Run Development Container with Tests
+```bash
+# Run unit tests
+docker run --rm computer-vision-triton-cpp-client:dev run-tests
+
+# Run the application
+docker run --rm \
+  -v /path/to/host/data:/app/data \
+  computer-vision-triton-cpp-client:dev run-app \
+  --source=/app/data/image.jpg \
+  --model_type=yolov8 \
+  --model=yolov8n \
+  --serverAddress=host.docker.internal
+
+# Interactive development shell
+docker run --rm -it computer-vision-triton-cpp-client:dev bash
+```
+
 ## Demo
 
 Real-time inference test (GPU RTX 3060):
@@ -241,6 +301,8 @@ Real-time inference test (GPU RTX 3060):
 - RAFT Optical Flow Large(exported to traced torchscript): [Demo Video](https://www.youtube.com/watch?v=UvKCjYI_9aQ)
 
 ## References
+- [Unit Testing Guide](docs/UNIT_TESTING.md) - Comprehensive testing framework documentation
+- [Testing Implementation Summary](TESTING_SUMMARY.md) - Overview of testing architecture and results
 - [Triton Inference Server Client Example](https://github.com/triton-inference-server/client/blob/r21.08/src/c%2B%2B/examples/image_client.cc)
 - [Triton User Guide](https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/getting_started/quickstart.html)
 - [Triton Tutorials](https://github.com/triton-inference-server/tutorials)

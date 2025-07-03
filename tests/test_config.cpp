@@ -1,74 +1,107 @@
+#include <gtest/gtest.h>
 #include "Config.hpp"
-#include <iostream>
-#include <cassert>
 
-void testConfigValidation() {
-    std::cout << "Testing configuration validation..." << std::endl;
-    
-    // Test valid configuration
-    Config valid_config;
-    valid_config.server_address = "localhost";
-    valid_config.port = 8000;
-    valid_config.model_name = "test_model";
-    valid_config.model_type = "yolov8";
-    valid_config.source = "test.jpg";
-    
-    assert(valid_config.isValid());
-    assert(valid_config.getValidationErrors().empty());
-    
-    // Test invalid configuration
-    Config invalid_config;
-    assert(!invalid_config.isValid());
-    assert(!invalid_config.getValidationErrors().empty());
-    
-    std::cout << "Configuration validation tests passed!" << std::endl;
-}
-
-void testConfigManager() {
-    std::cout << "Testing ConfigManager..." << std::endl;
-    
-    // Test default configuration
-    auto default_config = ConfigManager::createDefault();
-    assert(default_config != nullptr);
-    
-    // Test environment variable loading
-    auto env_config = ConfigManager::loadFromEnvironment();
-    assert(env_config != nullptr);
-    
-    std::cout << "ConfigManager tests passed!" << std::endl;
-}
-
-void testLogger() {
-    std::cout << "Testing Logger..." << std::endl;
-    
-    auto& logger = Logger::getInstance();
-    
-    // Test log level setting
-    logger.setLogLevel(LogLevel::DEBUG);
-    logger.setConsoleOutput(true);
-    
-    // Test logging
-    logger.debug("Debug message");
-    logger.info("Info message");
-    logger.warn("Warning message");
-    logger.error("Error message");
-    
-    // Test formatted logging
-    logger.infof("Formatted message: {} with value: {}", "test", 42);
-    
-    std::cout << "Logger tests passed!" << std::endl;
-}
-
-int main() {
-    try {
-        testConfigValidation();
-        testConfigManager();
-        testLogger();
-        
-        std::cout << "All tests passed!" << std::endl;
-        return 0;
-    } catch (const std::exception& e) {
-        std::cerr << "Test failed with exception: " << e.what() << std::endl;
-        return 1;
+class ConfigTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // Set up test data
     }
+    
+    void TearDown() override {
+        // Clean up test data
+    }
+};
+
+TEST_F(ConfigTest, ValidConfigurationPassesValidation) {
+    Config config;
+    config.server_address = "localhost";
+    config.port = 8000;
+    config.model_name = "test_model";
+    config.model_type = "yolov8";
+    config.source = "test.jpg";
+    
+    EXPECT_TRUE(config.isValid());
+    EXPECT_TRUE(config.getValidationErrors().empty());
+}
+
+TEST_F(ConfigTest, InvalidConfigurationFailsValidation) {
+    Config config; // All fields empty/default
+    
+    EXPECT_FALSE(config.isValid());
+    EXPECT_FALSE(config.getValidationErrors().empty());
+}
+
+TEST_F(ConfigTest, ModelNameWithPathIsInvalid) {
+    Config config;
+    config.server_address = "localhost";
+    config.port = 8000;
+    config.model_name = "path/to/model";  // Contains path separator
+    config.model_type = "yolov8";
+    config.source = "test.jpg";
+    
+    EXPECT_FALSE(config.isValid());
+    
+    auto errors = config.getValidationErrors();
+    bool foundPathError = false;
+    for (const auto& error : errors) {
+        if (error.find("path") != std::string::npos) {
+            foundPathError = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundPathError);
+}
+
+TEST_F(ConfigTest, ModelNameWithBackslashIsInvalid) {
+    Config config;
+    config.server_address = "localhost";
+    config.port = 8000;
+    config.model_name = "path\\to\\model";  // Contains backslash
+    config.model_type = "yolov8";
+    config.source = "test.jpg";
+    
+    EXPECT_FALSE(config.isValid());
+    
+    auto errors = config.getValidationErrors();
+    bool foundPathError = false;
+    for (const auto& error : errors) {
+        if (error.find("path") != std::string::npos) {
+            foundPathError = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundPathError);
+}
+
+TEST_F(ConfigTest, InvalidPortFailsValidation) {
+    Config config;
+    config.server_address = "localhost";
+    config.port = 0;  // Invalid port
+    config.model_name = "test_model";
+    config.model_type = "yolov8";
+    config.source = "test.jpg";
+    
+    EXPECT_FALSE(config.isValid());
+}
+
+TEST_F(ConfigTest, EmptyModelNameFailsValidation) {
+    Config config;
+    config.server_address = "localhost";
+    config.port = 8000;
+    config.model_name = "";  // Empty model name
+    config.model_type = "yolov8";
+    config.source = "test.jpg";
+    
+    EXPECT_FALSE(config.isValid());
+}
+
+TEST_F(ConfigTest, EmptySourceFailsValidation) {
+    Config config;
+    config.server_address = "localhost";
+    config.port = 8000;
+    config.model_name = "test_model";
+    config.model_type = "yolov8";
+    config.source = "";  // Empty source
+    
+    EXPECT_FALSE(config.isValid());
 } 

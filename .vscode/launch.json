@@ -103,6 +103,22 @@
             "cwd": "${workspaceFolder}" 
         },   
         {
+            "name": "yolov8m_onnx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/computer-vision-triton-cpp-client",
+            "args": ["--source=data/dog.jpg", 
+            "--serverAddress=192.168.1.212",
+            "--labelsFile=labels/coco.txt",
+            "--model=yolov8m_onnx",
+            "--model_type=yolov8",
+            "--input_sizes=\"3,640,640\""//,
+            //
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        },          
+        {
             "name": "resnet50_tensorflow",
             "type": "cppdbg",
             "request": "launch",

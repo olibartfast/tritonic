@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # Production service
+  triton-client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: computer-vision-triton-cpp-client:latest
+    volumes:
+      - ./data:/app/data
+    network_mode: host
+    command: ["--help"]
+
+  # Development service with testing
+  triton-client-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: computer-vision-triton-cpp-client:dev
+    volumes:
+      - ./data:/app/data
+      - .:/app/source  # Mount source for development
+    network_mode: host
+    command: ["run-tests"]
+
+  # Triton server for testing (optional)
+  triton-server:
+    image: nvcr.io/nvidia/tritonserver:24.12-py3
+    ports:
+      - "8000:8000"
+      - "8001:8001" 
+      - "8002:8002"
+    volumes:
+      - ./model_repository:/models
+    command: ["tritonserver", "--model-repository=/models"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
