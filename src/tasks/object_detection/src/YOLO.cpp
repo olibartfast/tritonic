@@ -1,7 +1,10 @@
 #include "YOLO.hpp"
+#include "Logger.hpp"
 
-YOLO::YOLO(const TritonModelInfo& model_info) : TaskInterface(model_info) {
-
+YOLO::YOLO(const TritonModelInfo& model_info) : TaskInterface(model_info)
+{
+    input_width_ = model_info.input_shapes[0][3];
+    input_height_ = model_info.input_shapes[0][2];
 }
 
 cv::Rect YOLO::get_rect(const cv::Size& imgSz, const std::vector<float>& bbox)
@@ -87,6 +90,7 @@ std::tuple<float, int> YOLO::getBestClassInfo(const std::vector<TensorElement>& 
 std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vector<std::vector<TensorElement>>& infer_results, 
     const std::vector<std::vector<int64_t>>& infer_shapes) 
 {
+    auto& logger = Logger::getInstance();
     std::vector<Result> detections;
     std::vector<cv::Rect> boxes;
     std::vector<float> confs;
@@ -95,6 +99,11 @@ std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vec
     const auto iouThreshold = 0.4f;
     const auto& infer_shape = infer_shapes.front(); 
     const auto& infer_result = infer_results.front(); 
+
+    logger.debug("YOLO Postprocess Debug:");
+    logger.debugf("  Input shape: [{}, {}, {}]", infer_shape[0], infer_shape[1], infer_shape[2]);
+    logger.debugf("  Confidence threshold: {}", confThreshold);
+    logger.debugf("  Frame size: {}x{}", frame_size.width, frame_size.height); 
 
     auto get_float = [](const TensorElement& elem) {
         return std::visit([](auto&& arg) -> float { return static_cast<float>(arg); }, elem);
@@ -147,6 +156,7 @@ std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vec
         }
 
         // Get all the YOLO proposals
+        int detectionCount = 0;
         for (int i = 0; i < infer_shape[2]; i++) {
             const auto& row = transposedOutput[i];
             const float* bboxesPtr = row.data();
@@ -158,12 +168,19 @@ std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vec
                 int label = maxSPtr - scoresPtr;
                 confs.emplace_back(score);
                 classIds.emplace_back(label);
+                detectionCount++;
+                if (detectionCount <= 5) { // Only show first 5 detections for debugging
+                    logger.debugf("  Detection {}: class={}, score={}", detectionCount, label, score);
+                }
             }
         }
+        logger.debugf("  Total detections before NMS: {}", detectionCount);
     }
 
     std::vector<int> indices;
     cv::dnn::NMSBoxes(boxes, confs, confThreshold, iouThreshold, indices);
+    
+    logger.debugf("  Total detections after NMS: {}", indices.size());
 
     for (int idx : indices)
     {
@@ -172,6 +189,8 @@ std::vector<Result> YOLO::postprocess(const cv::Size& frame_size, const std::vec
         d.class_confidence = confs[idx];
         d.class_id = classIds[idx];
         detections.emplace_back(d);
+        logger.debugf("  Final detection: class={}, confidence={}, bbox=[{},{},{},{}]", 
+                      d.class_id, d.class_confidence, d.bbox.x, d.bbox.y, d.bbox.width, d.bbox.height);
     }        
     return detections; 
 }
