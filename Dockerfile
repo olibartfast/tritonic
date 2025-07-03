@@ -15,6 +15,10 @@ RUN apt-get update && apt-get install -y \
     ninja-build \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y build-essential cmake
+RUN apt-get install -y libcurl4-openssl-dev
+RUN apt-get install -y rapidjson-dev libprotobuf-dev protobuf-compiler 
+
 # Set environment variables
 ENV TritonClientBuild_DIR=/workspace/install
 
