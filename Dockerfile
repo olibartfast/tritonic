@@ -1,6 +1,6 @@
 # Use an official Nvidia Triton Inference Server image as the base image
 # docker build --rm -t computer-vision-triton-cpp-client .
-ARG TRITON_VERSION=24.12
+ARG TRITON_VERSION=25.06
 FROM nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3-sdk
 
 # Install any additional dependencies if needed
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN apt-get update && apt-get install -y build-essential cmake
 RUN apt-get install -y libcurl4-openssl-dev
-RUN apt-get install -y rapidjson-dev
+RUN apt-get install -y rapidjson-dev libprotobuf-dev protobuf-compiler 
 
 # Set environment variables
 ENV TritonClientBuild_DIR /workspace/install
