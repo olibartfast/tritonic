@@ -42,7 +42,13 @@ struct Config {
                !model_name.empty() && 
                !model_type.empty() && 
                !source.empty() &&
-               port > 0 && port <= 65535;
+               port > 0 && port <= 65535 &&
+               !isModelNameAPath();
+    }
+    
+    bool isModelNameAPath() const {
+        return model_name.find('/') != std::string::npos || 
+               model_name.find('\\') != std::string::npos;
     }
     
     std::string getValidationErrors() const {
@@ -50,6 +56,7 @@ struct Config {
         
         if (server_address.empty()) errors.push_back("Server address is required");
         if (model_name.empty()) errors.push_back("Model name is required");
+        if (isModelNameAPath()) errors.push_back("Model name must not contain path separators (/ or \\). Use only the model repository name.");
         if (model_type.empty()) errors.push_back("Model type is required");
         if (source.empty()) errors.push_back("Source is required");
         if (port <= 0 || port > 65535) errors.push_back("Port must be between 1 and 65535");
