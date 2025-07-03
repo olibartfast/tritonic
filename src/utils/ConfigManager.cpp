@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <sstream>
+#include <stdexcept>
 
 std::unique_ptr<Config> ConfigManager::loadFromCommandLine(int argc, const char* argv[]) {
     auto config = std::make_unique<Config>();
@@ -61,8 +62,7 @@ std::unique_ptr<Config> ConfigManager::loadFromCommandLine(int argc, const char*
 
     // Validate configuration
     if (!config->isValid()) {
-        std::cerr << "Configuration validation failed: " << config->getValidationErrors() << std::endl;
-        return nullptr;
+        throw std::invalid_argument("Configuration validation failed: " + config->getValidationErrors());
     }
 
     return config;
@@ -113,6 +113,11 @@ std::unique_ptr<Config> ConfigManager::loadFromFile(const std::string& filename)
         else if (key == "input_sizes") config->input_sizes = parseInputSizes(value);
     }
 
+    // Validate configuration
+    if (!config->isValid()) {
+        throw std::invalid_argument("Configuration validation failed: " + config->getValidationErrors());
+    }
+
     return config;
 }
 
@@ -138,6 +143,11 @@ std::unique_ptr<Config> ConfigManager::loadFromEnvironment() {
     std::string input_sizes_env = getEnvVar("TRITON_INPUT_SIZES", "");
     if (!input_sizes_env.empty()) {
         config->input_sizes = parseInputSizes(input_sizes_env);
+    }
+
+    // Validate configuration
+    if (!config->isValid()) {
+        throw std::invalid_argument("Configuration validation failed: " + config->getValidationErrors());
     }
 
     return config;

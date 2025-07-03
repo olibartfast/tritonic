@@ -259,18 +259,23 @@ int main(int argc, const char* argv[]) {
         // Load configuration
         std::unique_ptr<Config> config;
         
-        // Try to load from command line first
-        config = ConfigManager::loadFromCommandLine(argc, argv);
-        
-        if (!config) {
-            // Try to load from environment variables
-            config = ConfigManager::loadFromEnvironment();
+        try {
+            // Try to load from command line first
+            config = ConfigManager::loadFromCommandLine(argc, argv);
+        } catch (const std::invalid_argument& e) {
+            logger.error("Command line configuration error: " + std::string(e.what()));
+            return 1; // Exit immediately on validation error
         }
         
+        // If command line config failed (e.g., help was requested), try environment
         if (!config) {
-            // Use default configuration
-            config = ConfigManager::createDefault();
-            logger.warn("Using default configuration");
+            try {
+                config = ConfigManager::loadFromEnvironment();
+                logger.info("Loaded configuration from environment variables");
+            } catch (const std::invalid_argument& env_e) {
+                logger.error("Environment configuration error: " + std::string(env_e.what()));
+                return 1; // Exit immediately on validation error
+            }
         }
         
         // Set up logging based on configuration
