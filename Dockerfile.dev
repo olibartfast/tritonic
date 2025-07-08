@@ -1,47 +1,89 @@
 # Development Dockerfile with Testing Support
 # Build: docker build -f Dockerfile.dev --rm -t computer-vision-triton-cpp-client:dev .
-# Run tests: docker run --rm computer-vision-triton-cpp-client:dev test
+# Run tests: docker run --rm computer-vision-triton-cpp-client:dev run-tests
 
-ARG TRITON_VERSION=24.12
+ARG TRITON_VERSION=25.06
 FROM nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3-sdk
 
-# Install dependencies including testing tools
+# Install dependencies including testing and development tools
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     libcurl4-openssl-dev \
     rapidjson-dev \
+    libprotobuf-dev \
+    protobuf-compiler \
     libgtest-dev \
     ninja-build \
     valgrind \
     gdb \
+    strace \
+    htop \
+    vim \
     && rm -rf /var/lib/apt/lists/*
 
 # Set environment variables
 ENV TritonClientBuild_DIR=/workspace/install
 
-# Copy source code
+# Copy your C++ source code and CMakeLists.txt into the container
 COPY . /app
+
+# Set the working directory
 WORKDIR /app
 
-# Build application and tests
+# Build application and tests with debug configuration
 RUN rm -rf build && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON -GNinja .. && \
-    ninja && \
-    ninja run_tests
+    ninja
 
-# Create script for running tests
+# Build and run tests to validate build
+RUN cd build && \
+    ninja run_tests && \
+    ./tests/run_tests
+
+# Add metadata labels
+LABEL maintainer="Computer Vision Triton C++ Client"
+LABEL description="C++ client for computer vision inference with Nvidia Triton Server - Development Build"
+LABEL version="1.0-dev"
+LABEL build.type="development"
+LABEL build.testing="enabled"
+
+# Create utility scripts for development
 RUN echo '#!/bin/bash\ncd /app/build && ./tests/run_tests "$@"' > /usr/local/bin/run-tests && \
     chmod +x /usr/local/bin/run-tests
 
-# Create script for running the application
 RUN echo '#!/bin/bash\ncd /app && ./build/computer-vision-triton-cpp-client "$@"' > /usr/local/bin/run-app && \
     chmod +x /usr/local/bin/run-app
 
-# Default entrypoint
+RUN echo '#!/bin/bash\ncd /app && valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all ./build/computer-vision-triton-cpp-client "$@"' > /usr/local/bin/run-valgrind && \
+    chmod +x /usr/local/bin/run-valgrind
+
+RUN echo '#!/bin/bash\ncd /app && gdb --args ./build/computer-vision-triton-cpp-client "$@"' > /usr/local/bin/run-debug && \
+    chmod +x /usr/local/bin/run-debug
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser -s /bin/bash appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# Set working directory for user
+WORKDIR /app
+
+# Default entrypoint for development
 ENTRYPOINT ["/bin/bash"]
 
-# Support multiple commands
-CMD ["-c", "echo 'Available commands:'; echo '  run-app [args]  - Run the application'; echo '  run-tests       - Run unit tests'; echo '  bash           - Interactive shell'; echo 'Usage: docker run --rm computer-vision-triton-cpp-client:dev run-tests'"]
+# Provide helpful development commands
+CMD ["-c", "echo 'Development Environment - Available commands:'; \
+     echo '  run-app [args]     - Run the application'; \
+     echo '  run-tests          - Run unit tests'; \
+     echo '  run-valgrind [args]- Run with memory checking'; \
+     echo '  run-debug [args]   - Run with GDB debugger'; \
+     echo '  bash               - Interactive shell'; \
+     echo ''; \
+     echo 'Examples:'; \
+     echo '  docker run --rm computer-vision-triton-cpp-client:dev run-tests'; \
+     echo '  docker run --rm computer-vision-triton-cpp-client:dev run-app --help'; \
+     echo '  docker run -it --rm computer-vision-triton-cpp-client:dev bash'; \
+     exec /bin/bash"]

@@ -20,17 +20,22 @@ The Docker setup has been enhanced to support both production and development wo
 **Features**:
 - ✅ Debug build with testing enabled
 - ✅ All testing dependencies (Google Test, Ninja, Valgrind, GDB)
-- ✅ Pre-compiled tests ready to run
-- ✅ Helper scripts for easy command execution
-- ✅ Interactive development shell support
+- ✅ Development tools (strace, htop, vim)
+- ✅ Pre-compiled and validated tests
+- ✅ Multiple helper scripts (run-app, run-tests, run-valgrind, run-debug)
+- ✅ Interactive development shell with bash support
+- ✅ Memory debugging and profiling tools
 
 ### 3. docker-compose.yml
 **Purpose**: Orchestrated development environment
 **Features**:
 - ✅ Production and development service definitions
-- ✅ Optional Triton server service for testing
-- ✅ Volume mounts for data and source code
+- ✅ Interactive development service for debugging
+- ✅ Optional Triton server service with health checks
+- ✅ Volume mounts for data, config, and source code
 - ✅ GPU support configuration
+- ✅ Environment variables for better terminal support
+- ✅ Read-only mounts for security
 
 ## Usage Examples
 
@@ -58,6 +63,12 @@ docker run --rm computer-vision-triton-cpp-client:dev run-tests
 
 # Interactive development
 docker run --rm -it computer-vision-triton-cpp-client:dev bash
+
+# Debug with Valgrind
+docker run --rm computer-vision-triton-cpp-client:dev run-valgrind --help
+
+# Debug with GDB
+docker run --rm -it computer-vision-triton-cpp-client:dev run-debug --help
 ```
 
 ### Docker Compose
@@ -65,11 +76,17 @@ docker run --rm -it computer-vision-triton-cpp-client:dev bash
 # Run tests
 docker-compose run triton-client-dev
 
+# Interactive development session
+docker-compose run triton-client-interactive
+
 # Start Triton server
 docker-compose up triton-server
 
 # Run production client
 docker-compose run triton-client --source=/app/data/image.jpg --model_type=yolov8
+
+# Full development environment
+docker-compose up triton-server triton-client-interactive
 ```
 
 ## Security Improvements
@@ -81,9 +98,11 @@ docker-compose run triton-client --source=/app/data/image.jpg --model_type=yolov
 4. **Proper file permissions**: Secure file ownership
 
 ### Development Dockerfile
-1. **Development tools**: Includes debugging and profiling tools
-2. **Testing framework**: Full Google Test integration
-3. **Helper scripts**: Secure script execution
+1. **Non-root user**: Secure execution with bash shell support
+2. **Development tools**: Full debugging and profiling toolkit
+3. **Testing framework**: Complete Google Test integration with validation
+4. **Helper scripts**: Multiple execution modes (normal, debug, memory-check)
+5. **Interactive environment**: Full development experience with proper terminal support
 
 ## Build Optimizations
 
@@ -101,11 +120,15 @@ docker-compose run triton-client --source=/app/data/image.jpg --model_type=yolov
 
 ### Automated Testing
 ```dockerfile
-# Tests are built and ready to run in development image
+# Tests are built, validated, and ready to run in development image
 RUN cd build && \
     cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON -GNinja .. && \
-    ninja && \
-    ninja run_tests
+    ninja
+
+# Build and run tests to validate build
+RUN cd build && \
+    ninja run_tests && \
+    ./tests/run_tests
 ```
 
 ### Test Execution
@@ -113,14 +136,20 @@ RUN cd build && \
 # Multiple ways to run tests
 docker run --rm computer-vision-triton-cpp-client:dev run-tests
 docker-compose run triton-client-dev
+
+# Memory testing with Valgrind
+docker run --rm computer-vision-triton-cpp-client:dev run-valgrind
+
+# Interactive debugging
+docker run --rm -it computer-vision-triton-cpp-client:dev run-debug
 ```
 
 ## Image Variants
 
-| Image | Size | Use Case | Testing | Debugging |
-|-------|------|----------|---------|-----------|
-| `computer-vision-triton-cpp-client` | ~2GB | Production | ❌ | ❌ |
-| `computer-vision-triton-cpp-client:dev` | ~2.5GB | Development | ✅ | ✅ |
+| Image | Size | Use Case | Testing | Debugging | Memory Tools |
+|-------|------|----------|---------|-----------|--------------|
+| `computer-vision-triton-cpp-client` | ~2GB | Production | ❌ | ❌ | ❌ |
+| `computer-vision-triton-cpp-client:dev` | ~2.5GB | Development | ✅ | ✅ | ✅ |
 
 ## Best Practices Implemented
 
