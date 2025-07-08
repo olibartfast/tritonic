@@ -1,4 +1,4 @@
-# Development Dockerfile with Testing Support
+# Development Dockerfile for Computer Vision Triton C++ Client with Testing Support
 # Build: docker build -f Dockerfile.dev --rm -t computer-vision-triton-cpp-client:dev .
 # Run tests: docker run --rm computer-vision-triton-cpp-client:dev run-tests
 
@@ -11,8 +11,6 @@ RUN apt-get update && apt-get install -y \
     cmake \
     libcurl4-openssl-dev \
     rapidjson-dev \
-    libprotobuf-dev \
-    protobuf-compiler \
     libgtest-dev \
     ninja-build \
     valgrind \
@@ -21,6 +19,10 @@ RUN apt-get update && apt-get install -y \
     htop \
     vim \
     && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y build-essential cmake
+RUN apt-get install -y libcurl4-openssl-dev
+RUN apt-get install -y rapidjson-dev libprotobuf-dev protobuf-compiler
 
 # Set environment variables
 ENV TritonClientBuild_DIR=/workspace/install
@@ -38,7 +40,7 @@ RUN rm -rf build && \
     cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON -GNinja .. && \
     ninja
 
-# Build and run tests to validate build
+# Build and run tests to validate build (enabled for development)
 RUN cd build && \
     ninja run_tests && \
     ./tests/run_tests
@@ -64,17 +66,17 @@ RUN echo '#!/bin/bash\ncd /app && gdb --args ./build/computer-vision-triton-cpp-
     chmod +x /usr/local/bin/run-debug
 
 # Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser -s /bin/bash appuser
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 
 # Set working directory for user
 WORKDIR /app
 
-# Default entrypoint for development
+# Default entrypoint for development - allows both direct commands and interactive use
 ENTRYPOINT ["/bin/bash"]
 
-# Provide helpful development commands
+# Provide helpful development commands and examples
 CMD ["-c", "echo 'Development Environment - Available commands:'; \
      echo '  run-app [args]     - Run the application'; \
      echo '  run-tests          - Run unit tests'; \
