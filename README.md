@@ -1,4 +1,4 @@
-# tritonic - C++ Triton Client for Computer Vision Models
+# tritonic - C++ Triton Inference Client for Computer Vision Models
 
 This C++ application enables machine learning tasks (e.g. object detection, classification, optical flow ...) using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
 
