@@ -9,7 +9,6 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 - [Build Client Libraries](#build-client-libraries)
 - [Dependencies](#dependencies)
 - [Build and Compile](#build-and-compile)
-- [Testing](#testing)
 - [Tasks](#tasks)
 - [Notes](#notes)
 - [Deploying Models](#deploying-models)
