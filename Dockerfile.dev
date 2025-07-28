@@ -1,6 +1,6 @@
 # Development Dockerfile for Computer Vision Triton C++ Client with Testing Support
 # Build: docker build -f Dockerfile.dev --rm -t tritonic:dev .
-# Run tests: docker run --rm tritonic:dev run-tests
+# Run tests: docker run --rm --entrypoint /bin/sh tritonic:dev -c "cd /app/build && ./tests/run_tests" 
 
 ARG TRITON_VERSION=25.06
 FROM nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3-sdk
