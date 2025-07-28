@@ -247,22 +247,13 @@ To view all available parameters, run:
 ## Docker Support  
 For detailed instructions on installing Docker and the NVIDIA Container Toolkit, refer to the [Docker Setup Document](docs/Docker_setup.md).  
 
-### Production Build
-For production use with optimized release build:
+### Build
 
 ```bash
 docker build --rm -t computer-vision-triton-cpp-client .
 ```
 
-### Development Build with Testing
-For development with testing support:
-
-```bash
-docker build -f Dockerfile.dev --rm -t computer-vision-triton-cpp-client:dev .
-```
-
-### Run Production Container
-### Run Production Container
+### Run Container
 ```bash
 docker run --rm \
   -v /path/to/host/data:/app/data \
@@ -277,24 +268,6 @@ docker run --rm \
   --port=<8000 for http, 8001 for grpc>
 ```
 
-### Run Development Container with Tests
-```bash
-# Run unit tests
-docker run --rm computer-vision-triton-cpp-client:dev run-tests
-
-# Run the application
-docker run --rm \
-  -v /path/to/host/data:/app/data \
-  computer-vision-triton-cpp-client:dev run-app \
-  --source=/app/data/image.jpg \
-  --model_type=yolov8 \
-  --model=yolov8n \
-  --serverAddress=host.docker.internal
-
-# Interactive development shell
-docker run --rm -it computer-vision-triton-cpp-client:dev bash
-```
-
 ## Demo
 
 Real-time inference test (GPU RTX 3060):
@@ -303,7 +276,6 @@ Real-time inference test (GPU RTX 3060):
 - RAFT Optical Flow Large(exported to traced torchscript): [Demo Video](https://www.youtube.com/watch?v=UvKCjYI_9aQ)
 
 ## References
-- [Unit Testing Guide](docs/UNIT_TESTING.md) - Testing framework documentation
 - [Triton Inference Server Client Example](https://github.com/triton-inference-server/client/blob/r21.08/src/c%2B%2B/examples/image_client.cc)
 - [Triton User Guide](https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/getting_started/quickstart.html)
 - [Triton Tutorials](https://github.com/triton-inference-server/tutorials)
