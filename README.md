@@ -110,38 +110,6 @@ Optional flags:
 cmake --build .
 ```
 
-## Testing
-
-Unit testing framework built with Google Test.
-
-### Running Tests
-
-1. **Build with testing enabled**:
-```bash
-cmake -DBUILD_TESTING=ON ..
-ninja run_tests
-```
-
-2. **Execute all tests**:
-```bash
-./tests/run_tests
-```
-
-3. **Use the automated test script**:
-```bash
-./run_tests.sh
-```
-
-### Test Coverage
-
-The test suite includes:
-- **Configuration validation tests**: Model name validation, port validation, required field checking
-- **Configuration manager tests**: Command line parsing, environment variable loading, error handling
-- **Logger functionality tests**: Singleton pattern, log level filtering, formatted logging
-- **Type safety and security validation**: Input sanitization, path traversal prevention
-
-For detailed testing documentation, see [Unit Testing Guide](docs/UNIT_TESTING.md).
-
 ## Tasks
 
 ### Export Instructions
