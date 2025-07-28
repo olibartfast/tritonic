@@ -1,5 +1,6 @@
 #include "Config.hpp"
 #include "utils.hpp"
+#include "Logger.hpp"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <fstream>
@@ -73,7 +74,7 @@ std::unique_ptr<Config> ConfigManager::loadFromFile(const std::string& filename)
     
     std::ifstream file(filename);
     if (!file.is_open()) {
-        std::cerr << "Could not open config file: " << filename << std::endl;
+        logger.errorf("Could not open config file: {}", filename);
         return nullptr;
     }
 
@@ -182,20 +183,20 @@ void ConfigManager::saveToFile(const Config& config, const std::string& filename
 }
 
 void ConfigManager::printConfig(const Config& config) {
-    std::cout << "Configuration:\n";
-    std::cout << "  Server: " << config.server_address << ":" << config.port << " (" << config.protocol << ")\n";
-    std::cout << "  Model: " << config.model_name << " (" << config.model_type << ")\n";
-    std::cout << "  Source: " << config.source << "\n";
-    std::cout << "  Labels: " << config.labels_file << "\n";
-    std::cout << "  Batch Size: " << config.batch_size << "\n";
-    std::cout << "  Show Frame: " << (config.show_frame ? "true" : "false") << "\n";
-    std::cout << "  Write Frame: " << (config.write_frame ? "true" : "false") << "\n";
-    std::cout << "  Confidence Threshold: " << config.confidence_threshold << "\n";
-    std::cout << "  NMS Threshold: " << config.nms_threshold << "\n";
-    std::cout << "  Verbose: " << (config.verbose ? "true" : "false") << "\n";
-    std::cout << "  Log Level: " << config.log_level << "\n";
+    logger.info("Configuration:");
+    logger.infof("  Server: {}:{} ({})", config.server_address, config.port, config.protocol);
+    logger.infof("  Model: {} ({})", config.model_name, config.model_type);
+    logger.infof("  Source: {}", config.source);
+    logger.infof("  Labels: {}", config.labels_file);
+    logger.infof("  Batch Size: {}", config.batch_size);
+    logger.infof("  Show Frame: {}", config.show_frame ? "true" : "false");
+    logger.infof("  Write Frame: {}", config.write_frame ? "true" : "false");
+    logger.infof("  Confidence Threshold: {}", config.confidence_threshold);
+    logger.infof("  NMS Threshold: {}", config.nms_threshold);
+    logger.infof("  Verbose: {}", config.verbose ? "true" : "false");
+    logger.infof("  Log Level: {}", config.log_level);
     if (!config.log_file.empty()) {
-        std::cout << "  Log File: " << config.log_file << "\n";
+        logger.infof("  Log File: {}", config.log_file);
     }
 }
 

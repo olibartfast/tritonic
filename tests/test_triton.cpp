@@ -1,39 +1,27 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include "TritonClientAdapter.hpp"
-#include "mocks/MockTritonClient.hpp"
+#include "ITriton.hpp"
+#include "mocks/MockTriton.hpp"
 
 using ::testing::Return;
 using ::testing::_;
 using ::testing::InSequence;
 
-class TritonClientAdapterTest : public ::testing::Test {
+class TritonInterfaceTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        mockFactory = std::make_unique<MockTritonClientFactory>();
+        mockTriton = std::make_unique<MockTriton>();
     }
     
     void TearDown() override {
-        mockFactory.reset();
+        mockTriton.reset();
     }
     
-    std::unique_ptr<MockTritonClientFactory> mockFactory;
+    std::unique_ptr<MockTriton> mockTriton;
 };
 
-TEST_F(TritonClientAdapterTest, FactoryCreatesClientWithCorrectParameters) {
-    auto mockClient = std::make_unique<MockTritonClient>();
-    
-    EXPECT_CALL(*mockFactory, createClient("localhost:8000", 0, "test_model", "1", false))
-        .WillOnce(Return(testing::ByMove(std::move(mockClient))));
-    
-    auto client = mockFactory->createClient("localhost:8000", 0, "test_model", "1", false);
-    
-    ASSERT_NE(client, nullptr);
-}
-
-TEST_F(TritonClientAdapterTest, MockClientCanSetupExpectations) {
-    auto mockClient = std::make_unique<MockTritonClient>();
-    auto* mockClientPtr = mockClient.get();
+TEST_F(TritonInterfaceTest, MockCanSetupModelInfoExpectations) {
+    auto* mockPtr = mockTriton.get();
     
     // Set up model info expectation
     TritonModelInfo expectedModelInfo;
@@ -41,64 +29,80 @@ TEST_F(TritonClientAdapterTest, MockClientCanSetupExpectations) {
     expectedModelInfo.input_names = {"images"};
     expectedModelInfo.output_names = {"output0"};
     
-    EXPECT_CALL(*mockClientPtr, getModelInfo("test_model", "localhost:8000", _))
+    EXPECT_CALL(*mockPtr, getModelInfo("test_model", "localhost:8000", _))
         .WillOnce(Return(expectedModelInfo));
     
     // Test the expectation
-    auto modelInfo = mockClientPtr->getModelInfo("test_model", "localhost:8000", {});
+    auto modelInfo = mockPtr->getModelInfo("test_model", "localhost:8000", {});
     EXPECT_EQ(modelInfo.input_names[0], "images");
     EXPECT_EQ(modelInfo.output_names[0], "output0");
 }
 
-TEST_F(TritonClientAdapterTest, MockClientCanSetupInferenceExpectations) {
-    auto mockClient = std::make_unique<MockTritonClient>();
-    auto* mockClientPtr = mockClient.get();
+TEST_F(TritonInterfaceTest, MockCanSetupInferenceExpectations) {
+    auto* mockPtr = mockTriton.get();
     
     // Set up inference expectation
     std::vector<std::vector<TensorElement>> expectedResults = {{1.0f, 2.0f, 3.0f}};
     std::vector<std::vector<int64_t>> expectedShapes = {{1, 3}};
     auto expectedTuple = std::make_tuple(expectedResults, expectedShapes);
     
-    EXPECT_CALL(*mockClientPtr, infer(_))
+    EXPECT_CALL(*mockPtr, infer(_))
         .WillOnce(Return(expectedTuple));
     
     // Test the expectation
     std::vector<std::vector<uint8_t>> inputData = {{1, 2, 3, 4}};
-    auto [results, shapes] = mockClientPtr->infer(inputData);
+    auto [results, shapes] = mockPtr->infer(inputData);
     
     EXPECT_EQ(results.size(), 1);
     EXPECT_EQ(shapes.size(), 1);
     EXPECT_EQ(shapes[0][1], 3);
 }
 
-TEST_F(TritonClientAdapterTest, MockClientHandlesSetInputShapes) {
-    auto mockClient = std::make_unique<MockTritonClient>();
-    auto* mockClientPtr = mockClient.get();
+TEST_F(TritonInterfaceTest, MockHandlesSetInputShapes) {
+    auto* mockPtr = mockTriton.get();
     
-    EXPECT_CALL(*mockClientPtr, setInputShapes(_))
+    EXPECT_CALL(*mockPtr, setInputShapes(_))
         .Times(1);
     
     std::vector<std::vector<int64_t>> shapes = {{1, 3, 640, 640}};
-    mockClientPtr->setInputShapes(shapes);
+    mockPtr->setInputShapes(shapes);
 }
 
-TEST_F(TritonClientAdapterTest, MockClientHandlesPrintModelInfo) {
-    auto mockClient = std::make_unique<MockTritonClient>();
-    auto* mockClientPtr = mockClient.get();
+TEST_F(TritonInterfaceTest, MockHandlesSetInputShape) {
+    auto* mockPtr = mockTriton.get();
+    
+    EXPECT_CALL(*mockPtr, setInputShape(_))
+        .Times(1);
+    
+    std::vector<int64_t> shape = {1, 3, 640, 640};
+    mockPtr->setInputShape(shape);
+}
+
+TEST_F(TritonInterfaceTest, MockHandlesPrintModelInfo) {
+    auto* mockPtr = mockTriton.get();
     
     TritonModelInfo modelInfo;
     modelInfo.input_names = {"test_input"};
     
-    EXPECT_CALL(*mockClientPtr, printModelInfo(_))
+    EXPECT_CALL(*mockPtr, printModelInfo(_))
         .Times(1);
     
-    mockClientPtr->printModelInfo(modelInfo);
+    mockPtr->printModelInfo(modelInfo);
+}
+
+TEST_F(TritonInterfaceTest, MockHandlesCreateTritonClient) {
+    auto* mockPtr = mockTriton.get();
+    
+    EXPECT_CALL(*mockPtr, createTritonClient())
+        .Times(1);
+    
+    mockPtr->createTritonClient();
 }
 
 // Test that we can create multiple mock clients with different behaviors
-TEST_F(TritonClientAdapterTest, CanCreateMultipleMockClientsWithDifferentBehaviors) {
-    auto mockClient1 = std::make_unique<MockTritonClient>();
-    auto mockClient2 = std::make_unique<MockTritonClient>();
+TEST_F(TritonInterfaceTest, CanCreateMultipleMockClientsWithDifferentBehaviors) {
+    auto mockClient1 = std::make_unique<MockTriton>();
+    auto mockClient2 = std::make_unique<MockTriton>();
     
     auto* mock1Ptr = mockClient1.get();
     auto* mock2Ptr = mockClient2.get();

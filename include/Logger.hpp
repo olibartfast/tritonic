@@ -81,4 +81,7 @@ private:
     std::ofstream file_stream_;
     bool console_output_ = true;
     std::mutex log_mutex_;
-}; 
+};
+
+// Global logger instance for easier access
+extern Logger& logger; 

@@ -20,6 +20,7 @@ void Logger::setLogFile(const std::string& filename) {
     if (!filename.empty()) {
         file_stream_.open(filename, std::ios::app);
         if (!file_stream_.is_open()) {
+            // Use stderr directly since logger might not be initialized yet
             std::cerr << "Failed to open log file: " << filename << std::endl;
         }
     } else {
@@ -102,4 +103,7 @@ std::string Logger::levelToString(LogLevel level) {
 
 std::string Logger::formatMessage(const std::string& format) {
     return format;
-} 
+}
+
+// Global logger instance
+Logger& logger = Logger::getInstance(); 

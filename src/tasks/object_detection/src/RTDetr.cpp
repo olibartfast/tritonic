@@ -1,4 +1,5 @@
 #include "RTDetr.hpp"
+#include "Logger.hpp"
 
 RTDetr::RTDetr(const TritonModelInfo& model_info) : TaskInterface(model_info) {
 
@@ -50,8 +51,7 @@ std::vector<uint8_t> RTDetr::preprocess_image(const cv::Mat& img, const std::str
 
     if (pos != img_byte_size)
     {
-        std::cerr << "unexpected total size of channels " << pos << ", expecting "
-            << img_byte_size << std::endl;
+        logger.errorf("unexpected total size of channels {}, expecting {}", pos, img_byte_size);
         exit(1);
     }
 
@@ -89,7 +89,7 @@ std::vector<std::vector<uint8_t>> RTDetr::preprocess(const std::vector<cv::Mat>&
         } else {
             // For other types of inputs, you might need to add more cases
             // or use a default handling method
-            std::cerr << "Warning: Unhandled input " << input_name << ". Sending empty data." << std::endl;
+            logger.warnf("Warning: Unhandled input {}. Sending empty data.", input_name);
         }
     }
     return input_data;
@@ -134,7 +134,7 @@ std::vector<Result> RTDetr::postprocess(const cv::Size& frame_size,
             }, labels[i]);
 
             if (class_id == -1) {
-                std::cerr << "Warning: Invalid class id at index " << i << std::endl;
+                logger.warnf("Warning: Invalid class id at index {}", i);
                 continue;
             }
 

@@ -1,4 +1,5 @@
 #include "RFDetr.hpp"
+#include "Logger.hpp"
 
 RFDetr::RFDetr(const TritonModelInfo& model_info) : TaskInterface(model_info) {
 
@@ -41,8 +42,7 @@ std::vector<uint8_t> RFDetr::preprocess_image(const cv::Mat& img, const std::str
         cv::split(sample, input_channels); // Split channels directly into the buffer
 
         if (pos != img_byte_size) {
-             std::cerr << "RFDetr Preprocess Error: unexpected total size of channels " << pos
-                       << ", expecting " << img_byte_size << std::endl;
+             logger.errorf("RFDetr Preprocess Error: unexpected total size of channels {}, expecting {}", pos, img_byte_size);
              throw std::runtime_error("RFDetr Preprocess Error: Mismatch in byte size during NCHW conversion.");
         }
     } else { // Assume NHWC or contiguous format
@@ -80,7 +80,7 @@ std::vector<std::vector<uint8_t>> RFDetr::preprocess(const std::vector<cv::Mat>&
         } else {
             // For other types of inputs, you might need to add more cases
             // or use a default handling method
-            std::cerr << "Warning: Unhandled input " << input_name << ". Sending empty data." << std::endl;
+            logger.warnf("Warning: Unhandled input {}. Sending empty data.", input_name);
         }
     }
     return input_data;

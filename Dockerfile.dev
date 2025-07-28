@@ -18,11 +18,9 @@ RUN apt-get update && apt-get install -y \
     strace \
     htop \
     vim \
+    libprotobuf-dev \
+    protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get install -y build-essential cmake
-RUN apt-get install -y libcurl4-openssl-dev
-RUN apt-get install -y rapidjson-dev libprotobuf-dev protobuf-compiler
 
 # Set environment variables
 ENV TritonClientBuild_DIR=/workspace/install
@@ -65,10 +63,10 @@ RUN echo '#!/bin/bash\ncd /app && valgrind --tool=memcheck --leak-check=full --s
 RUN echo '#!/bin/bash\ncd /app && gdb --args ./build/computer-vision-triton-cpp-client "$@"' > /usr/local/bin/run-debug && \
     chmod +x /usr/local/bin/run-debug
 
-# Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-RUN chown -R appuser:appuser /app
-USER appuser
+# Create non-root user for security (commented out for testing)
+# RUN groupadd -r appuser && useradd -r -g appuser appuser
+# RUN chown -R appuser:appuser /app
+# USER appuser
 
 # Set working directory for user
 WORKDIR /app

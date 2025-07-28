@@ -1,4 +1,5 @@
 #include "RTDetrUltralytics.hpp"
+#include "Logger.hpp"
 
 std::vector<uint8_t> RTDetrUltralytics::preprocess_image(const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
     size_t img_channels, const cv::Size& img_size) {
@@ -35,8 +36,7 @@ std::vector<uint8_t> RTDetrUltralytics::preprocess_image(const cv::Mat& img, con
 
     if (pos != img_byte_size)
     {
-        std::cerr << "unexpected total size of channels " << pos << ", expecting "
-            << img_byte_size << std::endl;
+        logger.errorf("unexpected total size of channels {}, expecting {}", pos, img_byte_size);
         exit(1);
     }
 
@@ -69,7 +69,7 @@ std::vector<std::vector<uint8_t>> RTDetrUltralytics::preprocess(const std::vecto
         } else {
             // For other types of inputs, you might need to add more cases
             // or use a default handling method
-            std::cerr << "Warning: Unhandled input " << input_name << ". Sending empty data." << std::endl;
+            logger.warnf("Warning: Unhandled input {}. Sending empty data.", input_name);
         }
     }
     return input_data;

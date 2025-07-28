@@ -105,7 +105,7 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
     const auto& inputs = responseJson["input"].GetArray();
     size_t inputIndex = 0;  // Keep track of index for error messages and input_sizes access
     for (const auto& input : inputs) {
-        std::cout << "Input " << inputIndex << ": " << input["name"].GetString() << std::endl;
+        logger.infof("Input {}: {}", inputIndex, input["name"].GetString());
         info.input_names.push_back(input["name"].GetString());
         
         std::string format = input["format"].GetString();
@@ -132,7 +132,7 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
             }
             shape = input_sizes[inputIndex];
         } else if (!input_sizes.empty()) {
-            std::cout << "Warning: Input sizes provided, but model does not have dynamic shapes. Ignoring provided input sizes." << std::endl;
+            logger.warn("Input sizes provided, but model does not have dynamic shapes. Ignoring provided input sizes.");
         }
 
         if (info.max_batch_size_ > 0 && shape.size() < 4) {
@@ -150,8 +150,7 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
             info.input_types.push_back(CV_32S);
         } else if (datatype == "INT64") {
             info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
-            std::cerr << "Warning: INT64 type detected for input '" << info.input_names.back() 
-                    << "'. Will be mapped to CV_32S." << std::endl;
+            logger.warnf("Warning: INT64 type detected for input '{}'. Will be mapped to CV_32S.", info.input_names.back());
         } else {
             throw std::runtime_error("Unsupported data type: " + datatype);
         }
@@ -366,7 +365,7 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
         inputs.emplace_back(input);
 
         if (input_data[i].empty()) {
-            std::cerr << "Warning: Empty input data for " << model_info_.input_names[i] << std::endl;
+            logger.warnf("Warning: Empty input data for {}", model_info_.input_names[i]);
             continue;  // Skip appending empty data
         }
 
@@ -375,7 +374,7 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
             throw std::runtime_error("Failed setting input " + model_info_.input_names[i] + ": " + err.Message());
         }
 
-        std::cout << "Input " << model_info_.input_names[i] << " set with " << input_data[i].size() << " bytes of data" << std::endl;
+        logger.infof("Input {} set with {} bytes of data", model_info_.input_names[i], input_data[i].size());
     }
 
     // Create vector of raw pointers for the API call

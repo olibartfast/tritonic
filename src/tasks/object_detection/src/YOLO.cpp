@@ -257,8 +257,7 @@ std::vector<uint8_t> YOLO::preprocess_image(
 
     if (pos != img_byte_size)
     {
-        std::cerr << "unexpected total size of channels " << pos << ", expecting "
-            << img_byte_size << std::endl;
+        logger.errorf("unexpected total size of channels {}, expecting {}", pos, img_byte_size);
         exit(1);
     }
 

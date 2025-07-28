@@ -1,4 +1,5 @@
 #include "YOLOv10.hpp"
+#include "Logger.hpp"
 
 YOLOv10::YOLOv10(const TritonModelInfo& model_info) : TaskInterface(model_info) {
 
@@ -70,8 +71,7 @@ std::vector<uint8_t> YOLOv10::preprocess_image(
 
     if (pos != img_byte_size)
     {
-        std::cerr << "unexpected total size of channels " << pos << ", expecting "
-            << img_byte_size << std::endl;
+        logger.errorf("unexpected total size of channels {}, expecting {}", pos, img_byte_size);
         exit(1);
     }
 

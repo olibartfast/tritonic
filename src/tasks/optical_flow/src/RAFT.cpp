@@ -1,4 +1,5 @@
 #include "RAFT.hpp"
+#include "Logger.hpp"
 
 std::vector<uint8_t> RAFT::preprocess_image(
     const cv::Mat& img, const std::string& format, int img_type1, int img_type3,
@@ -38,13 +39,12 @@ std::vector<uint8_t> RAFT::preprocess_image(
         cv::split(sample, input_rgb_channels);
 
         if (pos != img_byte_size) {
-            std::cerr << "Unexpected total size of channels: " << pos
-                      << ", expecting: " << img_byte_size << std::endl;
+            logger.errorf("Unexpected total size of channels: {}, expecting: {}", pos, img_byte_size);
             exit(1);
         }
     } else {
         // Handle other formats (e.g., HWC) or throw an error if not supported
-        std::cerr << "Unsupported format: " << format << std::endl;
+        logger.errorf("Unsupported format: {}", format);
         exit(1);
     }
 

@@ -1,5 +1,6 @@
 #include "task_factory.hpp"
 #include "utils.hpp"
+#include "ITriton.hpp"
 #include "Triton.hpp"
 #include "Config.hpp"
 #include "Logger.hpp"
@@ -7,7 +8,7 @@
 
 std::vector<Result> processSource(const std::vector<cv::Mat>& source, 
     const std::unique_ptr<TaskInterface>& task, 
-    const std::unique_ptr<Triton>&  tritonClient)
+    const std::unique_ptr<ITriton>&  tritonClient)
 {
     const auto input_data = task->preprocess(source);
     auto [infer_results, infer_shapes] = tritonClient->infer(input_data);
@@ -16,7 +17,7 @@ std::vector<Result> processSource(const std::vector<cv::Mat>& source,
 
 void ProcessImages(const std::vector<std::string>& sourceNames,
     const std::unique_ptr<TaskInterface>& task, 
-    const std::unique_ptr<Triton>&  tritonClient,
+    const std::unique_ptr<ITriton>&  tritonClient,
     const std::vector<std::string>& class_names, 
     const std::string& model_name) {
     
@@ -27,14 +28,14 @@ void ProcessImages(const std::vector<std::string>& sourceNames,
     for (const auto& sourceName : sourceNames) {
         cv::Mat image = cv::imread(sourceName);
         if (image.empty()) {
-            std::cerr << "Could not open or read the image: " << sourceName << std::endl;
+            logger.errorf("Could not open or read the image: {}", sourceName);
             continue;
         }
         images.push_back(image);
     }
     
     if (images.empty()) {
-        std::cerr << "No valid images to process" << std::endl;
+        logger.error("No valid images to process");
         return;
     }
 
@@ -52,7 +53,7 @@ void ProcessImages(const std::vector<std::string>& sourceNames,
     std::vector<Result> predictions = processSource(images, task, tritonClient);
     auto end = std::chrono::steady_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    std::cout << "Infer time for " << images.size() << " images: " << diff << " ms" << std::endl;
+    logger.infof("Infer time for {} images: {} ms", images.size(), diff);
 
     // Process predictions 
     cv::Mat& image = images[0];
@@ -63,8 +64,7 @@ void ProcessImages(const std::vector<std::string>& sourceNames,
 
         if (std::holds_alternative<Classification>(prediction)) {
             Classification classification = std::get<Classification>(prediction);
-            std::cout << "Image " << sourceName << ": " << class_names[classification.class_id] 
-                     << ": " << classification.class_confidence << std::endl;
+            logger.infof("Image {}: {}: {}", sourceName, class_names[classification.class_id], classification.class_confidence);
             draw_label(image, class_names[classification.class_id], classification.class_confidence, 30, 30);
         } 
         else if (std::holds_alternative<Detection>(prediction)) {
@@ -98,18 +98,23 @@ void ProcessImages(const std::vector<std::string>& sourceNames,
     }
 
     std::string processedFrameFilename = sourceDir + "/processed_frame_" + model_name + ".jpg";
-    std::cout << "Saving frame to: " << processedFrameFilename << std::endl;
-    cv::imwrite(processedFrameFilename, image);
+    logger.infof("Saving frame to: {}", processedFrameFilename);
+    bool writeSuccess = cv::imwrite(processedFrameFilename, image);
+    if (writeSuccess) {
+        logger.infof("Successfully saved frame to: {}", processedFrameFilename);
+    } else {
+        logger.errorf("Failed to save frame to: {}", processedFrameFilename);
+    }
 }
 void ProcessVideo(const std::string& sourceName,
     const std::unique_ptr<TaskInterface>& task, 
-    const std::unique_ptr<Triton>&  tritonClient, 
+    const std::unique_ptr<ITriton>&  tritonClient, 
     const std::vector<std::string>& class_names) {
     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
     cv::VideoCapture cap(sourceName);
 
     if (!cap.isOpened()) {
-        std::cout << "Could not open the video: " << sourceName << std::endl;
+        logger.errorf("Could not open the video: {}", sourceName);
         return;
     }
 
@@ -120,7 +125,7 @@ void ProcessVideo(const std::string& sourceName,
     outputVideo.open(sourceDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
 
     if (!outputVideo.isOpened()) {
-        std::cout << "Could not open the output video for write: " << sourceName << std::endl;
+        logger.errorf("Could not open the output video for write: {}", sourceName);
         return;
     }
 #endif
@@ -130,7 +135,7 @@ void ProcessVideo(const std::string& sourceName,
     
     // Read first frame
     if (!cap.read(current_frame)) {
-        std::cout << "Failed to read first frame" << std::endl;
+        logger.error("Failed to read first frame");
         return;
     }
 
@@ -151,7 +156,7 @@ void ProcessVideo(const std::string& sourceName,
 
         auto end = std::chrono::steady_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        std::cout << "Infer time: " << diff << " ms" << std::endl;
+        logger.infof("Infer time: {} ms", diff);
 
 #if defined(SHOW_FRAME) || defined(WRITE_FRAME)
         // Create visualization frame
@@ -213,10 +218,10 @@ void ProcessVideo(const std::string& sourceName,
                         if (roi.size() == colorMask.size()) {
                             cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
                         } else {
-                            std::cerr << "ROI and color mask size mismatch. Skipping mask overlay." << std::endl;
+                            logger.warn("ROI and color mask size mismatch. Skipping mask overlay.");
                         }
                     } else {
-                        std::cerr << "Bounding box is outside the frame. Skipping this instance." << std::endl;
+                        logger.warn("Bounding box is outside the frame. Skipping this instance.");
                     }
                 }
             }
@@ -250,7 +255,6 @@ void ProcessVideo(const std::string& sourceName,
 int main(int argc, const char* argv[]) {
     try {
         // Initialize logging
-        auto& logger = Logger::getInstance();
         logger.setLogLevel(LogLevel::INFO);
         logger.setConsoleOutput(true);
         
@@ -267,16 +271,13 @@ int main(int argc, const char* argv[]) {
             return 1; // Exit immediately on validation error
         }
         
-        // If command line config failed (e.g., help was requested), try environment
+        // If command line config failed (e.g., help was requested), exit gracefully
         if (!config) {
-            try {
-                config = ConfigManager::loadFromEnvironment();
-                logger.info("Loaded configuration from environment variables");
-            } catch (const std::invalid_argument& env_e) {
-                logger.error("Environment configuration error: " + std::string(env_e.what()));
-                return 1; // Exit immediately on validation error
-            }
+            return 0; // Exit successfully when help was requested
         }
+        
+        // If we reach here, we have a valid config from command line
+        // No need to try environment variables
         
         // Set up logging based on configuration
         if (!config->log_file.empty()) {
@@ -305,7 +306,7 @@ int main(int argc, const char* argv[]) {
         logger.infof("Connecting to Triton server at {} using {} protocol", url, config->protocol);
         
         // Create Triton client
-        std::unique_ptr<Triton> tritonClient = std::make_unique<Triton>(url, protocol, config->model_name, config->model_version, config->verbose);
+        std::unique_ptr<ITriton> tritonClient = std::make_unique<Triton>(url, protocol, config->model_name, config->model_version, config->verbose);
         tritonClient->createTritonClient();
 
         logger.infof("Getting model info for: {}", config->model_name);
@@ -374,12 +375,10 @@ int main(int argc, const char* argv[]) {
         logger.info("Application completed successfully");
 
     } catch (const std::exception& e) {
-        Logger::getInstance().error("Application error: " + std::string(e.what()));
-        std::cerr << "Error: " << e.what() << std::endl;
+        logger.error("Application error: " + std::string(e.what()));
         return 1;
     } catch (...) {
-        Logger::getInstance().fatal("An unknown error occurred");
-        std::cerr << "An unknown error occurred." << std::endl;
+        logger.fatal("An unknown error occurred");
         return 1;
     }
 

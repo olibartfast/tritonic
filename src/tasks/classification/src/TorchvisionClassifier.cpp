@@ -1,4 +1,5 @@
 #include "TorchvisionClassifier.hpp"
+#include "Logger.hpp"
 
 TorchvisionClassifier::TorchvisionClassifier(const TritonModelInfo& modelInfo)
     : TaskInterface(modelInfo) {
@@ -32,7 +33,7 @@ std::vector<uint8_t> TorchvisionClassifier::preprocess_image(const cv::Mat& img,
     cv::split(sample, input_bgr_channels);
 
     if (pos != img_byte_size) {
-        std::cerr << "Unexpected total size of channels " << pos << ", expecting " << img_byte_size << std::endl;
+        logger.errorf("Unexpected total size of channels {}, expecting {}", pos, img_byte_size);
         exit(1);
     }
 

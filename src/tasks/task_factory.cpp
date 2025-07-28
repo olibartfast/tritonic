@@ -9,6 +9,7 @@
 #include "YOLOSeg.hpp"
 #include "RAFT.hpp"
 #include "RFDetr.hpp"
+#include "Logger.hpp"
 
 // Define the map of task creators
 std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
@@ -60,7 +61,7 @@ std::unique_ptr<TaskInterface> TaskFactory::createTaskInstance(const std::string
         throw std::runtime_error("Unrecognized model type: " + modelType);
     }
     catch (const std::exception& e) {
-        std::cerr << "Error creating task instance: " << e.what() << std::endl;
+        logger.errorf("Error creating task instance: {}", e.what());
         throw; // Re-throw the exception
     }
 }
