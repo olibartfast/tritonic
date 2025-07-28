@@ -2,7 +2,8 @@
 # docker build --rm -t computer-vision-triton-cpp-client .
 docker run --rm \
 --network host \
--v ${PWD}/data:/app/data computer-vision-triton-cpp-client \
+--user root \
+-v ${PWD}/data:/app/data computer-vision-triton-cpp-client:latest \
   --source=/app/data/person.jpg \
   --model_type=yoloseg \
   --model=yolo11s-seg_onnx  \
