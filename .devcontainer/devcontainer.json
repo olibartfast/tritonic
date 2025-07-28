@@ -1,7 +1,7 @@
 {
   "name": "C++ DevContainer",
-  // docker build --rm -t computer-vision-triton-cpp-client .
-  "image": "computer-vision-triton-cpp-client:latest",
+  // docker build --rm -t tritonic .
+  "image": "tritonic:latest",
   "runArgs": [
     "--rm",
     "--network", "host",

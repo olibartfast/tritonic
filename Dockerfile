@@ -1,6 +1,6 @@
 # Production Dockerfile for Computer Vision Triton C++ Client
-# Build: docker build --rm -t computer-vision-triton-cpp-client .
-# Run: docker run --rm computer-vision-triton-cpp-client [args]
+# Build: docker build --rm -t tritonic .
+# Run: docker run --rm tritonic [args]
 
 ARG TRITON_VERSION=25.06
 FROM nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3-sdk
@@ -52,7 +52,7 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # Set the entry point for the container
-ENTRYPOINT ["/app/build/computer-vision-triton-cpp-client"]
+ENTRYPOINT ["/app/build/tritonic"]
 
 # Default command if no arguments are provided
 CMD ["--help"]

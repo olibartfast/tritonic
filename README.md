@@ -184,7 +184,7 @@ docker run --gpus=1 --rm \
 
 ### Command-Line Inference on Video or Image
 ```bash
-./computer-vision-triton-cpp-client \
+./tritonic \
     --source=/path/to/source.format \
     --model_type=<model_type> \
     --model=<model_name_folder_on_triton> \
@@ -215,7 +215,7 @@ Check [`.vscode/launch.json`](.vscode/launch.json) for additional configuration 
 
 To view all available parameters, run:
 ```bash
-./computer-vision-triton-cpp-client --help
+./tritonic --help
 ```
 
 #### Model Type Tag Parameters
@@ -250,14 +250,14 @@ For detailed instructions on installing Docker and the NVIDIA Container Toolkit,
 ### Build
 
 ```bash
-docker build --rm -t computer-vision-triton-cpp-client .
+docker build --rm -t tritonic .
 ```
 
 ### Run Container
 ```bash
 docker run --rm \
   -v /path/to/host/data:/app/data \
-  computer-vision-triton-cpp-client \
+  tritonic \
   --network host \
   --source=<path_to_source_on_container> \
   --model_type=<model_type> \
@@ -284,4 +284,4 @@ Real-time inference test (GPU RTX 3060):
 - [Tensorflow Model Garden](https://github.com/tensorflow/models/tree/master/official)
 
 ## Feedback
-Any feedback is greatly appreciated. If you have any suggestions, bug reports, or questions, don't hesitate to open an [issue](https://github.com/olibartfast/computer-vision-triton-cpp-client/issues).
+Any feedback is greatly appreciated. If you have any suggestions, bug reports, or questions, don't hesitate to open an [issue](https://github.com/olibartfast/tritonic/issues).

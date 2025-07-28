@@ -2,7 +2,7 @@
 
 ## RAFT
 ## Export Options
-To export use [raft_exporter.py](https://github.com/olibartfast/computer-vision-triton-cpp-client/blob/master/scripts/optical_flow/raft_exporter.py)  inside script folder.  
+To export use [raft_exporter.py](https://github.com/olibartfast/tritonic/blob/master/scripts/optical_flow/raft_exporter.py)  inside script folder.  
 
 The export script supports several configuration options:
 

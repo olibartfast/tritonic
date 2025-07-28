@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(computer-vision-triton-cpp-client)
+project(tritonic)
 message(STATUS ${PROJECT_NAME})
 message(STATUS $ENV{TritonClientBuild_DIR})
 set(CMAKE_CXX_STANDARD 20)

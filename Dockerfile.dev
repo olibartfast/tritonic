@@ -1,6 +1,6 @@
 # Development Dockerfile for Computer Vision Triton C++ Client with Testing Support
-# Build: docker build -f Dockerfile.dev --rm -t computer-vision-triton-cpp-client:dev .
-# Run tests: docker run --rm computer-vision-triton-cpp-client:dev run-tests
+# Build: docker build -f Dockerfile.dev --rm -t tritonic:dev .
+# Run tests: docker run --rm tritonic:dev run-tests
 
 ARG TRITON_VERSION=25.06
 FROM nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3-sdk
@@ -54,13 +54,13 @@ LABEL build.testing="enabled"
 RUN echo '#!/bin/bash\ncd /app/build && ./tests/run_tests "$@"' > /usr/local/bin/run-tests && \
     chmod +x /usr/local/bin/run-tests
 
-RUN echo '#!/bin/bash\ncd /app && ./build/computer-vision-triton-cpp-client "$@"' > /usr/local/bin/run-app && \
+RUN echo '#!/bin/bash\ncd /app && ./build/tritonic "$@"' > /usr/local/bin/run-app && \
     chmod +x /usr/local/bin/run-app
 
-RUN echo '#!/bin/bash\ncd /app && valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all ./build/computer-vision-triton-cpp-client "$@"' > /usr/local/bin/run-valgrind && \
+RUN echo '#!/bin/bash\ncd /app && valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all ./build/tritonic "$@"' > /usr/local/bin/run-valgrind && \
     chmod +x /usr/local/bin/run-valgrind
 
-RUN echo '#!/bin/bash\ncd /app && gdb --args ./build/computer-vision-triton-cpp-client "$@"' > /usr/local/bin/run-debug && \
+RUN echo '#!/bin/bash\ncd /app && gdb --args ./build/tritonic "$@"' > /usr/local/bin/run-debug && \
     chmod +x /usr/local/bin/run-debug
 
 # Create non-root user for security (commented out for testing)
@@ -83,7 +83,7 @@ CMD ["-c", "echo 'Development Environment - Available commands:'; \
      echo '  bash               - Interactive shell'; \
      echo ''; \
      echo 'Examples:'; \
-     echo '  docker run --rm computer-vision-triton-cpp-client:dev run-tests'; \
-     echo '  docker run --rm computer-vision-triton-cpp-client:dev run-app --help'; \
-     echo '  docker run -it --rm computer-vision-triton-cpp-client:dev bash'; \
+     echo '  docker run --rm tritonic:dev run-tests'; \
+     echo '  docker run --rm tritonic:dev run-app --help'; \
+     echo '  docker run -it --rm tritonic:dev bash'; \
      exec /bin/bash"]

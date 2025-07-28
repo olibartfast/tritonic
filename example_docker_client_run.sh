@@ -1,9 +1,9 @@
 # same level of Dockerfile
-# docker build --rm -t computer-vision-triton-cpp-client .
+# docker build --rm -t tritonic .
 docker run --rm \
 --network host \
 --user root \
--v ${PWD}/data:/app/data computer-vision-triton-cpp-client:latest \
+-v ${PWD}/data:/app/data tritonic:latest \
   --source=/app/data/person.jpg \
   --model_type=yoloseg \
   --model=yolo11s-seg_onnx  \

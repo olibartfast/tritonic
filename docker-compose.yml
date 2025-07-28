@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: computer-vision-triton-cpp-client:latest
+    image: tritonic:latest
     volumes:
       - ./data:/app/data:ro
       - ./config:/app/config:ro
@@ -19,7 +19,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    image: computer-vision-triton-cpp-client:dev
+    image: tritonic:dev
     volumes:
       - ./data:/app/data
       - ./config:/app/config
@@ -36,7 +36,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    image: computer-vision-triton-cpp-client:dev
+    image: tritonic:dev
     volumes:
       - ./data:/app/data
       - ./config:/app/config
