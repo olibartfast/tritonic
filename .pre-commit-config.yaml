@@ -1,0 +1,157 @@
+# Pre-commit configuration for TritonIC C++ project
+# Install with: pip install pre-commit
+# Run with: pre-commit run --all-files
+
+repos:
+  # Code formatting
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v17.0.6
+    hooks:
+      - id: clang-format
+        args: [--style=file]
+        types: [c++, c]
+        additional_dependencies: ['clang-format']
+
+  # C++ linting with clang-tidy
+  - repo: https://github.com/pre-commit/mirrors-clang-tidy
+    rev: v17.0.6
+    hooks:
+      - id: clang-tidy
+        args: [--fix, --format-style=file]
+        types: [c++, c]
+        additional_dependencies: ['clang-tidy']
+
+  # General code formatting
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # Basic file checks
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      
+      # Documentation checks
+      - id: check-docstring-first
+      - id: check-ast
+      - id: check-json
+      - id: check-yaml
+      
+      # Security checks
+      - id: detect-private-key
+      - id: check-merge-conflict
+
+  # Shell script formatting and linting
+  - repo: https://github.com/pre-commit/mirrors-shfmt
+    rev: v3.6.0
+    hooks:
+      - id: shfmt
+        args: [-i, 2, -ci]
+
+  # Shell script linting
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.9.0
+    hooks:
+      - id: shellcheck
+        args: [--severity=warning]
+
+  # YAML formatting
+  - repo: https://github.com/pre-commit/mirrors-yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: [--format, parsable, --strict]
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.37.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+
+  # CMake formatting
+  - repo: https://github.com/cheshirekow/cmake_format
+    rev: v0.6.13
+    hooks:
+      - id: cmake-format
+        args: [--in-place]
+
+  # C++ include sorting
+  - repo: https://github.com/include-what-you-use/include-what-you-use
+    rev: clang_17
+    hooks:
+      - id: include-what-you-use
+        args: [--max_line_length=100]
+        types: [c++]
+
+  # Custom hooks for project-specific checks
+  - repo: local
+    hooks:
+      # Check for TODO/FIXME comments
+      - id: check-todos
+        name: Check for TODO/FIXME comments
+        entry: bash -c 'grep -r "TODO\|FIXME" src/ include/ tests/ || exit 0'
+        language: system
+        pass_filenames: false
+
+      # Check for debug prints (std::cout, printf, etc.)
+      - id: check-debug-prints
+        name: Check for debug prints
+        entry: bash -c 'grep -r "std::cout\|printf\|cout" src/ || exit 0'
+        language: system
+        pass_filenames: false
+
+      # Check for hardcoded paths
+      - id: check-hardcoded-paths
+        name: Check for hardcoded paths
+        entry: bash -c 'grep -r "/home\|/usr\|/opt" src/ || exit 0'
+        language: system
+        pass_filenames: false
+
+      # Verify CMake configuration
+      - id: cmake-check
+        name: Check CMake configuration
+        entry: bash -c 'cd build && cmake .. && make -j4'
+        language: system
+        pass_filenames: false
+        stages: [manual]
+
+      # Run unit tests
+      - id: run-tests
+        name: Run unit tests
+        entry: bash -c 'cd build && make run_tests && ./tests/run_tests'
+        language: system
+        pass_filenames: false
+        stages: [manual]
+
+# Global settings
+default_language_version:
+  python: python3
+
+# Skip certain files
+exclude: |
+  (?x)^(
+      build/|
+      .git/|
+      data/|
+      docs/|
+      scripts/|
+      .vscode/|
+      .devcontainer/|
+      *.md|
+      *.txt|
+      *.json|
+      *.yaml|
+      *.yml|
+      *.sh|
+      *.py|
+      *.dockerfile|
+      *.dockerfile.dev
+  )$
+
+# Hook execution order
+fail_fast: false 

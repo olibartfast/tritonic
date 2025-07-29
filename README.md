@@ -115,7 +115,30 @@ apt install libcurl4-openssl-dev
 
 6. **OpenCV 4**: Tested version: 4.7.0
 
-## Build and Compile
+## Development Setup
+
+### Pre-commit Hooks (Recommended)
+
+To maintain code quality and consistency, install pre-commit hooks:
+
+```bash
+# Run the setup script
+./scripts/setup/pre_commit_setup.sh
+
+# Or install manually
+pip install pre-commit
+pre-commit install
+```
+
+The pre-commit hooks will:
+- Format C++ code with clang-format
+- Lint C++ code with clang-tidy
+- Check shell scripts with shellcheck
+- Validate YAML and Markdown files
+- Detect TODO/FIXME comments and debug prints
+- Run automatically on every commit
+
+### Build and Compile
 
 1. Set the environment variable `TritonClientBuild_DIR` or update the `CMakeLists.txt` with the path to your installed Triton client libraries.
 
