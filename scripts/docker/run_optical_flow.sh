@@ -5,7 +5,7 @@ docker run --rm \
 --network host \
 --user root \
 -v ${PWD}/data:/app/data tritonic:latest \
-  --source=/app/data/12408390_1280_720_24fps.mp4 \
+  --source=/app/data/videos/12408390_1280_720_24fps.mp4 \
   --model_type=raft \
   --model=raft_large_torchscript  \
   --serverAddress=localhost \
