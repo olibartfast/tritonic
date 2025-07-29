@@ -1,4 +1,5 @@
 #include "task_factory.hpp"
+#include <filesystem>
 #include "utils.hpp"
 #include "ITriton.hpp"
 #include "Triton.hpp"
@@ -36,7 +37,7 @@ void ProcessImages(const std::vector<std::string>& sourceNames,
     
     if (images.empty()) {
         logger.error("No valid images to process");
-        return;
+        throw std::runtime_error("No valid images to process");
     }
 
     if (task->getTaskType() == TaskType::OpticalFlow) {
@@ -97,7 +98,9 @@ void ProcessImages(const std::vector<std::string>& sourceNames,
         }
     }
 
-    std::string processedFrameFilename = sourceDir + "/processed_frame_" + model_name + ".jpg";
+    std::string outputDir = sourceDir + "/output";
+    std::filesystem::create_directories(outputDir);
+    std::string processedFrameFilename = outputDir + "/processed_frame_" + model_name + ".jpg";
     logger.infof("Saving frame to: {}", processedFrameFilename);
     bool writeSuccess = cv::imwrite(processedFrameFilename, image);
     if (writeSuccess) {
@@ -115,14 +118,16 @@ void ProcessVideo(const std::string& sourceName,
 
     if (!cap.isOpened()) {
         logger.errorf("Could not open the video: {}", sourceName);
-        return;
+        throw std::runtime_error("Could not open the video: " + sourceName);
     }
 
 #ifdef WRITE_FRAME
     cv::VideoWriter outputVideo;
     cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH), (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
     int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
-    outputVideo.open(sourceDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
+    std::string outputDir = sourceDir + "/output";
+    std::filesystem::create_directories(outputDir);
+    outputVideo.open(outputDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
 
     if (!outputVideo.isOpened()) {
         logger.errorf("Could not open the output video for write: {}", sourceName);
@@ -136,7 +141,7 @@ void ProcessVideo(const std::string& sourceName,
     // Read first frame
     if (!cap.read(current_frame)) {
         logger.error("Failed to read first frame");
-        return;
+        throw std::runtime_error("Failed to read first frame");
     }
 
     while (true) {
