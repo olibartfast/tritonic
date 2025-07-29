@@ -30,7 +30,7 @@ find_package(RapidJSON REQUIRED)
 
 # Set the source files
 set(SOURCES
-    ${PROJECT_SOURCE_DIR}/client.cpp
+    ${PROJECT_SOURCE_DIR}/src/main/client.cpp
     ${PROJECT_SOURCE_DIR}/src/tasks/task_factory.cpp
     # Add any additional source files here
 )

@@ -5,6 +5,7 @@
 This C++ application enables machine learning tasks (e.g. object detection, classification, optical flow ...) using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
 
 ## Table of Contents
+- [Project Structure](#project-structure)
 - [Tested Models](#tested-models)
 - [Build Client Libraries](#build-client-libraries)
 - [Dependencies](#dependencies)
@@ -18,7 +19,40 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 - [References](#references)
 - [Feedback](#feedback)
 
-# Tested Models
+## Project Structure
+
+```
+tritonic/
+├── src/                          # Source code
+│   ├── main/                     # Main application
+│   │   └── client.cpp           # Main entry point
+│   ├── triton/                   # Triton client code
+│   ├── tasks/                    # Task implementations
+│   └── utils/                    # Utility classes
+├── include/                      # Header files
+├── scripts/                      # All scripts
+│   ├── docker/                   # Docker-related scripts
+│   │   ├── run_client.sh        # Run client application
+│   │   ├── run_debug.sh         # Run with debug mode
+│   │   ├── run_optical_flow.sh  # Run optical flow
+│   │   └── run_tests.sh         # Run unit tests
+│   ├── setup/                    # Setup scripts
+│   └── tools/                    # Utility scripts
+├── config/                       # Configuration files
+│   └── environments/             # Environment configs
+├── docs/                         # Documentation
+│   └── guides/                   # User guides
+├── data/                         # Data files
+│   ├── images/                   # Test images
+│   ├── videos/                   # Test videos
+│   └── models/                   # Model files
+└── tests/                        # Test files
+    ├── mocks/                    # Mock objects
+    ├── unit/                     # Unit tests
+    └── integration/              # Integration tests
+```
+
+## Tested Models
 
 ## Object Detection
 
@@ -112,10 +146,10 @@ cmake --build .
 ## Tasks
 
 ### Export Instructions
-- [Object Detection](docs/ObjectDetection.md)
-- [Classification](docs/Classification.md)
-- [Instance Segmentation](docs/InstanceSegmentation.md)
-- [Optical Flow](docs/OpticalFlow.md)
+- [Object Detection](docs/guides/ObjectDetection.md)
+- [Classification](docs/guides/Classification.md)
+- [Instance Segmentation](docs/guides/InstanceSegmentation.md)
+- [Optical Flow](docs/guides/OpticalFlow.md)
 
 *Other tasks are in TODO list.*
 
@@ -165,6 +199,25 @@ For dynamic input sizes:
 ```bash
     --input_sizes="c,h,w"
 ```
+
+### Quick Start with Docker Scripts
+
+Use the provided Docker scripts for quick testing:
+
+```bash
+# Run object detection
+./scripts/docker/run_client.sh
+
+# Run with debug mode
+./scripts/docker/run_debug.sh
+
+# Run optical flow
+./scripts/docker/run_optical_flow.sh
+
+# Run unit tests
+./scripts/docker/run_tests.sh
+```
+
 #### Debugging Tips
 Check [`.vscode/launch.json`](.vscode/launch.json) for additional configuration examples
 
@@ -212,7 +265,7 @@ To view all available parameters, run:
 
 
 ## Docker Support  
-For detailed instructions on installing Docker and the NVIDIA Container Toolkit, refer to the [Docker Setup Document](docs/Docker_setup.md).  
+For detailed instructions on installing Docker and the NVIDIA Container Toolkit, refer to the [Docker Setup Document](docs/guides/Docker_setup.md).  
 
 ### Build
 
