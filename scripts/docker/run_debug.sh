@@ -4,7 +4,7 @@ docker run --rm \
 --network host \
 --user root \
 -v ${PWD}/data:/app/data tritonic:latest \
-  --source=/app/data/person.jpg \
+  --source=/app/data/images/person.jpg \
   --model_type=yolov8 \
   --model=yolov8m_onnx  \
   --labelsFile=/app/labels/coco.txt \
