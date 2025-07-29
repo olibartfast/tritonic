@@ -130,14 +130,6 @@ pip install pre-commit
 pre-commit install
 ```
 
-The pre-commit hooks will:
-- Format C++ code with clang-format
-- Lint C++ code with clang-tidy
-- Check shell scripts with shellcheck
-- Validate YAML and Markdown files
-- Detect TODO/FIXME comments and debug prints
-- Run automatically on every commit
-
 ### Build and Compile
 
 1. Set the environment variable `TritonClientBuild_DIR` or update the `CMakeLists.txt` with the path to your installed Triton client libraries.
