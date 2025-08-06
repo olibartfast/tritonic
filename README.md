@@ -319,4 +319,4 @@ Real-time inference test (GPU RTX 3060):
 - [Tensorflow Model Garden](https://github.com/tensorflow/models/tree/master/official)
 
 ## Feedback
-Any feedback is greatly appreciated. If you have any suggestions, bug reports, or questions, don't hesitate to open an [issue](https://github.com/olibartfast/tritonic/issues).
+Any feedback is greatly appreciated. If you have any suggestions, bug reports, or questions, don't hesitate to open an [issue](https://github.com/olibartfast/tritonic/issues). Contributions, corrections, and suggestions are welcome to keep this repository relevant and useful.
