@@ -32,17 +32,11 @@ if [ "$DEVICE_TYPE" = "gpu" ]; then
     docker run --gpus=all --rm -p8000:8000 -p8001:8001 -p8002:8002 \
         -v "$MODEL_REPO":/models \
         nvcr.io/nvidia/tritonserver:$TRITON_VERSION-py3 tritonserver \
-        --model-repository=/models \
-        --log-verbose=1
+        --model-repository=/models 
 else
     echo "🖥️  Using CPU only"
     docker run --rm -p8000:8000 -p8001:8001 -p8002:8002 \
         -v "$MODEL_REPO":/models \
         nvcr.io/nvidia/tritonserver:$TRITON_VERSION-py3 tritonserver \
-        --model-repository=/models \
-        --log-verbose=1
-fi-gpus=all --rm -p8000:8000 -p8001:8001 -p8002:8002 \
--v $1:/models \
-nvcr.io/nvidia/tritonserver:$2-py3 tritonserver \
---model-repository=/models 
-#--log-verbose 1
+        --model-repository=/models 
+fi
