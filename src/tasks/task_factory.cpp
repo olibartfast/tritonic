@@ -6,6 +6,7 @@
 #include "YOLOv10.hpp"
 #include "TorchvisionClassifier.hpp"
 #include "TensorflowClassifier.hpp"
+#include "ViTClassifier.hpp"
 #include "YOLOSeg.hpp"
 #include "RAFT.hpp"
 #include "RFDetr.hpp"
@@ -15,6 +16,7 @@
 std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
     {"torchvision-classifier", [](const TritonModelInfo& modelInfo) { return std::make_unique<TorchvisionClassifier>(modelInfo); }},
     {"tensorflow-classifier", [](const TritonModelInfo& modelInfo) { return std::make_unique<TensorflowClassifier>(modelInfo); }},
+    {"vit-classifier", [](const TritonModelInfo& modelInfo) { return std::make_unique<ViTClassifier>(modelInfo); }},
     {"yoloseg", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLOSeg>(modelInfo); }},
     {"rfdetr", [](const TritonModelInfo& modelInfo) { return std::make_unique<RFDetr>(modelInfo); }},
     {"yolonas", [](const TritonModelInfo& modelInfo) { return std::make_unique<YoloNas>(modelInfo); }},

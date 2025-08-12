@@ -82,6 +82,7 @@ tritonic/
 
 - [Torchvision Models](https://pytorch.org/vision/stable/models.html)
 - [TensorFlow-Keras Models](https://www.tensorflow.org/api_docs/python/tf/keras/applications)
+- [Hugging Face Vision Transformers (ViT)](https://huggingface.co/docs/transformers/model_doc/vit)
 
 ## Optical Flow
 
@@ -90,7 +91,7 @@ tritonic/
 
 ## Build Client Libraries
 
-To build the client libraries, refer to the official [Triton Inference Server client libraries](https://github.com/triton-inference-server/client/tree/r24.09).
+To build the client libraries, refer to the official [Triton Inference Server client libraries](https://github.com/triton-inference-server/client/tree/r25.07).
 
 ## Dependencies
 
@@ -165,6 +166,7 @@ cmake --build .
 - [Classification](docs/guides/Classification.md)
 - [Instance Segmentation](docs/guides/InstanceSegmentation.md)
 - [Optical Flow](docs/guides/OpticalFlow.md)
+- [ViT Classification](docs/guides/ViTClassification.md)
 
 *Other tasks are in TODO list.*
 
@@ -238,7 +240,7 @@ Check [`.vscode/launch.json`](.vscode/launch.json) for additional configuration 
 
 #### Placeholder Descriptions
 - **`/path/to/source.format`**: Path to the input video or image file, for optical flow you must pass two images as comma separated list
-- **`<model_type>`**: Model type (e.g., `yolov5`, `yolov8`, `yolo11`, `yoloseg`, `torchvision-classifier`, `tensorflow-classifier`, check below [Model Type Parameters](#model-type-tag-parameters))
+- **`<model_type>`**: Model type (e.g., `yolov5`, `yolov8`, `yolo11`, `yoloseg`, `torchvision-classifier`, `tensorflow-classifier`, `vit-classifier`, check below [Model Type Parameters](#model-type-tag-parameters))
 - **`<model_name_folder_on_triton>`**: Name of the model folder on the Triton server
 - **`/path/to/labels/coco.names`**: Path to the label file (e.g., COCO labels)
 - **`<http or grpc>`**: Communication protocol (`http` or `grpc`)
@@ -272,6 +274,7 @@ To view all available parameters, run:
 | DEIM                   | deim                   |
 | Torchvision Classifier | torchvision-classifier |
 | Tensorflow Classifier  | tensorflow-classifier  |
+| **ViT Classifier**     | **vit-classifier**     |
 | YOLOv5 Segmentation    | yoloseg                |
 | YOLOv8 Segmentation    | yoloseg                |
 | YOLO11 Segmentation    | yoloseg                |
