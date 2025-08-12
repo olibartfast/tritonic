@@ -39,19 +39,3 @@ torch.onnx.export(resnet50,
   docker run -it --gpus=all -v $(pwd):/workspace nvcr.io/nvidia/pytorch:23.08-py3 /bin/bash -cx \
    "trtexec --onnx=model.onnx --saveEngine=model.plan --explicitBatch --minShapes=input:1x3x224x224 --optShapes=input:1x3x224x224 --maxShapes=input:256x3x224x224 --fp16 
   ```  
-
-## Models from Tensorflow/Keras API
-  * Select a model from https://keras.io/api/applications/, for example resnet50, then export to saved model format
-
-```python
-import tensorflow as tf
-from tensorflow import keras
-
-# Load the pretrained ResNet model
-model = keras.applications.ResNet50(weights='imagenet')
-
-# Specify the path where the SavedModel will be stored (no file extension needed)
-saved_model_path = 'model.savedmodel'
-
-model.export(saved_model_path)
-```
