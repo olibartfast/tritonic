@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+
+# Build
+build/
+*.o
+*.so
+*.a
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs (not needed in production)
+docs/
+*.md
+README.md
+LICENSE
+
+# Dev tools (not needed in production)
+.pre-commit-config.yaml
+.clang-format
+
+# Docker
+Dockerfile.dev
+Dockerfile.test
+
+# Large files
+*.model
+*.weights
+*.pth
+*.onnx
+*.pb
+
+# Logs
+*.log
+*.tmp
+*.cache 
