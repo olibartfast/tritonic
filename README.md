@@ -166,7 +166,6 @@ cmake --build .
 - [Classification](docs/guides/Classification.md)
 - [Instance Segmentation](docs/guides/InstanceSegmentation.md)
 - [Optical Flow](docs/guides/OpticalFlow.md)
-- [ViT Classification](docs/guides/ViTClassification.md)
 
 *Other tasks are in TODO list.*
 
