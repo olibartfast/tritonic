@@ -180,69 +180,74 @@ std::vector<Result> ViTClassifier::postprocess(const cv::Size& frame_size,
                                               const std::vector<std::vector<TensorElement>>& infer_results,
                                               const std::vector<std::vector<int64_t>>& infer_shapes) {
     
-    if (infer_results.empty()) {
-        throw std::runtime_error("Inference results are empty");
+    logger.infof("ViT postprocess: Starting");
+    
+    // Check if the input vectors are not empty - same as TensorflowClassifier
+    if (infer_results.empty() || infer_shapes.empty()) {
+        throw std::runtime_error("Inference results or shapes are empty.");
+    }
+
+    // Get the first set of results and shape - same as TensorflowClassifier
+    const auto& results = infer_results.front();
+    const auto shape = infer_shapes[0][1];
+    
+    logger.infof("ViT postprocess: results size={}, shape={}", results.size(), shape);
+    
+    // Quick validation
+    if (shape != static_cast<int64_t>(results.size())) {
+        logger.errorf("Shape mismatch: shape={}, results.size()={}", shape, results.size());
+        return {};
+    }
+
+    logger.infof("ViT postprocess: Size validation passed");
+    
+    // For ViT logits, find the maximum value and its index
+    float max_logit = std::visit([](auto&& arg) -> float { return static_cast<float>(arg); }, results[0]);
+    int best_class = 0;
+    
+    for (size_t i = 1; i < results.size(); ++i) {
+        float logit = std::visit([](auto&& arg) -> float { return static_cast<float>(arg); }, results[i]);
+        if (logit > max_logit) {
+            max_logit = logit;
+            best_class = static_cast<int>(i);
+        }
     }
     
-    if (infer_shapes.empty()) {
-        throw std::runtime_error("Inference shapes are empty");
-    }
+    logger.infof("ViT prediction: class {} with logit {}", best_class, max_logit);
     
-    const auto& output_data = infer_results[0];
-    const auto& output_shape = infer_shapes[0];
-    
-    if (output_data.empty()) {
-        throw std::runtime_error("Output data is empty");
-    }
-    
-    // Convert TensorElement to float (logits from ViT)
+    // Convert logits to probabilities using softmax to get proper confidence
     std::vector<float> logits;
-    logits.reserve(output_data.size());
-    
-    for (const auto& element : output_data) {
+    logits.reserve(results.size());
+    for (const auto& element : results) {
         float value = std::visit([](auto&& arg) -> float {
             return static_cast<float>(arg);
         }, element);
         logits.push_back(value);
     }
-
-    logger.infof("Processing {} class logits", logits.size());
-
-    // Apply softmax to get probabilities
+    
     std::vector<float> probabilities = apply_softmax(logits);
+    float confidence = probabilities[best_class];
     
-    // Create indices for sorting
-    std::vector<size_t> indices(probabilities.size());
-    std::iota(indices.begin(), indices.end(), 0);
+    logger.infof("ViT confidence after softmax: {}", confidence);
     
-    // Sort by probability (descending)
-    std::sort(indices.begin(), indices.end(), [&probabilities](size_t i1, size_t i2) {
-        return probabilities[i1] > probabilities[i2];
-    });
+    logger.infof("ViT postprocess: Prediction - Class: {}, Logit: {}, Confidence: {}", 
+                 best_class, max_logit, confidence);
     
-    // Generate results for top predictions
-    std::vector<Result> results;
+    // Now let's try to create the Result object with the correct approach
+    std::vector<Result> classification_results;
     
-    size_t max_predictions = std::min(TOP_K_PREDICTIONS, probabilities.size());
-    
-    for (size_t i = 0; i < max_predictions; ++i) {
-        size_t class_idx = indices[i];
-        float confidence = probabilities[class_idx];
-        
-        if (confidence <= CONFIDENCE_THRESHOLD) {
-            break; // Stop if confidence is too low
-        }
-        
+    try {
+        // Create Classification object and add directly to results
         Classification classification;
-        classification.class_id = static_cast<int>(class_idx);
+        classification.class_id = static_cast<float>(best_class);
         classification.class_confidence = confidence;
+        classification_results.emplace_back(classification);
         
-        results.emplace_back(classification);
-        
-        logger.infof("Top {}: class {} with confidence {}", i + 1, class_idx, confidence);
+        logger.infof("ViT classifier: Successfully created Result object for class {} with confidence {}", 
+                     best_class, confidence);
+    } catch (const std::exception& e) {
+        logger.errorf("ViT classifier: Failed to create Result object: {}", e.what());
     }
-
-    logger.infof("Generated {} classification results", results.size());
-
-    return results;
+    
+    return classification_results;
 }
