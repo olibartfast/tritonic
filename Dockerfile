@@ -49,6 +49,9 @@ LABEL version="1.0"
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 RUN chown -R appuser:appuser /app
+# Ensure data directory and subdirectories are readable and writable
+RUN chmod -R 755 /app/data
+RUN chown -R appuser:appuser /app/data
 USER appuser
 
 # Set the entry point for the container
