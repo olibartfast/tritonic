@@ -1,33 +1,40 @@
 #!/usr/bin/env python3
 
 # ViT Model Deployment Script - Method 2: Python Standard
-# This script creates a standard Python backend deployment with more control
+# This script creates a standard Python backend deployment following VideoMAE pattern
 
 import os
 import argparse
 import json
+import time
 from pathlib import Path
-from transformers import ViTImageProcessor, ViTForImageClassification
+from transformers import AutoImageProcessor, ViTForImageClassification
 
-def create_standard_deployment(model_name, output_dir, max_batch_size=8):
+def create_standard_deployment(model_name, output_dir, max_batch_size=8, instance_kind="KIND_GPU"):
     """Create standard Python backend deployment"""
     
     print(f"🚀 Creating standard deployment for {model_name}")
-    
-    # Load model to get info
-    try:
-        processor = ViTImageProcessor.from_pretrained(model_name)
-        model = ViTForImageClassification.from_pretrained(model_name)
-        print(f"✅ Successfully loaded model info")
-    except Exception as e:
-        print(f"❌ Failed to load model: {e}")
-        raise
     
     # Create directory structure
     model_dir = Path(output_dir)
     model_dir.mkdir(parents=True, exist_ok=True)
     version_dir = model_dir / "1"
     version_dir.mkdir(exist_ok=True)
+    
+    # Download and save model files locally (like VideoMAE pattern)
+    print(f"📥 Downloading model files to {version_dir}")
+    try:
+        processor = AutoImageProcessor.from_pretrained(model_name, use_fast=True)
+        model = ViTForImageClassification.from_pretrained(model_name)
+        
+        # Save model and processor to local directory
+        processor.save_pretrained(version_dir)
+        model.save_pretrained(version_dir)
+        
+        print(f"✅ Successfully downloaded and saved model files")
+    except Exception as e:
+        print(f"❌ Failed to download model: {e}")
+        raise
     
     input_size = processor.size.get("height", 224)
     num_classes = model.config.num_labels
@@ -56,14 +63,9 @@ output [
 instance_group [
   {{
     count: 1
-    kind: KIND_GPU
+    kind: {instance_kind}
   }}
 ]
-
-parameters {{
-  key: "EXECUTION_ENV_PATH"
-  value: {{string_value: "/opt/tritonserver/python_envs/vit_env"}}
-}}
 
 dynamic_batching {{
   max_queue_delay_microseconds: 100
@@ -73,94 +75,98 @@ dynamic_batching {{
     with open(model_dir / "config.pbtxt", 'w') as f:
         f.write(config_content)
     
-    # Create model.py
-    model_py_content = f'''import numpy as np
-import triton_python_backend_utils as pb_utils
-from transformers import ViTImageProcessor, ViTForImageClassification
+    # Create model.py following VideoMAE pattern
+    model_py_content = f'''import json
+import numpy as np
 import torch
-import json
+import triton_python_backend_utils as pb_utils
+from transformers import AutoImageProcessor, ViTForImageClassification
+import time
+import os
 
 class TritonPythonModel:
+    """ViT model for Triton Inference Server."""
+
     def initialize(self, args):
-        """Initialize the model"""
-        self.model_name = "{model_name}"
+        """Called once when the model is loaded."""
+        self.model_config = json.loads(args["model_config"])
+
+        # Get model path - use the directory where model.py is located
+        model_path = os.path.dirname(os.path.abspath(__file__))
+        print(f"Loading model from: {{model_path}}")
+
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.processor = AutoImageProcessor.from_pretrained(model_path, use_fast=True)
+        self.model = ViTForImageClassification.from_pretrained(model_path).to(self.device)
+        self.model.eval()
+
+        # Cache model info
+        self.input_size = self.processor.size.get("height", 224)
+        self.num_classes = self.model.config.num_labels
         
-        try:
-            # Load model and processor
-            self.processor = ViTImageProcessor.from_pretrained(self.model_name)
-            self.model = ViTForImageClassification.from_pretrained(self.model_name)
-            self.model.eval()
-            
-            # Setup device
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self.model.to(self.device)
-            
-            # Cache model info
-            self.input_size = self.processor.size.get("height", 224)
-            self.num_classes = self.model.config.num_labels
-            self.image_mean = getattr(self.processor, 'image_mean', [0.485, 0.456, 0.406])
-            self.image_std = getattr(self.processor, 'image_std', [0.229, 0.224, 0.225])
-            
-            print(f"✅ Loaded model: {{self.model_name}} on {{self.device}}")
-            print(f"📊 Model specifications:")
-            print(f"   - Input size: {{self.input_size}}x{{self.input_size}}")
-            print(f"   - Number of classes: {{self.num_classes}}")
-            print(f"   - Normalization mean: {{self.image_mean}}")
-            print(f"   - Normalization std: {{self.image_std}}")
-            
-        except Exception as e:
-            print(f"❌ Failed to initialize model: {{e}}")
-            raise
+        print(f"✅ Loaded ViT model on {{self.device}}")
+        print(f"📊 Model specifications:")
+        print(f"   - Input size: {{self.input_size}}x{{self.input_size}}")
+        print(f"   - Number of classes: {{self.num_classes}}")
+
+        # Get output configuration
+        output_config = pb_utils.get_output_config_by_name(self.model_config, "logits")
+        self.output_dtype = pb_utils.triton_string_to_numpy(output_config["data_type"])
 
     def execute(self, requests):
-        """Execute inference"""
+        """Handle inference requests."""
         responses = []
-        
+
         for request in requests:
             try:
-                # Get input tensor
-                pixel_values_tensor = pb_utils.get_input_tensor_by_name(request, "pixel_values")
-                pixel_values = pixel_values_tensor.as_numpy()
-                
+                # Get input tensor (pixel_values) from the request
+                input_tensor = pb_utils.get_input_tensor_by_name(request, "pixel_values")
+                input_np = input_tensor.as_numpy()  # Shape: [batch_size, 3, 224, 224]
+
                 # Validate input shape
-                expected_shape = [-1, 3, self.input_size, self.input_size]
-                if pixel_values.shape[1:] != (3, self.input_size, self.input_size):
-                    raise ValueError(f"Expected input shape [batch, 3, {{self.input_size}}, {{self.input_size}}], got {{pixel_values.shape}}")
-                
-                # Convert to torch tensor
-                pixel_values_torch = torch.from_numpy(pixel_values).to(self.device)
-                
-                # Validate tensor range (should be normalized)
-                if pixel_values_torch.min() < -3 or pixel_values_torch.max() > 3:
-                    print(f"⚠️  Warning: Input values outside expected normalized range [{{pixel_values_torch.min():.3f}}, {{pixel_values_torch.max():.3f}}]")
-                
+                if input_np.shape[1:] != (3, self.input_size, self.input_size):
+                    raise ValueError(f"Expected input shape [batch, 3, {{self.input_size}}, {{self.input_size}}], got {{input_np.shape}}")
+
+                # Convert NumPy input to PyTorch tensor and move to device
+                pixel_values = torch.from_numpy(input_np).to(self.device)
+
                 # Run inference
+                start_time = time.time()
                 with torch.no_grad():
-                    outputs = self.model(pixel_values=pixel_values_torch)
-                    logits = outputs.logits
-                
-                # Convert back to numpy
-                logits_np = logits.cpu().numpy().astype(np.float32)
-                
+                    outputs = self.model(pixel_values=pixel_values)
+                    logits = outputs.logits  # Shape: [batch_size, num_classes]
+                inference_time = time.time() - start_time
+                print(f"Inference time: {{inference_time:.4f}} seconds")
+
+                # Convert logits to NumPy for Triton response
+                logits_np = logits.cpu().numpy().astype(self.output_dtype)
+
+                # Log prediction info for debugging
+                batch_size = logits_np.shape[0]
+                for b in range(batch_size):
+                    top_logit_idx = np.argmax(logits_np[b])
+                    top_logit_val = logits_np[b][top_logit_idx]
+                    print(f"📊 Batch {{b}}: Top prediction class {{top_logit_idx}} with logit {{top_logit_val:.4f}}")
+
                 # Create output tensor
                 output_tensor = pb_utils.Tensor("logits", logits_np)
                 response = pb_utils.InferenceResponse(output_tensors=[output_tensor])
                 responses.append(response)
-                
+
             except Exception as e:
                 print(f"❌ Error during inference: {{e}}")
                 # Return error response
                 error_response = pb_utils.InferenceResponse(
                     output_tensors=[],
-                    error=pb_utils.TritonError(f"Standard inference failed: {{str(e)}}")
+                    error=pb_utils.TritonError(f"ViT inference failed: {{str(e)}}")
                 )
                 responses.append(error_response)
-        
+
         return responses
 
     def finalize(self):
-        """Clean up"""
-        print("🧹 Cleaning up ViT Standard model...")
+        """Clean up when unloading the model."""
+        print("🧹 Cleaning up ViT model...")
         if hasattr(self, 'model'):
             del self.model
         if hasattr(self, 'processor'):
@@ -178,120 +184,132 @@ class TritonPythonModel:
         "model_name": model_name,
         "input_size": [3, input_size, input_size],
         "num_classes": num_classes,
-        "normalization": {
-            "mean": getattr(processor, 'image_mean', [0.485, 0.456, 0.406]),
-            "std": getattr(processor, 'image_std', [0.229, 0.224, 0.225])
+        "client_preprocessing": {
+            "note": "All preprocessing handled by TritonIC client",
+            "steps": [
+                "BGR to RGB conversion",
+                f"Resize to {input_size}x{input_size}",
+                "Normalize to [0,1] range",
+                "Apply ImageNet normalization",
+                "Convert to NCHW format",
+                "Convert to float32"
+            ]
         },
+        "deployment_pattern": "VideoMAE-style local model loading",
         "advantages": [
-            "More control over preprocessing",
-            "Better performance than pipeline",
-            "Easy debugging",
-            "Custom preprocessing possible"
+            "Clean separation of preprocessing and inference",
+            "No duplicate preprocessing overhead",
+            "Consistent with TritonIC client architecture",
+            "Local model files for faster loading",
+            "Simple server-side inference only"
         ],
         "disadvantages": [
-            "Requires manual preprocessing",
-            "More complex setup",
-            "Python dependency"
+            "Requires TritonIC client for preprocessing",
+            "Python dependency on server",
+            "Model files stored locally (disk space)"
         ],
         "usage": {
             "command": f"./tritonic --source=image.jpg --model_type=vit-classifier --model={model_dir.name} --labelsFile=labels.txt --protocol=http --serverAddress=localhost --port=8000",
-            "expected_input": f"Normalized tensor [batch, 3, {input_size}, {input_size}]",
-            "expected_output": f"Logits tensor [batch, {num_classes}]"
+            "expected_input": f"Preprocessed tensor [batch, 3, {input_size}, {input_size}] - fully processed by client",
+            "expected_output": f"Raw logits tensor [batch, {num_classes}] - client applies softmax"
         }
     }
     
     with open(model_dir / "metadata.json", 'w') as f:
         json.dump(metadata, f, indent=2)
     
-    # Create preprocessing helper
-    preprocess_script = f'''#!/usr/bin/env python3
-"""
-Preprocessing helper for {model_dir.name}
-Usage: python preprocess.py input_image.jpg output_tensor.npy
-"""
+    # Create README explaining the deployment
+    readme_content = f'''# ViT Standard Deployment - {model_name}
 
-import numpy as np
-import cv2
-import sys
-from pathlib import Path
+## Overview
+This is a VideoMAE-style deployment optimized for the TritonIC client.
 
-def preprocess_image(image_path, output_path=None):
-    """Preprocess image for ViT model"""
-    
-    # Load image
-    img = cv2.imread(str(image_path))
-    if img is None:
-        raise ValueError(f"Could not load image: {{image_path}}")
-    
-    # Convert BGR to RGB
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    
-    # Resize to model input size
-    img = cv2.resize(img, ({input_size}, {input_size}))
-    
-    # Convert to float and normalize to [0, 1]
-    img = img.astype(np.float32) / 255.0
-    
-    # Apply ImageNet normalization
-    mean = np.array({processor.image_mean})
-    std = np.array({processor.image_std})
-    img = (img - mean) / std
-    
-    # Convert to CHW format and add batch dimension
-    img = np.transpose(img, (2, 0, 1))  # HWC -> CHW
-    img = np.expand_dims(img, axis=0)   # Add batch dimension
-    
-    if output_path:
-        np.save(output_path, img)
-        print(f"✅ Preprocessed tensor saved to {{output_path}}")
-    
-    return img
+## Key Features
+- **No Server-Side Preprocessing**: All preprocessing is handled by the TritonIC client
+- **Local Model Files**: Model and processor are stored locally for fast loading
+- **Clean Architecture**: Server only handles inference, client handles preprocessing
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python preprocess.py input_image.jpg [output_tensor.npy]")
-        sys.exit(1)
-    
-    input_path = Path(sys.argv[1])
-    output_path = Path(sys.argv[2]) if len(sys.argv) > 2 else input_path.with_suffix('.npy')
-    
-    try:
-        tensor = preprocess_image(input_path, output_path)
-        print(f"📊 Tensor shape: {{tensor.shape}}")
-        print(f"📊 Tensor range: [{{tensor.min():.3f}}, {{tensor.max():.3f}}]")
-    except Exception as e:
-        print(f"❌ Error: {{e}}")
-        sys.exit(1)
+## Expected Input
+- **Format**: Float32 tensor
+- **Shape**: [batch_size, 3, {input_size}, {input_size}]
+- **Preprocessing**: Already done by TritonIC client
+  - BGR to RGB conversion
+  - Resized to {input_size}x{input_size}
+  - Normalized to [0,1] range
+  - ImageNet normalization applied
+  - NCHW format
+
+## Expected Output
+- **Format**: Float32 tensor
+- **Shape**: [batch_size, {num_classes}]
+- **Content**: Raw logits (TritonIC client applies softmax)
+
+## Usage
+```bash
+./tritonic \\
+    --source=image.jpg \\
+    --model_type=vit-classifier \\
+    --model={model_dir.name} \\
+    --labelsFile=labels.txt \\
+    --protocol=http \\
+    --serverAddress=localhost \\
+    --port=8000
+```
+
+## Model Files
+- `model.py`: Triton Python backend model
+- `config.pbtxt`: Triton model configuration
+- `pytorch_model.bin`: Model weights
+- `config.json`: Model configuration
+- `preprocessor_config.json`: Preprocessing configuration (for reference)
+
+## Performance
+- Fast loading (local model files)
+- No preprocessing overhead on server
+- Optimized for production deployment
 '''
     
-    preprocess_file = model_dir / "preprocess.py"
-    with open(preprocess_file, 'w') as f:
-        f.write(preprocess_script)
-    preprocess_file.chmod(0o755)
+    readme_file = model_dir / "README.md"
+    with open(readme_file, 'w') as f:
+        f.write(readme_content)
     
     # Create test script
     test_script = f'''#!/bin/bash
-# Test script for {model_dir.name}
+# Test script for {model_dir.name} - Server-only inference deployment
 
 echo "🧪 Testing {model_dir.name} deployment..."
+echo "ℹ️  This model expects preprocessed data from TritonIC client"
+echo "📁 Model files are stored locally for fast loading"
+echo "🚫 No server-side preprocessing - client handles everything"
 
-# Test preprocessing
-python preprocess.py ../../../data/images/cat.jpeg test_input.npy
+# Test with TritonIC client (the only supported method)
+echo "📱 Testing with TritonIC client..."
+if command -v ./tritonic &> /dev/null; then
+    echo "✅ TritonIC client found - running inference test..."
+    ./tritonic \\
+        --source=../../../data/images/cat.jpeg \\
+        --model_type=vit-classifier \\
+        --model={model_dir.name} \\
+        --labelsFile=../../../labels/imagenet.txt \\
+        --protocol=http \\
+        --serverAddress=localhost \\
+        --port=8000
+else
+    echo "❌ TritonIC client not found!"
+    echo "💡 This deployment requires the TritonIC client for preprocessing"
+    echo "� Install and build TritonIC client first"
+    exit 1
+fi
 
-# Test with curl (HTTP)
-echo "Testing inference..."
-curl -X POST localhost:8000/v2/models/{model_dir.name}/infer \\
-    -H "Content-Type: application/json" \\
-    -d '{{
-        "inputs": [{{
-            "name": "pixel_values",
-            "shape": [1, 3, {input_size}, {input_size}],
-            "datatype": "FP32",
-            "data": []
-        }}]
-    }}'
+echo "\\n📋 Deployment Summary:"
+echo "   - Pattern: VideoMAE-style inference-only server"
+echo "   - Model files: Stored locally in ./1/ directory"
+echo "   - Preprocessing: 100% handled by TritonIC client"
+echo "   - Server role: Pure inference (no preprocessing)"
+echo "   - Performance: Optimized for production"
 
 echo "\\n✅ Test completed for {model_dir.name}"
+echo "💡 Always use TritonIC client - no other preprocessing supported"
 '''
     
     test_file = model_dir / "test.sh"
@@ -304,8 +322,11 @@ echo "\\n✅ Test completed for {model_dir.name}"
     print(f"🐍 Model file: {version_dir / 'model.py'}")
     print(f"⚙️  Config: {model_dir / 'config.pbtxt'}")
     print(f"📄 Metadata: {model_dir / 'metadata.json'}")
-    print(f"🔧 Preprocessing helper: {preprocess_file}")
+    print(f"� README: {readme_file}")
     print(f"🧪 Test script: {test_file}")
+    print(f"📦 Model files: Saved locally in {version_dir}")
+    print(f"🚫 No server-side preprocessing - client handles everything")
+    print(f"💡 Use TritonIC client for complete preprocessing and inference pipeline")
     
     return str(model_dir)
 
@@ -317,13 +338,16 @@ def main():
                       help="Output directory for Triton model")
     parser.add_argument("--batch_size", type=int, default=8,
                       help="Maximum batch size")
+    parser.add_argument("--kind", default="KIND_GPU", 
+                      choices=["KIND_GPU", "KIND_CPU"], 
+                      help="Instance kind (KIND_GPU or KIND_CPU)")
     parser.add_argument("--test", action="store_true",
                       help="Run test after deployment")
     
     args = parser.parse_args()
     
     # Create deployment
-    model_path = create_standard_deployment(args.model, args.output, args.batch_size)
+    model_path = create_standard_deployment(args.model, args.output, args.batch_size, args.kind)
     
     if args.test:
         print(f"\\n🧪 Running test...")

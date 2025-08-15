@@ -244,7 +244,22 @@
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-        }       
+        },
+        {
+            "name": "vit_standard",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tritonic",
+            "args": [
+                "--source=data/images/cat.jpeg", 
+                "--serverAddress=localhost",
+                "--labelsFile=labels/imagenet.txt",
+                "--model=vit_standard",
+                "--model_type=vit-classifier"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        }                 
                          
 
     ]
