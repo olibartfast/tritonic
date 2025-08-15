@@ -244,7 +244,7 @@ auto results = classifier->postprocess(frame_size, infer_results, infer_shapes);
 1. **Model Selection**
    - Use `vit-base-patch16-224` for balanced speed/accuracy
    - Use `vit-large-patch16-224` for maximum accuracy
-   - Use high-resolution models (384×384) for fine-grained classification
+   - Use high-resolution models  for fine-grained classification
 
 2. **Deployment Strategy**
    - Use ONNX backend for production environments
