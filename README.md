@@ -93,6 +93,32 @@ tritonic/
 
 To build the client libraries, refer to the official [Triton Inference Server client libraries](https://github.com/triton-inference-server/client/tree/r25.07).
 
+### Alternative: Extract Client Libraries from Docker
+
+For convenience, you can extract pre-built Triton client libraries from the TritonIC Docker container:
+
+```bash
+# Run the extraction script
+./scripts/docker/extract_triton_libs.sh
+```
+
+This script will:
+1. Create a temporary Docker container from the `tritonic` image
+2. Extract the Triton client libraries from `/workspace/install`
+3. Copy additional Triton server headers and libraries if available
+4. Save everything to `./triton_client_libs/` directory
+
+After extraction, set the environment variable:
+```bash
+export TritonClientBuild_DIR=$(pwd)/triton_client_libs/install
+```
+
+The extracted directory structure will contain:
+- `install/` - Triton client build artifacts
+- `triton_server_include/` - Triton server headers  
+- `triton_server_lib/` - Triton server libraries
+- `workspace/` - Additional workspace files
+
 ## Dependencies
 
 Ensure the following dependencies are installed:
