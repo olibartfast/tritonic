@@ -30,18 +30,28 @@ tritonic/
 │   ├── tasks/                    # Task implementations
 │   └── utils/                    # Utility classes
 ├── include/                      # Header files
+├── deploy/                       # Model deployment scripts
+│   └── classifier/               # Classification models
+│       ├── tensorflow/           # TensorFlow deployments
+│       ├── torchvision/          # Torchvision deployments
+│       └── vit/                  # Vision Transformer deployments
 ├── scripts/                      # All scripts
 │   ├── docker/                   # Docker-related scripts
-│   │   ├── run_client.sh        # Run client application
-│   │   ├── run_debug.sh         # Run with debug mode
-│   │   ├── run_optical_flow.sh  # Run optical flow
-│   │   └── run_tests.sh         # Run unit tests
+│   │   ├── docker_triton_run.sh  # Run Triton server
+│   │   ├── extract_triton_libs.sh# Extract client libraries
+│   │   ├── run_client.sh         # Run client application
+│   │   ├── run_debug.sh          # Run with debug mode
+│   │   ├── run_optical_flow.sh   # Run optical flow
+│   │   └── run_tests.sh          # Run unit tests
 │   ├── setup/                    # Setup scripts
 │   └── tools/                    # Utility scripts
 ├── config/                       # Configuration files
 │   └── environments/             # Environment configs
 ├── docs/                         # Documentation
 │   └── guides/                   # User guides
+├── labels/                       # Label files
+│   ├── coco.txt                  # COCO class labels
+│   └── imagenet.txt              # ImageNet class labels
 ├── data/                         # Data files
 │   ├── images/                   # Test images
 │   ├── videos/                   # Test videos
@@ -83,6 +93,9 @@ tritonic/
 - [Torchvision Models](https://pytorch.org/vision/stable/models.html)
 - [TensorFlow-Keras Models](https://www.tensorflow.org/api_docs/python/tf/keras/applications)
 - [Hugging Face Vision Transformers (ViT)](https://huggingface.co/docs/transformers/model_doc/vit)
+  - **Python Standard**: VideoMAE-style deployment with client-side preprocessing (recommended)
+  - **Python Pipeline**: HuggingFace pipeline with server-side preprocessing
+  - **ONNX Backend**: Optimized inference with TensorRT support
 
 ## Optical Flow
 
@@ -190,6 +203,7 @@ cmake --build .
 ### Export Instructions
 - [Object Detection](docs/guides/ObjectDetection.md)
 - [Classification](docs/guides/Classification.md)
+- [ViT Classification](docs/guides/ViTClassification.md)
 - [Instance Segmentation](docs/guides/InstanceSegmentation.md)
 - [Optical Flow](docs/guides/OpticalFlow.md)
 
