@@ -20,29 +20,6 @@ ViT (Vision Transformer) models apply transformer architectures to image classif
 
 ## Server Deployment
 
-### Using Pre-built Deployment Scripts
-
-The `deploy/vit/` directory contains comprehensive deployment scripts for all three methods:
-
-```bash
-# Navigate to ViT deployment directory
-cd deploy/vit
-
-# Setup environment
-./docker/setup_environment.sh
-
-# Deploy all methods
-./scripts/deploy_all.sh --model google/vit-base-patch16-224
-
-# Start Triton server
-./scripts/start_server.sh all
-
-# Test deployment
-./scripts/test_deployment.sh
-```
-
-### Manual Deployment
-
 #### Method 1: Python Pipeline
 ```bash
 cd deploy/vit/python_pipeline
@@ -181,40 +158,6 @@ Example output:
 Top 1: class 285 (Egyptian cat) with confidence 0.8234
 Top 2: class 281 (tabby cat) with confidence 0.1123  
 Top 3: class 282 (tiger cat) with confidence 0.0456
-```
-
-## Performance Optimization
-
-### For ONNX Backend
-
-1. **TensorRT Optimization**: Automatically enabled for GPU inference
-   - FP16 precision for 2x speedup
-   - Dynamic batching for throughput
-   - Optimized memory usage
-
-2. **Batch Processing**: 
-   ```bash
-   # Increase batch size in config.pbtxt
-   max_batch_size: 8
-   ```
-
-3. **Model Optimization**:
-   ```bash
-   cd deploy/vit/onnx
-   python optimize.py --input model.onnx --output model_optimized.onnx
-   ```
-
-### Benchmarking
-
-```bash
-# Run performance benchmarks
-cd deploy/vit/onnx
-python benchmark.py --model 1/model.onnx --runs 100
-
-# Expected output:
-# Batch size: 1
-#   Average latency: 5.23ms
-#   Throughput: 191.2 images/sec
 ```
 
 ## Troubleshooting
