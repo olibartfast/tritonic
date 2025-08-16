@@ -93,9 +93,6 @@ tritonic/
 - [Torchvision Models](https://pytorch.org/vision/stable/models.html)
 - [TensorFlow-Keras Models](https://www.tensorflow.org/api_docs/python/tf/keras/applications)
 - [Hugging Face Vision Transformers (ViT)](https://huggingface.co/docs/transformers/model_doc/vit)
-  - **Python Standard**: VideoMAE-style deployment with client-side preprocessing (recommended)
-  - **Python Pipeline**: HuggingFace pipeline with server-side preprocessing
-  - **ONNX Backend**: Optimized inference with TensorRT support
 
 ## Optical Flow
 
@@ -313,7 +310,7 @@ To view all available parameters, run:
 | DEIM                   | deim                   |
 | Torchvision Classifier | torchvision-classifier |
 | Tensorflow Classifier  | tensorflow-classifier  |
-| **ViT Classifier**     | **vit-classifier**     |
+| ViT Classifier         | vit-classifier     |
 | YOLOv5 Segmentation    | yoloseg                |
 | YOLOv8 Segmentation    | yoloseg                |
 | YOLO11 Segmentation    | yoloseg                |
