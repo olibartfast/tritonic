@@ -8,7 +8,7 @@ set -e
 CONTAINER_NAME="tritonic-extract-$(date +%s)"
 HOST_EXTRACT_DIR="./triton_client_libs"
 
-echo "🐳 Extracting Triton client libraries from tritonic Docker image..."
+echo "🐳 Extracting Triton client libraries from nvcr.io/nvidia/tritonserver:25.07-py3-sdk Docker image..."
 
 # Create extraction directory on host
 echo "📁 Creating host extraction directory: $HOST_EXTRACT_DIR"
@@ -16,7 +16,7 @@ mkdir -p "$HOST_EXTRACT_DIR"
 
 # Run container in background to keep it alive
 echo "🚀 Starting temporary container: $CONTAINER_NAME"
-docker run -d --name "$CONTAINER_NAME" tritonic sleep 3600
+docker run -d --name "$CONTAINER_NAME" nvcr.io/nvidia/tritonserver:25.07-py3-sdk sleep 3600
 
 # Copy the Triton client build directory from container to host
 echo "📦 Copying /workspace/install to $HOST_EXTRACT_DIR..."

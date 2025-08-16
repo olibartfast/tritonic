@@ -108,7 +108,7 @@ To build the client libraries, refer to the official [Triton Inference Server cl
 
 ### Alternative: Extract Client Libraries from Docker
 
-For convenience, you can extract pre-built Triton client libraries from the TritonIC Docker container:
+For convenience, you can extract pre-built Triton client libraries from the official NVIDIA Triton Server SDK Docker image:
 
 ```bash
 # Run the extraction script
@@ -116,7 +116,7 @@ For convenience, you can extract pre-built Triton client libraries from the Trit
 ```
 
 This script will:
-1. Create a temporary Docker container from the `tritonic` image
+1. Create a temporary Docker container from the `nvcr.io/nvidia/tritonserver:25.07-py3-sdk` image
 2. Extract the Triton client libraries from `/workspace/install`
 3. Copy additional Triton server headers and libraries if available
 4. Save everything to `./triton_client_libs/` directory
