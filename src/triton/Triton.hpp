@@ -6,8 +6,54 @@
 #include <curl/curl.h>
 #include <rapidjson/document.h>
 #include <variant>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+#ifdef TRITONIC_ENABLE_CUDA
+#include <cuda_runtime.h>
+#include <cuda.h>
+#endif
 
 using TensorElement = std::variant<float, int32_t, int64_t>;
+
+enum class SharedMemoryType {
+    SYSTEM_SHARED_MEMORY,  // Host CPU shared memory (POSIX)
+    CUDA_SHARED_MEMORY     // GPU shared memory (CUDA)
+};
+
+struct SharedMemoryRegion {
+    std::string name;
+    std::string key;
+    void* ptr;
+    size_t size;
+    int fd;
+    SharedMemoryType type;
+    int device_id;  // For CUDA shared memory
+    
+    SharedMemoryRegion() : ptr(nullptr), size(0), fd(-1), type(SharedMemoryType::SYSTEM_SHARED_MEMORY), device_id(0) {}
+    ~SharedMemoryRegion() {
+        cleanup();
+    }
+    
+    void cleanup() {
+        if (type == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
+            if (ptr && ptr != MAP_FAILED) {
+                munmap(ptr, size);
+            }
+            if (fd != -1) {
+                close(fd);
+                shm_unlink(key.c_str());
+            }
+        } else if (type == SharedMemoryType::CUDA_SHARED_MEMORY) {
+            // CUDA shared memory cleanup will be handled by CUDA runtime
+            // when the context is destroyed
+        }
+        ptr = nullptr;
+        fd = -1;
+    }
+};
 
  
 union TritonClient
@@ -33,18 +79,30 @@ private:
     std::string model_name_;
     TritonModelInfo model_info_;
     std::string model_version_ ="";
+    
+    // Shared memory regions
+    std::vector<std::unique_ptr<SharedMemoryRegion>> input_shm_regions_;
+    std::vector<std::unique_ptr<SharedMemoryRegion>> output_shm_regions_;
+    SharedMemoryType shared_memory_type_;
+    int cuda_device_id_;
 
     void updateInputTypes();
 
 public:
-    Triton(const std::string& url, ProtocolType protocol, std::string modelName, std::string modelVersion ="", bool verbose = false) : 
+    Triton(const std::string& url, ProtocolType protocol, std::string modelName, std::string modelVersion ="", bool verbose = false, SharedMemoryType shm_type = SharedMemoryType::SYSTEM_SHARED_MEMORY, int cuda_device = 0) : 
         url_{url}, 
         verbose_{verbose}, 
         protocol_{protocol},
         model_name_{modelName},
-        model_version_{modelVersion}
+        model_version_{modelVersion},
+        shared_memory_type_{shm_type},
+        cuda_device_id_{cuda_device}
     {
         createTritonClient();
+    }
+
+    ~Triton() {
+        unregisterSharedMemory();
     }
 
     void printModelInfo(const TritonModelInfo& model_info) const override {
@@ -98,4 +156,15 @@ public:
         tc::InferResult* result,
         const size_t batch_size,
         const std::vector<std::string>& output_names);
+    
+    // Shared memory methods
+    std::unique_ptr<SharedMemoryRegion> createSharedMemoryRegion(const std::string& name, size_t size);
+    std::unique_ptr<SharedMemoryRegion> createSystemSharedMemoryRegion(const std::string& name, size_t size);
+    std::unique_ptr<SharedMemoryRegion> createCudaSharedMemoryRegion(const std::string& name, size_t size);
+    void registerInputSharedMemory() override;
+    void registerOutputSharedMemory() override;
+    void unregisterSharedMemory() override;
+    std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_data) override;
+    size_t calculateTensorSize(const std::vector<int64_t>& shape, const std::string& datatype);
+    void setSharedMemoryType(SharedMemoryType type, int cuda_device = 0);
 };
