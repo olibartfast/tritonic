@@ -274,7 +274,22 @@
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-        }                 
+        },       
+        {
+            "name": "deimv2_dinov3_s_coco_onnx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tritonic",
+            "args": [
+                "--source=data/images/dog.jpg", 
+                "--serverAddress=localhost",
+                "--labelsFile=labels/coco.txt",
+                "--model=deimv2_dinov3_s_coco_onnx",
+                "--model_type=deim"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        }                       
                          
 
     ]

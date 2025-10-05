@@ -150,11 +150,25 @@ From [ShihuaHuang95 DEIM Repository](https://github.com/ShihuaHuang95/DEIM):
 cd DEIM
 python tools/deployment/export_onnx.py --check -c configs/deim_dfine/deim_hgnetv2_s_coco.yml -r deim_dfine_hgnetv2_s_coco_120e.pth
 ```
-
 **Notes**:
 - Same considerations as D-FINE regarding batch size and model verification
 
-### TensorRT for D-FINE and DEIM
+## DEIMv2
+From [Intellidust AI Lab DEIMv2 Repository](https://github.com/Intellindust-AI-Lab/DEIMv2):
+
+### OnnxRuntime
+```bash
+cd DEIMv2
+download vitt_distill.pt to ckpts folder
+export MODEL=deimv2_dinov3_s_coco, or check from modelzoo for others
+python tools/deployment/export_onnx.py --check -c configs/deimv2/$MODEL.yml -r /path/to/$MODEL.pth
+```
+**Notes**:
+- Same considerations as D-FINE regarding batch size and model verification
+
+
+
+### TensorRT for D-FINE DEIM and DEIMv2
 * Same as for lyuwenyu RT-DETR models
 
 
