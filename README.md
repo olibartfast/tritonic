@@ -79,6 +79,7 @@ tritonic/
 - [RT-DETRv2](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetrv2_pytorch)
 - [D-FINE](https://github.com/Peterande/D-FINE)
 - [DEIM](https://github.com/ShihuaHuang95/DEIM)
+- [DEIMv2](https://github.com/Intellindust-AI-Lab/DEIMv2)
 - [RF-DETR](https://github.com/roboflow/rf-detr)
 
 ## Instance Segmentation
@@ -301,16 +302,17 @@ To view all available parameters, run:
 | YOLOv9                 | yolov9                 |
 | YOLOv10                | yolov10                |
 | YOLO11                 | yolo11                 |
-| YOLOv12                | yolov12                 |
+| YOLOv12                | yolov12                |
 | RT-DETR                | rtdetr                 |
 | RT-DETRV2              | rtdetrv2               |
 | RT-DETR Ultralytics    | rtdetrul               |
 | RF-DETR                | rfdetr                 |
 | D-FINE                 | dfine                  |
 | DEIM                   | deim                   |
+| DEIMv2                 | deim                   |
 | Torchvision Classifier | torchvision-classifier |
 | Tensorflow Classifier  | tensorflow-classifier  |
-| ViT Classifier         | vit-classifier     |
+| ViT Classifier         | vit-classifier         |
 | YOLOv5 Segmentation    | yoloseg                |
 | YOLOv8 Segmentation    | yoloseg                |
 | YOLO11 Segmentation    | yoloseg                |
