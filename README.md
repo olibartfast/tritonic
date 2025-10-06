@@ -88,6 +88,7 @@ tritonic/
 - [YOLOv8](https://github.com/ultralytics/ultralytics)
 - [YOLO11](https://github.com/ultralytics/ultralytics)
 - [YOLOv12](https://github.com/sunsmarterjie/yolov12)
+- [RF-DETR](https://github.com/roboflow/rf-detr)
 
 ## Classification
 
@@ -317,6 +318,7 @@ To view all available parameters, run:
 | YOLOv8 Segmentation    | yoloseg                |
 | YOLO11 Segmentation    | yoloseg                |
 | YOLO12 Segmentation    | yoloseg                |
+| RF-DETR Segmentation   | rfdetrseg             |
 | RAFT Optical Flow      | raft                   |
 
 
