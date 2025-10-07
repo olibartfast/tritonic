@@ -30,9 +30,7 @@ struct OpticalFlow {
     float max_displacement; // Maximum flow magnitude
 };
 
-struct VideoClassification {
-    float class_id;
-    float class_confidence;
+struct VideoClassification : public Classification{
     std::string action_label;   // Human-readable action name
     std::vector<float> frame_scores;  // Confidence scores per frame if needed
 };
