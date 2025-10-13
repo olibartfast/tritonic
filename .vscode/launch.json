@@ -195,7 +195,7 @@
             "program": "${workspaceFolder}/build/tritonic",
             "args": ["--source=data/images/bus.jpg", 
             "--serverAddress=localhost",
-            "--labelsFile=labels/coco.txt",
+            "--labelsFile=labels/coco-labels-91.txt",
             "--model=rfdetr_base",
             "--model_type=rfdetr"
             ],
@@ -209,7 +209,7 @@
             "program": "${workspaceFolder}/build/tritonic",
             "args": ["--source=data/images/bus.jpg", 
             "--serverAddress=localhost",
-            "--labelsFile=labels/coco.txt",
+            "--labelsFile=labels/coco-labels-91.txt",
             "--model=rf-detr-seg-preview_onnx",
             "--model_type=rfdetrseg"
             ],
