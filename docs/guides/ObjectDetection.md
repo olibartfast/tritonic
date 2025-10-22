@@ -172,20 +172,33 @@ python tools/deployment/export_onnx.py --check -c configs/deimv2/$MODEL.yml -r /
 * Same as for lyuwenyu RT-DETR models
 
 
-## RF-DETR  
-* Follow the procedure listed https://github.com/roboflow/rf-detr?tab=readme-ov-file#onnx-export
+## RF-DETR
 
-### ONNX Export for onnxruntime
+Follow the procedure described in the [RF-DETR documentation](https://github.com/roboflow/rf-detr?tab=readme-ov-file#onnx-export).
+
+### ONNX Export for ONNX Runtime
+
+#### Option 1 — Using the Python Script
+
+Run the export script with your desired parameters:
+
+```bash
+python deploy/object_detection/rf-detr/export.py <input_params>  # use --help for details
+```
+
+#### Option 2 — Using Python API
+
+You can also export the model directly from Python:
 
 ```python
 from rfdetr import RFDETRBase
 
 model = RFDETRBase(pretrain_weights=<CHECKPOINT_PATH>)
-
 model.export()
 ```
 
-This command saves the ONNX model to the `output` directory.
+The ONNX model will be saved automatically in the `output` directory.
+
 
 ### TensorRT Export
 ```bash
