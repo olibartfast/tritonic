@@ -191,7 +191,7 @@ python deploy/object_detection/rf-detr/export.py <input_params>  # use --help fo
 You can also export the model directly from Python:
 
 ```python
-from rfdetr import RFDETRBase
+from rfdetr import RFDETRBase  # or RFDETRBase/Nano/Small/Medium/Large
 
 model = RFDETRBase(pretrain_weights=<CHECKPOINT_PATH>)
 model.export()
