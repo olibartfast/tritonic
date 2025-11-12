@@ -374,7 +374,7 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
             throw std::runtime_error("Failed setting input " + model_info_.input_names[i] + ": " + err.Message());
         }
 
-        logger.infof("Input {} set with {} bytes of data", model_info_.input_names[i], input_data[i].size());
+        logger.debugf("Input {} set with {} bytes of data", model_info_.input_names[i], input_data[i].size());
     }
 
     // Create vector of raw pointers for the API call
