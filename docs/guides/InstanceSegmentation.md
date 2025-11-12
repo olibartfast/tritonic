@@ -24,7 +24,7 @@ For instance segmentation, use the `RFDETRSegPreview` model class or the provide
 #### Using Python Script
 
 ```bash
-python deploy/instance_segmentation/rf-detr/export_segmentation.py --simplify --input_size 432
+python deploy/instance_segmentation/rf-detr/export.py --simplify --input_size 432
 ```
 
 **Available Options:**
