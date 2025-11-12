@@ -12,7 +12,7 @@
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 # Default values
-MODEL_REPO=$1
+MODEL_REPO=${1:-}
 TRITON_VERSION=${2:-25.06}
 DEVICE_TYPE=${3:-cpu}
 PYTHON_BACKEND_ARG=${4:-false}
@@ -25,7 +25,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 # Validate required parameters
-if [ $# -lt 1 ]; then
+if [ $# -lt 1 ] || [ -z "$MODEL_REPO" ]; then
     echo "Usage: $0 <model_repository_path> [triton_version] [cpu|gpu] [python_backend|true]"
     echo ""
     echo "Examples:"
