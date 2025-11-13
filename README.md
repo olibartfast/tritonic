@@ -32,16 +32,11 @@ tritonic/
 ├── include/                      # Header files
 ├── deploy/                       # Model deployment scripts
 │   ├── classifier/               # Classification models
-│   │   ├── tensorflow/           # TensorFlow deployments
-│   │   ├── torchvision/          # Torchvision deployments
-│   │   └── vit/                  # Vision Transformer deployments
+│   │   ├── ...
 │   ├── instance_segmentation/    # Instance segmentation models
-│   │   └── rf-detr/              # RF-DETR segmentation deployments
-│   │       ├── export.py         # ONNX export script
-│   │       ├── export_trt.sh     # TensorRT engine export
-│   │       └── deploy_triton_model.sh # Deploy to Triton repository
+│   │   └── ...
 │   ├── object_detection/         # Object detection models
-│   │   └── rf-detr/              # RF-DETR detection deployments
+│   │   └── ....
 │   ├── optical_flow/             # Optical flow models
 │   └── video_classification/     # Video classification models (TODO)
 ├── scripts/                      # All scripts
@@ -215,27 +210,6 @@ cmake --build .
 - [Instance Segmentation](docs/guides/InstanceSegmentation.md)
 - [Optical Flow](docs/guides/OpticalFlow.md)
 
-### Quick Deploy: RF-DETR Segmentation
-
-For RF-DETR segmentation models, use the automated deployment scripts:
-
-```bash
-# 1. Export ONNX model
-cd deploy/instance_segmentation/rf-detr
-python export.py --output_dir output --simplify
-
-# 2. Convert to TensorRT engine (compatible with Triton 25.06)
-bash export_trt.sh
-
-# 3. Deploy to Triton model repository
-bash deploy_triton_model.sh exports/model.engine rf-detr-seg-preview_trt /path/to/model_repository
-```
-
-The deployment script will:
-- Create proper Triton model repository structure
-- Copy the TensorRT engine as `model.plan`
-- Generate appropriate `config.pbtxt` with input/output specifications
-- Handle absolute path requirements for Docker deployments
 
 *Other tasks are in TODO list.*
 
