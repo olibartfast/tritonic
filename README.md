@@ -31,10 +31,19 @@ tritonic/
 │   └── utils/                    # Utility classes
 ├── include/                      # Header files
 ├── deploy/                       # Model deployment scripts
-│   └── classifier/               # Classification models
-│       ├── tensorflow/           # TensorFlow deployments
-│       ├── torchvision/          # Torchvision deployments
-│       └── vit/                  # Vision Transformer deployments
+│   ├── classifier/               # Classification models
+│   │   ├── tensorflow/           # TensorFlow deployments
+│   │   ├── torchvision/          # Torchvision deployments
+│   │   └── vit/                  # Vision Transformer deployments
+│   ├── instance_segmentation/    # Instance segmentation models
+│   │   └── rf-detr/              # RF-DETR segmentation deployments
+│   │       ├── export.py         # ONNX export script
+│   │       ├── export_trt.sh     # TensorRT engine export
+│   │       └── deploy_triton_model.sh # Deploy to Triton repository
+│   ├── object_detection/         # Object detection models
+│   │   └── rf-detr/              # RF-DETR detection deployments
+│   ├── optical_flow/             # Optical flow models
+│   └── video_classification/     # Video classification models (TODO)
 ├── scripts/                      # All scripts
 │   ├── docker/                   # Docker-related scripts
 │   │   ├── docker_triton_run.sh  # Run Triton server
@@ -206,6 +215,28 @@ cmake --build .
 - [Instance Segmentation](docs/guides/InstanceSegmentation.md)
 - [Optical Flow](docs/guides/OpticalFlow.md)
 
+### Quick Deploy: RF-DETR Segmentation
+
+For RF-DETR segmentation models, use the automated deployment scripts:
+
+```bash
+# 1. Export ONNX model
+cd deploy/instance_segmentation/rf-detr
+python export.py --output_dir output --simplify
+
+# 2. Convert to TensorRT engine (compatible with Triton 25.06)
+bash export_trt.sh
+
+# 3. Deploy to Triton model repository
+bash deploy_triton_model.sh exports/model.engine rf-detr-seg-preview_trt /path/to/model_repository
+```
+
+The deployment script will:
+- Create proper Triton model repository structure
+- Copy the TensorRT engine as `model.plan`
+- Generate appropriate `config.pbtxt` with input/output specifications
+- Handle absolute path requirements for Docker deployments
+
 *Other tasks are in TODO list.*
 
 ## Notes
@@ -225,7 +256,18 @@ To deploy models, set up a model repository following the [Triton Model Reposito
             <model_binary>
 ```
 
-To start Triton Server:
+### Starting Triton Server
+
+Use the provided script for easy setup:
+```bash
+# Start Triton server with GPU support
+./scripts/docker/docker_triton_run.sh /path/to/model_repository 25.06 gpu
+
+# Start with CPU only
+./scripts/docker/docker_triton_run.sh /path/to/model_repository 25.06 cpu
+```
+
+Or manually with Docker:
 ```bash
 docker run --gpus=1 --rm \
   -p 8000:8000 -p 8001:8001 -p 8002:8002 \
@@ -308,6 +350,7 @@ To view all available parameters, run:
 | RT-DETRV2              | rtdetrv2               |
 | RT-DETR Ultralytics    | rtdetrul               |
 | RF-DETR                | rfdetr                 |
+| RF-DETR Segmentation   | rfdetr                 |
 | D-FINE                 | dfine                  |
 | DEIM                   | deim                   |
 | DEIMv2                 | deim                   |
@@ -318,7 +361,7 @@ To view all available parameters, run:
 | YOLOv8 Segmentation    | yoloseg                |
 | YOLO11 Segmentation    | yoloseg                |
 | YOLO12 Segmentation    | yoloseg                |
-| RF-DETR Segmentation   | rfdetrseg             |
+| RF-DETR Segmentation   | rfdetr                 |
 | RAFT Optical Flow      | raft                   |
 
 
