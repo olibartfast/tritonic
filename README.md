@@ -43,10 +43,7 @@ tritonic/
 │   ├── docker/                   # Docker-related scripts
 │   │   ├── docker_triton_run.sh  # Run Triton server
 │   │   ├── extract_triton_libs.sh# Extract client libraries
-│   │   ├── run_client.sh         # Run client application
-│   │   ├── run_debug.sh          # Run with debug mode
-│   │   ├── run_optical_flow.sh   # Run optical flow
-│   │   └── run_tests.sh          # Run unit tests
+│   │   └── ...
 │   ├── setup/                    # Setup scripts
 │   └── tools/                    # Utility scripts
 ├── config/                       # Configuration files
@@ -54,16 +51,11 @@ tritonic/
 ├── docs/                         # Documentation
 │   └── guides/                   # User guides
 ├── labels/                       # Label files
-│   ├── coco.txt                  # COCO class labels
-│   └── imagenet.txt              # ImageNet class labels
+│   ├── ...
 ├── data/                         # Data files
-│   ├── images/                   # Test images
-│   ├── videos/                   # Test videos
-│   └── models/                   # Model files
+│   ├── ...
 └── tests/                        # Test files
-    ├── mocks/                    # Mock objects
-    ├── unit/                     # Unit tests
-    └── integration/              # Integration tests
+    ├── ...
 ```
 
 ## Tested Models
