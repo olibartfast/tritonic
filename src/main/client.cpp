@@ -204,26 +204,31 @@ void ProcessVideo(const std::string& sourceName,
                         draw_label(visualization_frame, class_names[segmentation.class_id], segmentation.class_confidence, 
                                  safeBbox.x, safeBbox.y - 1);
                         
-                        // Create mask from stored data
-                        cv::Mat mask = cv::Mat(segmentation.mask_height, segmentation.mask_width, 
-                                             CV_8UC1, segmentation.mask_data.data());
-                        
-                        // Resize mask to match the safe bounding box size
-                        cv::resize(mask, mask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
-                        
-                        // Draw mask
-                        cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
-                        cv::Scalar color = colors[segmentation.class_id];
-                        colorMask.setTo(color, mask);
-                        
-                        // Get the ROI from the frame
-                        cv::Mat roi = visualization_frame(safeBbox);
-                        
-                        // Ensure colorMask and roi have the same size
-                        if (roi.size() == colorMask.size()) {
-                            cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
+                        // Check if mask data is valid before processing
+                        if (!segmentation.mask_data.empty() && segmentation.mask_height > 0 && segmentation.mask_width > 0) {
+                            // Create mask from stored data - need to clone to ensure data ownership
+                            cv::Mat mask(segmentation.mask_height, segmentation.mask_width, CV_8UC1);
+                            std::memcpy(mask.data, segmentation.mask_data.data(), segmentation.mask_data.size());
+                            
+                            // Resize mask to match the safe bounding box size
+                            cv::resize(mask, mask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
+                            
+                            // Draw mask
+                            cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
+                            cv::Scalar color = colors[segmentation.class_id];
+                            colorMask.setTo(color, mask);
+                            
+                            // Get the ROI from the frame
+                            cv::Mat roi = visualization_frame(safeBbox);
+                            
+                            // Ensure colorMask and roi have the same size
+                            if (roi.size() == colorMask.size()) {
+                                cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
+                            } else {
+                                logger.warn("ROI and color mask size mismatch. Skipping mask overlay.");
+                            }
                         } else {
-                            logger.warn("ROI and color mask size mismatch. Skipping mask overlay.");
+                            logger.warn("Instance segmentation mask data is empty or invalid. Showing bbox only.");
                         }
                     } else {
                         logger.warn("Bounding box is outside the frame. Skipping this instance.");

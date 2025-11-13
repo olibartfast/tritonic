@@ -158,6 +158,9 @@ std::vector<Result> RFDetrSeg::postprocess(const cv::Size& frame_size,
         // Ensure bbox is within frame boundaries
         cv::Rect safeBbox = seg.bbox & cv::Rect(0, 0, frame_size.width, frame_size.height);
         if (safeBbox.width > 0 && safeBbox.height > 0) {
+            // Update seg.bbox to use the safe bbox
+            seg.bbox = safeBbox;
+            
             // Crop mask to bbox region
             mask = mask(safeBbox);
             
