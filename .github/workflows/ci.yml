@@ -170,16 +170,6 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-    - name: Build Development Docker Image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./Dockerfile.dev
-        push: false
-        tags: tritonic:dev
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
   code-quality:
     runs-on: ubuntu-latest
     
