@@ -84,7 +84,17 @@ jobs:
         TritonClientBuild_DIR: ${{ github.workspace }}/triton_client_libs/install
       run: |
         cd build
-        ctest --output-on-failure --verbose
+        # List test executables
+        ls -la tests/ || true
+        ls -la run_tests || true
+        # Run tests directly if CTest doesn't find them
+        if [ -f "tests/run_tests" ]; then
+          ./tests/run_tests --gtest_output=xml:test-results.xml
+        elif [ -f "run_tests" ]; then
+          ./run_tests --gtest_output=xml:test-results.xml
+        else
+          ctest --output-on-failure --verbose
+        fi
 
   codeql:
     name: CodeQL Security Analysis
