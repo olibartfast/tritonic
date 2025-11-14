@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <tuple>
+#include <variant>
 #include "TritonModelInfo.hpp"
 
 using TensorElement = std::variant<float, int32_t, int64_t>;
