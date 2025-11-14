@@ -6,7 +6,6 @@ on:
     paths-ignore:
       - '**.md'
       - 'docs/**'
-      - '.github/workflows/security.yml'
       - '.github/workflows/docker-publish.yml'
       - '.github/workflows/pre-commit.yml'
   pull_request:
@@ -15,6 +14,9 @@ on:
     paths-ignore:
       - '**.md'
       - 'docs/**'
+  schedule:
+    # Run security scans weekly on Mondays at 00:00 UTC
+    - cron: '0 0 * * 1'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -83,6 +85,70 @@ jobs:
       run: |
         cd build
         ctest --output-on-failure --verbose
+
+  codeql:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp', 'python' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v4
+      with:
+        languages: ${{ matrix.language }}
+
+    - name: Install Dependencies for C++
+      if: matrix.language == 'cpp'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          rapidjson-dev \
+          libcurl4-openssl-dev \
+          libprotobuf-dev \
+          protobuf-compiler \
+          libopencv-dev
+
+    - name: Build C++ Project
+      if: matrix.language == 'cpp'
+      run: |
+        chmod +x scripts/docker/extract_triton_libs.sh
+        ./scripts/docker/extract_triton_libs.sh || true
+        
+        export TritonClientBuild_DIR=$(pwd)/triton_client_libs/install
+        mkdir -p build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release .. || true
+        cmake --build . || true
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v4
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      with:
+        fail-on-severity: moderate
 
   docker-build:
     runs-on: ubuntu-latest

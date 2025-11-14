@@ -3,7 +3,6 @@
 # TritonIC - C++ Triton Inference Client for Computer Vision Models
 
 [![CI](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml/badge.svg)](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml)
-[![Security Scan](https://github.com/olibartfast/tritonic/actions/workflows/security.yml/badge.svg)](https://github.com/olibartfast/tritonic/actions/workflows/security.yml)
 [![Docker Publish](https://github.com/olibartfast/tritonic/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/olibartfast/tritonic/actions/workflows/docker-publish.yml)
 [![Pre-commit](https://github.com/olibartfast/tritonic/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/olibartfast/tritonic/actions/workflows/pre-commit.yml)
 
