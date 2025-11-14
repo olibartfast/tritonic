@@ -2,9 +2,9 @@
 
 # TritonIC - C++ Triton Inference Client for Computer Vision Models
 
-[![CI](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml/badge.svg)](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml)
-[![Docker Publish](https://github.com/olibartfast/tritonic/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/olibartfast/tritonic/actions/workflows/docker-publish.yml)
-[![Pre-commit](https://github.com/olibartfast/tritonic/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/olibartfast/tritonic/actions/workflows/pre-commit.yml)
+[![CI](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml)
+[![Docker Publish](https://github.com/olibartfast/tritonic/actions/workflows/docker-publish.yml/badge.svg?event=release)](https://github.com/olibartfast/tritonic/actions/workflows/docker-publish.yml)
+[![Pre-commit](https://github.com/olibartfast/tritonic/actions/workflows/pre-commit.yml/badge.svg?event=pull_request)](https://github.com/olibartfast/tritonic/actions/workflows/pre-commit.yml)
 
 This C++ application enables machine learning tasks (e.g. object detection, classification, optical flow ...) using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
 
