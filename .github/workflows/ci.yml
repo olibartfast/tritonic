@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Cache Triton Client Libraries
+      id: cache-triton
+      uses: actions/cache@v4
+      with:
+        path: triton_client_libs
+        key: triton-client-r25.06-${{ runner.os }}
+
+    - name: Extract Triton Client Libraries
+      if: steps.cache-triton.outputs.cache-hit != 'true'
+      run: |
+        chmod +x scripts/docker/extract_triton_libs.sh
+        ./scripts/docker/extract_triton_libs.sh
+
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          rapidjson-dev \
+          libcurl4-openssl-dev \
+          libprotobuf-dev \
+          protobuf-compiler \
+          libgtest-dev \
+          libgmock-dev
+
+    - name: Install OpenCV
+      run: |
+        sudo apt-get install -y \
+          libopencv-dev \
+          libopencv-core-dev \
+          libopencv-highgui-dev \
+          libopencv-imgproc-dev \
+          libopencv-imgcodecs-dev \
+          libopencv-videoio-dev
+
+    - name: Configure CMake
+      env:
+        TritonClientBuild_DIR: ${{ github.workspace }}/triton_client_libs/install
+      run: |
+        mkdir -p build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON ..
+
+    - name: Build Project
+      run: |
+        cd build
+        cmake --build . -j$(nproc)
+
+    - name: Run Unit Tests
+      env:
+        TritonClientBuild_DIR: ${{ github.workspace }}/triton_client_libs/install
+      run: |
+        cd build
+        ctest --output-on-failure --verbose
+
+  docker-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: false
+        tags: tritonic:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build Development Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.dev
+        push: false
+        tags: tritonic:dev
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install Pre-commit
+      run: |
+        pip install pre-commit
+
+    - name: Run Pre-commit Hooks
+      run: |
+        pre-commit run --all-files || true
