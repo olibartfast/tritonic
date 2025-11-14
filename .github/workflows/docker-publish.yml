@@ -55,25 +55,3 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
         platforms: linux/amd64
-
-    - name: Extract metadata for Dev Image
-      id: meta-dev
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=semver,pattern={{version}}-dev
-          type=semver,pattern={{major}}.{{minor}}-dev
-          type=raw,value=dev,enable={{is_default_branch}}
-
-    - name: Build and Push Development Docker Image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./Dockerfile.dev
-        push: true
-        tags: ${{ steps.meta-dev.outputs.tags }}
-        labels: ${{ steps.meta-dev.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        platforms: linux/amd64
