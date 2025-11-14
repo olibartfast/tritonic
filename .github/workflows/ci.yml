@@ -150,43 +150,6 @@ jobs:
       with:
         fail-on-severity: moderate
 
-  docker-build:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Free up disk space
-      run: |
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /opt/ghc
-        sudo rm -rf /usr/local/share/boost
-        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-        sudo docker system prune -af
-        sudo apt-get clean
-        df -h
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build Docker Image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./Dockerfile
-        push: false
-        tags: tritonic:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        outputs: type=docker,dest=/tmp/tritonic.tar
-
-    - name: Cleanup
-      if: always()
-      run: |
-        rm -f /tmp/tritonic.tar
-        docker system prune -af
-
   code-quality:
     runs-on: ubuntu-latest
     
