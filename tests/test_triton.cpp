@@ -6,18 +6,20 @@
 using ::testing::Return;
 using ::testing::_;
 using ::testing::InSequence;
+using ::testing::NiceMock;
 
 class TritonInterfaceTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        mockTriton = std::make_unique<MockTriton>();
+        // Use NiceMock to avoid warnings about uninteresting calls
+        mockTriton = std::make_unique<NiceMock<MockTriton>>();
     }
     
     void TearDown() override {
         mockTriton.reset();
     }
     
-    std::unique_ptr<MockTriton> mockTriton;
+    std::unique_ptr<NiceMock<MockTriton>> mockTriton;
 };
 
 TEST_F(TritonInterfaceTest, MockCanSetupModelInfoExpectations) {
