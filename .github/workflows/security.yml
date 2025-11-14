@@ -9,6 +9,10 @@ on:
     # Run weekly on Mondays at 00:00 UTC
     - cron: '0 0 * * 1'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   codeql:
     name: CodeQL Analysis
