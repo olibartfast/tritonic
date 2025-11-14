@@ -3,9 +3,18 @@ name: CI
 on:
   push:
     branches: [ master, main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/workflows/security.yml'
+      - '.github/workflows/docker-publish.yml'
+      - '.github/workflows/pre-commit.yml'
   pull_request:
     branches: [ master, main, develop ]
     types: [ opened, synchronize, reopened ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
