@@ -38,13 +38,13 @@ TEST(TritonInterfaceTest, TritonModelInfoHasExpectedFields) {
     modelInfo.input_names.push_back("test");
     modelInfo.output_names.push_back("test");
     modelInfo.input_shapes.push_back({1, 3, 224, 224});
-    modelInfo.output_shapes.push_back({1, 1000});
-    modelInfo.input_types.push_back("FP32");
-    modelInfo.output_types.push_back("FP32");
-    modelInfo.max_batch_size = 1;
+    modelInfo.input_formats.push_back("FORMAT_NCHW");
+    modelInfo.input_datatypes.push_back("FP32");
+    modelInfo.max_batch_size_ = 1;
+    modelInfo.batch_size_ = 1;
     
     EXPECT_EQ(modelInfo.input_names[0], "test");
-    EXPECT_EQ(modelInfo.max_batch_size, 1);
+    EXPECT_EQ(modelInfo.max_batch_size_, 1);
 }
 
 TEST(TritonInterfaceTest, ITritonInterfaceExists) {
