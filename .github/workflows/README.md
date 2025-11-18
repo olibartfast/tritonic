@@ -1,93 +1,78 @@
 # CI/CD Workflows
 
-This directory contains GitHub Actions workflows for continuous integration and deployment.
+This directory contains GitHub Actions workflows for continuous integration and code quality.
 
 ## Workflows
 
 ### 🔨 CI Workflow (`ci.yml`)
-**Triggers:** Push and Pull Requests to `master`, `main`, or `develop` branches
+**Triggers:** 
+- Push to `master`, `main`, or `develop` branches
+- Pull Requests to `master`, `main`, or `develop` branches  
+- Weekly schedule (Mondays at 00:00 UTC for security scans)
+- Ignores: Documentation files (`.md`), `docs/**`
 
 **Jobs:**
-- **build-and-test**: Builds the C++ project and runs unit tests
-  - Caches Triton client libraries for faster builds
-  - Installs all required dependencies (OpenCV, RapidJSON, etc.)
-  - Runs CMake build with testing enabled
-  - Executes unit tests with CTest
-  
-- **docker-build**: Builds Docker images
-  - Builds both production (`Dockerfile`) and development (`Dockerfile.dev`) images
-  - Uses Docker layer caching for efficiency
-  
-- **code-quality**: Runs code quality checks
-  - Executes pre-commit hooks on all files
 
-### 🔍 Pre-commit Workflow (`pre-commit.yml`)
-**Triggers:** Pull Requests to `master`, `main`, or `develop` branches
+#### 1. **build-and-test** (Ubuntu 24.04)
+Builds the C++ project and runs unit tests.
+- Caches Triton client libraries (r25.06) for faster builds
+- Extracts Triton libraries from Docker SDK image if not cached
+- Installs system dependencies: CMake, RapidJSON, libcurl, Protobuf, GTest, GMock
+- Installs OpenCV development libraries
+- Configures CMake with testing enabled
+- Builds project using all CPU cores (`-j$(nproc)`)
+- Runs unit tests directly via test executable or CTest
 
-Validates code formatting and linting using pre-commit hooks. Caches hooks for faster execution.
+#### 2. **codeql** (Security Analysis)
+Static code analysis for security vulnerabilities.
+- Analyzes both C++ and Python code
+- Attempts to build C++ project for comprehensive analysis
+- Uploads results to GitHub Security tab
+- Runs on: push, PR, and weekly schedule
 
-### 🐋 Docker Publish Workflow (`docker-publish.yml`)
-**Triggers:** 
-- Release publications
-- Tags matching `v*.*.*` pattern
+#### 3. **dependency-review** (PR only)
+Reviews dependency changes in pull requests.
+- Checks for security vulnerabilities in dependencies
+- Fails on moderate or higher severity issues
+- Automatically comments on PRs with findings
 
-**Features:**
-- Publishes images to GitHub Container Registry (ghcr.io)
-- Creates multiple tags: version, major.minor, major, sha, latest
-- Builds both production and development images
-- Uses semantic versioning
+#### 4. **code-quality**
+Runs code formatting and linting checks.
+- Executes pre-commit hooks on all files
+- Validates code style consistency
+- Non-blocking (continues on failure)
 
-**Published Images:**
-- `ghcr.io/<owner>/tritonic:latest` - Latest stable release
-- `ghcr.io/<owner>/tritonic:<version>` - Specific version
-- `ghcr.io/<owner>/tritonic:dev` - Latest development build
-
-### 🔒 Security Workflow (`security.yml`)
-**Triggers:** 
-- Push to `master` or `main` branches
-- Pull Requests
-- Weekly schedule (Mondays at 00:00 UTC)
-
-**Jobs:**
-- **codeql**: Static code analysis for C++ and Python
-- **docker-scan**: Scans Docker images for vulnerabilities using Trivy
-- **dependency-review**: Reviews dependencies in pull requests
+#### 5. **code-review** (PR only)
+Automated code review for pull requests.
+- **AI Code Review**: Uses OpenAI to analyze code changes (requires `OPENAI_API_KEY` secret)
+  - Excludes documentation and configuration files
+  - Reviews up to 10 files per PR
+- **Complexity Analysis**: Uses lizard to detect complex C++ functions
+  - Flags functions with Cyclomatic Complexity > 15
+  - Provides refactoring recommendations
+- **PR Statistics**: Generates comprehensive PR metrics
+  - Files changed, lines added/deleted
+  - File type breakdown
+  - Warnings for large PRs (>20 files or >500 changes)
 
 ## Setup Instructions
 
 ### Prerequisites
 
 1. **Enable GitHub Actions** in your repository settings
-2. **Enable GitHub Packages** for Docker image publishing
-3. **Configure branch protection rules** (recommended)
+2. **Configure branch protection rules** (recommended)
+3. **Docker installed** (for local Triton library extraction)
 
 ### Secrets Configuration
 
-No additional secrets are required for basic operation. The workflows use `GITHUB_TOKEN` which is automatically provided.
+**Required for basic operation:**
+- `GITHUB_TOKEN` - Automatically provided by GitHub Actions
 
-### Optional: Custom Docker Registry
-
-To publish to Docker Hub or another registry, modify `docker-publish.yml`:
-
-```yaml
-env:
-  REGISTRY: docker.io  # Change registry
-  IMAGE_NAME: <username>/tritonic  # Change image name
-```
-
-And add these secrets to your repository:
-- `DOCKER_USERNAME`
-- `DOCKER_PASSWORD`
-
-Update the login step:
-```yaml
-- name: Log in to Docker Hub
-  uses: docker/login-action@v3
-  with:
-    registry: docker.io
-    username: ${{ secrets.DOCKER_USERNAME }}
-    password: ${{ secrets.DOCKER_PASSWORD }}
-```
+**Optional secrets for enhanced features:**
+- `OPENAI_API_KEY` - Enables AI-powered code review in PRs
+  - Create at: https://platform.openai.com/api-keys
+  - Add to: Repository Settings → Secrets and variables → Actions → New repository secret
+  - Without this secret, AI code review will be skipped (other review features still work)
 
 ## Usage
 
@@ -115,35 +100,27 @@ Install pre-commit hooks locally:
 
 This ensures code quality checks run before each commit.
 
-### Creating a Release
+### Testing Pull Requests
 
-To trigger the Docker publish workflow:
+When you create a PR, the following automated checks will run:
 
-1. **Create a tag:**
-   ```bash
-   git tag -a v1.0.0 -m "Release version 1.0.0"
-   git push origin v1.0.0
-   ```
+1. **Build and Test** - Ensures code compiles and tests pass
+2. **CodeQL Analysis** - Security vulnerability scanning  
+3. **Dependency Review** - Checks for vulnerable dependencies
+4. **Code Quality** - Pre-commit hooks validation
+5. **Code Review** - AI review, complexity analysis, and PR statistics
 
-2. **Or create a GitHub Release:**
-   - Go to Releases → "Draft a new release"
-   - Choose or create a tag (e.g., `v1.0.0`)
-   - Fill in release notes
-   - Publish release
-
-The workflow will automatically build and publish Docker images.
+All results appear in the PR checks section and as comments on the PR.
 
 ## Workflow Status Badges
 
-Add these badges to your main README.md:
+The CI workflow badge is already in the main README:
 
 ```markdown
-[![CI](https://github.com/<owner>/tritonic/actions/workflows/ci.yml/badge.svg)](https://github.com/<owner>/tritonic/actions/workflows/ci.yml)
-[![Security Scan](https://github.com/<owner>/tritonic/actions/workflows/security.yml/badge.svg)](https://github.com/<owner>/tritonic/actions/workflows/security.yml)
-[![Docker Publish](https://github.com/<owner>/tritonic/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/<owner>/tritonic/actions/workflows/docker-publish.yml)
+[![CI](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml)
 ```
 
-Replace `<owner>` with your GitHub username or organization name.
+This badge shows the status of builds, tests, and security scans on the master branch.
 
 ## Customization
 
@@ -171,15 +148,19 @@ set_tests_properties(UnitTests PROPERTIES
 )
 ```
 
-### Platform Support
+### Enabling AI Code Review
 
-Currently, Docker images are built for `linux/amd64`. To add ARM support:
+To enable AI-powered code review:
 
-```yaml
-platforms: linux/amd64,linux/arm64
-```
+1. Create an OpenAI API key at https://platform.openai.com/api-keys
+2. Add it as a repository secret:
+   - Go to: Settings → Secrets and variables → Actions
+   - Click "New repository secret"
+   - Name: `OPENAI_API_KEY`
+   - Value: Your OpenAI API key
+3. The AI review will automatically activate on the next PR
 
-Note: This will increase build time significantly.
+Without this key, PRs will still get complexity analysis and statistics.
 
 ## Troubleshooting
 
@@ -202,11 +183,15 @@ Note: This will increase build time significantly.
 
 **Solution:** Increase the timeout in `tests/CMakeLists.txt` or reduce test complexity.
 
-### Docker Build Failures
+### AI Code Review Not Working
 
-**Issue:** Image too large
+**Issue:** AI review step is skipped
 
-**Solution:** Use multi-stage builds and remove unnecessary files in Dockerfile.
+**Solution:** Ensure `OPENAI_API_KEY` secret is configured in repository settings.
+
+**Issue:** AI review fails with authentication error
+
+**Solution:** Verify your OpenAI API key is valid and has sufficient credits.
 
 ## Maintenance
 
