@@ -179,3 +179,85 @@ jobs:
     - name: Run Pre-commit Hooks
       run: |
         pre-commit run --all-files || true
+
+  code-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: AI Code Review
+      uses: freeedcom/ai-codereviewer@v2
+      with:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        exclude: "**/*.md,**/*.txt,**/*.json,**/*.yaml,**/*.yml,**/labels/**,**/data/**"
+        max_files: 10
+
+    - name: Install lizard
+      run: pip install lizard
+
+    - name: Run C++ Complexity Analysis
+      run: |
+        echo "## Code Complexity Analysis" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Functions with High Complexity (CCN > 15)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        lizard -l cpp -w -L 50 -C 15 src/ include/ || true
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Note:** Functions with Cyclomatic Complexity > 15 should be refactored." >> $GITHUB_STEP_SUMMARY
+
+    - name: PR Statistics
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          const files = await github.rest.pulls.listFiles({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: pr.number,
+          });
+          
+          const stats = files.data.reduce((acc, file) => {
+            acc.totalFiles++;
+            acc.additions += file.additions;
+            acc.deletions += file.deletions;
+            acc.changes += file.changes;
+            
+            const ext = file.filename.split('.').pop();
+            acc.fileTypes[ext] = (acc.fileTypes[ext] || 0) + 1;
+            
+            return acc;
+          }, {
+            totalFiles: 0,
+            additions: 0,
+            deletions: 0,
+            changes: 0,
+            fileTypes: {}
+          });
+          
+          const summary = `## Pull Request Statistics
+          
+          📊 **Changes Overview:**
+          - **Files Changed:** ${stats.totalFiles}
+          - **Lines Added:** ${stats.additions}
+          - **Lines Deleted:** ${stats.deletions}
+          - **Total Changes:** ${stats.changes}
+          
+          📁 **File Types:**
+          ${Object.entries(stats.fileTypes).map(([ext, count]) => \`- \${ext}: \${count}\`).join('\\n')}
+          
+          ⚠️ **Review Notes:**
+          ${stats.totalFiles > 20 ? '- This is a large PR. Consider breaking it into smaller PRs for easier review.' : ''}
+          ${stats.changes > 500 ? '- High number of changes. Thorough review recommended.' : ''}
+          ${stats.additions > stats.deletions * 3 ? '- PR adds significantly more code than it removes.' : ''}
+          `;
+          
+          core.summary.addRaw(summary).write();
