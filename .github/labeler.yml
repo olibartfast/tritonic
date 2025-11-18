@@ -1,0 +1,45 @@
+# Labeler configuration for automatic PR labeling
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file: ['docs/**', '**/*.md', 'README.md']
+
+ci/cd:
+  - changed-files:
+    - any-glob-to-any-file: ['.github/**', 'Dockerfile*', 'scripts/docker/**']
+
+tests:
+  - changed-files:
+    - any-glob-to-any-file: ['tests/**', '**/*test*.cpp', '**/*test*.hpp']
+
+classification:
+  - changed-files:
+    - any-glob-to-any-file: ['src/tasks/classification/**', 'deploy/classifier/**']
+
+object-detection:
+  - changed-files:
+    - any-glob-to-any-file: ['src/tasks/object_detection/**', 'deploy/object_detection/**']
+
+instance-segmentation:
+  - changed-files:
+    - any-glob-to-any-file: ['src/tasks/instance_segmentation/**', 'deploy/instance_segmentation/**']
+
+optical-flow:
+  - changed-files:
+    - any-glob-to-any-file: ['src/tasks/optical_flow/**', 'deploy/optical_flow/**']
+
+video-classification:
+  - changed-files:
+    - any-glob-to-any-file: ['src/tasks/video_classification/**', 'deploy/video_classification/**']
+
+core:
+  - changed-files:
+    - any-glob-to-any-file: ['src/main/**', 'src/triton/**', 'src/utils/**', 'include/**']
+
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file: ['CMakeLists.txt', '**/requirements.txt']
+
+config:
+  - changed-files:
+    - any-glob-to-any-file: ['config/**', '*.yaml', '*.yml', '*.json']
