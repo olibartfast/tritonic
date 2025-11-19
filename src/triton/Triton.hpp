@@ -27,7 +27,7 @@ enum ProtocolType { HTTP = 0, GRPC = 1 };
 class Triton : public ITriton {
 private:
     TritonClient triton_client_;
-    const std::string& url_; 
+    std::string url_; 
     bool verbose_; 
     ProtocolType protocol_;
     std::string model_name_;
