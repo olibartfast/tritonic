@@ -90,7 +90,6 @@ std::vector<Result> RFDetr::postprocess(const cv::Size& frame_size,
                                         const std::vector<std::vector<TensorElement>>& infer_results,
                                         const std::vector<std::vector<int64_t>>& infer_shapes) {
     const float confThreshold = 0.5f;
-    const float iouThreshold = 0.4f;
 
     if (!dets_idx_.has_value() || !labels_idx_.has_value()) {
         throw std::runtime_error("Not all required output indices were set in the model info");
@@ -111,9 +110,7 @@ std::vector<Result> RFDetr::postprocess(const cv::Size& frame_size,
     const float scale_w = static_cast<float>(frame_size.width) / input_width_;
     const float scale_h = static_cast<float>(frame_size.height) / input_height_;
 
-    std::vector<cv::Rect> bboxes;
-    std::vector<float> scores;
-    std::vector<int> labels_vec;
+    std::vector<Result> final_detections;
 
     for (size_t i = 0; i < num_detections; ++i) {
         const size_t det_offset = i * shape_boxes[2];
@@ -162,24 +159,12 @@ std::vector<Result> RFDetr::postprocess(const cv::Size& frame_size,
                 static_cast<int>((y_max - y_min) * scale_h)
             );
 
-            bboxes.push_back(bbox);
-            scores.push_back(max_score);
-            labels_vec.push_back(max_class_idx);
+            Detection detection;
+            detection.bbox = bbox;
+            detection.class_confidence = max_score;
+            detection.class_id = max_class_idx;
+            final_detections.push_back(detection);
         }
-    }
-
-    // Apply NMS
-    std::vector<int> indices;
-    cv::dnn::NMSBoxes(bboxes, scores, confThreshold, iouThreshold, indices);
-
-    // Create final detections list using NMS indices
-    std::vector<Result> final_detections;
-    for (int idx : indices) {
-        Detection detection;
-        detection.bbox = bboxes[idx];
-        detection.class_confidence = scores[idx];
-        detection.class_id = labels_vec[idx];
-        final_detections.push_back(detection);
     }
 
     return final_detections;

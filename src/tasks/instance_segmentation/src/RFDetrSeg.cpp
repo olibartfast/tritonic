@@ -27,7 +27,6 @@ std::vector<Result> RFDetrSeg::postprocess(const cv::Size& frame_size,
                                            const std::vector<std::vector<TensorElement>>& infer_results,
                                            const std::vector<std::vector<int64_t>>& infer_shapes) {
     const float confThreshold = 0.5f;
-    const float iouThreshold = 0.4f;
     const float mask_threshold = 0.5f;
 
     if (!dets_idx_.has_value() || !labels_idx_.has_value() || !masks_idx_.has_value()) {
@@ -53,12 +52,8 @@ std::vector<Result> RFDetrSeg::postprocess(const cv::Size& frame_size,
     const float scale_w = static_cast<float>(frame_size.width) / input_width_;
     const float scale_h = static_cast<float>(frame_size.height) / input_height_;
 
-    std::vector<cv::Rect> bboxes;
-    std::vector<float> scores;
-    std::vector<int> labels_vec;
-    std::vector<cv::Mat> mask_proposals; // Store mask logits for each detection
+    std::vector<Result> final_results;
 
-    // First pass: collect detections above threshold
     for (size_t i = 0; i < num_detections; ++i) {
         const size_t det_offset = i * shape_boxes[2];
         const size_t label_offset = i * num_classes;
@@ -108,11 +103,12 @@ std::vector<Result> RFDetrSeg::postprocess(const cv::Size& frame_size,
                 static_cast<int>((y_max - y_min) * scale_h)
             );
 
-            bboxes.push_back(bbox);
-            scores.push_back(max_score);
-            labels_vec.push_back(max_class_idx);
+            InstanceSegmentation seg;
+            seg.bbox = bbox;
+            seg.class_confidence = max_score;
+            seg.class_id = max_class_idx;
 
-            // Extract mask logits for this detection
+            // Extract and process mask
             cv::Mat mask_logits(mask_h, mask_w, CV_32F);
             for (size_t r = 0; r < mask_h; ++r) {
                 for (size_t c = 0; c < mask_w; ++c) {
@@ -124,55 +120,38 @@ std::vector<Result> RFDetrSeg::postprocess(const cv::Size& frame_size,
                     }
                 }
             }
-            mask_proposals.push_back(mask_logits);
-        }
-    }
 
-    // Apply NMS
-    std::vector<int> indices;
-    cv::dnn::NMSBoxes(bboxes, scores, confThreshold, iouThreshold, indices);
+            // Apply sigmoid activation to mask logits
+            cv::Mat mask;
+            cv::exp(-mask_logits, mask);
+            mask = 1.0 / (1.0 + mask);
 
-    // Second pass: generate final segmentation results with masks
-    std::vector<Result> final_results;
-    for (size_t i = 0; i < indices.size(); ++i) {
-        int idx = indices[i];
-        InstanceSegmentation seg;
-        seg.bbox = bboxes[idx];
-        seg.class_confidence = scores[idx];
-        seg.class_id = labels_vec[idx];
+            // Resize mask to input size (640x640)
+            cv::Mat mask_resized;
+            cv::resize(mask, mask_resized, cv::Size(input_width_, input_height_), 0, 0, cv::INTER_LINEAR);
 
-        // Process mask
-        cv::Mat mask = mask_proposals[idx];
-        
-        // Apply sigmoid activation to mask logits
-        cv::exp(-mask, mask);
-        mask = 1.0 / (1.0 + mask);
+            // Resize to frame size
+            cv::resize(mask_resized, mask, frame_size, 0, 0, cv::INTER_LINEAR);
 
-        // Resize mask to input size (640x640)
-        cv::Mat mask_resized;
-        cv::resize(mask, mask_resized, cv::Size(input_width_, input_height_), 0, 0, cv::INTER_LINEAR);
+            // Ensure bbox is within frame boundaries
+            cv::Rect safeBbox = seg.bbox & cv::Rect(0, 0, frame_size.width, frame_size.height);
+            if (safeBbox.width > 0 && safeBbox.height > 0) {
+                // Update seg.bbox to use the safe bbox
+                seg.bbox = safeBbox;
+                
+                // Crop mask to bbox region
+                mask = mask(safeBbox);
+                
+                // Apply threshold
+                mask = mask > mask_threshold;
 
-        // Resize to frame size
-        cv::resize(mask_resized, mask, frame_size, 0, 0, cv::INTER_LINEAR);
+                // Store mask data
+                seg.mask_data.assign(mask.data, mask.data + mask.total());
+                seg.mask_height = mask.rows;
+                seg.mask_width = mask.cols;
 
-        // Ensure bbox is within frame boundaries
-        cv::Rect safeBbox = seg.bbox & cv::Rect(0, 0, frame_size.width, frame_size.height);
-        if (safeBbox.width > 0 && safeBbox.height > 0) {
-            // Update seg.bbox to use the safe bbox
-            seg.bbox = safeBbox;
-            
-            // Crop mask to bbox region
-            mask = mask(safeBbox);
-            
-            // Apply threshold
-            mask = mask > mask_threshold;
-
-            // Store mask data
-            seg.mask_data.assign(mask.data, mask.data + mask.total());
-            seg.mask_height = mask.rows;
-            seg.mask_width = mask.cols;
-
-            final_results.push_back(seg);
+                final_results.push_back(seg);
+            }
         }
     }
 
