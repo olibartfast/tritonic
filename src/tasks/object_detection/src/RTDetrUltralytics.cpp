@@ -79,11 +79,7 @@ std::vector<Result> RTDetrUltralytics::postprocess(const cv::Size& frame_size, c
     const std::vector<std::vector<int64_t>>& infer_shapes) 
 {
     std::vector<Result> detections;
-    std::vector<cv::Rect> boxes;
-    std::vector<float> confidences;
-    std::vector<int> classIds;
     const auto confThreshold = 0.5f;
-    const auto iouThreshold = 0.4f;
     const auto& infer_shape = infer_shapes.front(); 
     const auto& infer_result = infer_results.front(); 
 
@@ -107,8 +103,6 @@ std::vector<Result> RTDetrUltralytics::postprocess(const cv::Size& frame_size, c
         if (score >= confThreshold) 
         {
             int label = std::distance(start + 4, maxSPtr);
-            confidences.push_back(score);
-            classIds.push_back(label);
 
             float b0 = get_float(*(start));
             float b1 = get_float(*(start + 1));
@@ -120,20 +114,13 @@ std::vector<Result> RTDetrUltralytics::postprocess(const cv::Size& frame_size, c
             float x2 = (b0 + b2 / 2.0f) * frame_size.width;
             float y2 = (b1 + b3 / 2.0f) * frame_size.height;
 
-            boxes.emplace_back(cv::Point(x1, y1), cv::Point(x2, y2));
+            Detection d;
+            d.bbox = cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2));
+            d.class_confidence = score;
+            d.class_id = label;
+            detections.emplace_back(d);
         }
     }
 
-    std::vector<int> indices;
-    cv::dnn::NMSBoxes(boxes, confidences, confThreshold, iouThreshold, indices);
-
-    for (int idx : indices)
-    {
-        Detection d;
-        d.bbox = boxes[idx];
-        d.class_confidence = confidences[idx];
-        d.class_id = classIds[idx];
-        detections.emplace_back(d);
-    }        
     return detections; 
 }
