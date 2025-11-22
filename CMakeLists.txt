@@ -5,6 +5,27 @@ message(STATUS ${PROJECT_NAME})
 message(STATUS $ENV{TritonClientBuild_DIR})
 set(CMAKE_CXX_STANDARD 20)
 
+# Fetch vision-core repository for tasks
+include(FetchContent)
+
+# Set GIT_CONFIG to allow credential helper or use token from environment
+if(DEFINED ENV{GITHUB_TOKEN})
+  set(VISION_CORE_REPO "https://$ENV{GITHUB_TOKEN}@github.com/olibartfast/vision-core.git")
+else()
+  set(VISION_CORE_REPO "https://github.com/olibartfast/vision-core.git")
+endif()
+
+FetchContent_Declare(
+  vision-core
+  GIT_REPOSITORY ${VISION_CORE_REPO}
+  GIT_TAG main  # or specify a branch/tag/commit
+  SOURCE_SUBDIR ""  # Don't try to build it as a CMake project
+)
+FetchContent_MakeAvailable(vision-core)
+
+# Set the tasks directory to the fetched content
+set(TASKS_DIR ${vision-core_SOURCE_DIR}/src/tasks)
+
 option(WITH_SHOW_FRAME "Option description" OFF)
 option(WITH_WRITE_FRAME "Option description" ON)
 
@@ -31,32 +52,32 @@ find_package(RapidJSON REQUIRED)
 # Set the source files
 set(SOURCES
     ${PROJECT_SOURCE_DIR}/src/main/client.cpp
-    ${PROJECT_SOURCE_DIR}/src/tasks/task_factory.cpp
+    ${TASKS_DIR}/task_factory.cpp
     # Add any additional source files here
 )
 
-set(DETECTOR_SOURCES ${PROJECT_SOURCE_DIR}  
-  src/tasks/object_detection/src/YOLO.cpp 
-  src/tasks/object_detection/src/YoloNas.cpp
-  src/tasks/object_detection/src/YOLOv10.cpp 
-  src/tasks/object_detection/src/RTDetr.cpp
-  src/tasks/object_detection/src/RFDetr.cpp
-  src/tasks/object_detection/src/RTDetrUltralytics.cpp
+set(DETECTOR_SOURCES ${TASKS_DIR}  
+  object_detection/src/YOLO.cpp 
+  object_detection/src/YoloNas.cpp
+  object_detection/src/YOLOv10.cpp 
+  object_detection/src/RTDetr.cpp
+  object_detection/src/RFDetr.cpp
+  object_detection/src/RTDetrUltralytics.cpp
   )
 
-set(CLASSIFIER_SOURCES ${PROJECT_SOURCE_DIR}  
-  src/tasks/classification/src/TensorflowClassifier.cpp
-  src/tasks/classification/src/TorchvisionClassifier.cpp
-  src/tasks/classification/src/ViTClassifier.cpp
+set(CLASSIFIER_SOURCES ${TASKS_DIR}  
+  classification/src/TensorflowClassifier.cpp
+  classification/src/TorchvisionClassifier.cpp
+  classification/src/ViTClassifier.cpp
   )
 
-set(INSTANCE_SEGMENTATION_SOURCES ${PROJECT_SOURCE_DIR}
-   src/tasks/instance_segmentation/src/YOLOSeg.cpp
-   src/tasks/instance_segmentation/src/RFDetrSeg.cpp
+set(INSTANCE_SEGMENTATION_SOURCES ${TASKS_DIR}
+   instance_segmentation/src/YOLOSeg.cpp
+   instance_segmentation/src/RFDetrSeg.cpp
   )
 
-set(OPTICAL_FLOW_SOURCES ${PROJECT_SOURCE_DIR}
-  src/tasks/optical_flow/src/RAFT.cpp
+set(OPTICAL_FLOW_SOURCES ${TASKS_DIR}
+  optical_flow/src/RAFT.cpp
   )  
 
 # Set the source files
@@ -89,15 +110,15 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/utils
-    ${PROJECT_SOURCE_DIR}/src/tasks
-    ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/include
-    ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/src
-    ${PROJECT_SOURCE_DIR}/src/tasks/classification/include
-    ${PROJECT_SOURCE_DIR}/src/tasks/classification/src  
-    ${PROJECT_SOURCE_DIR}/src/tasks/instance_segmentation/include
-    ${PROJECT_SOURCE_DIR}/src/tasks/instance_segmentation/src  
-    ${PROJECT_SOURCE_DIR}/src/tasks/optical_flow/include
-    ${PROJECT_SOURCE_DIR}/src/tasks/optical_flow/src
+    ${TASKS_DIR}
+    ${TASKS_DIR}/object_detection/include
+    ${TASKS_DIR}/object_detection/src
+    ${TASKS_DIR}/classification/include
+    ${TASKS_DIR}/classification/src  
+    ${TASKS_DIR}/instance_segmentation/include
+    ${TASKS_DIR}/instance_segmentation/src  
+    ${TASKS_DIR}/optical_flow/include
+    ${TASKS_DIR}/optical_flow/src
     ${PROJECT_SOURCE_DIR}/src/triton
     # Add any additional include directories here
 )
