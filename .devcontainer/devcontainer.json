@@ -11,6 +11,9 @@
   "entrypoint": ["/bin/bash"],
   "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind",
   "workspaceFolder": "/app",
+  "containerEnv": {
+    "TritonClientBuild_DIR": "/workspace/install"
+  },
   "customizations": {
     "vscode": {
       "extensions": [
