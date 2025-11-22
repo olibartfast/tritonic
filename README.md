@@ -151,6 +151,9 @@ apt install libcurl4-openssl-dev
 ```
 
 6. **OpenCV 4**: Tested version: 4.7.0
+```bash
+apt install libopencv-dev
+```
 
 ## Development Setup
 
