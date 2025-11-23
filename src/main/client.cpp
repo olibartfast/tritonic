@@ -1,14 +1,41 @@
-#include "task_factory.hpp"
+#include <vision-core/core/task_factory.hpp>
+#include <vision-core/core/task_interface.hpp>
+#include <vision-core/core/result_types.hpp>
 #include <filesystem>
 #include "utils.hpp"
 #include "ITriton.hpp"
 #include "Triton.hpp"
 #include "Config.hpp"
 #include "Logger.hpp"
+#include "TritonModelInfo.hpp"
 
+// Use vision-core namespace
+using vision_core::TaskInterface;
+using vision_core::TaskFactory;
+using vision_core::Result;
+using vision_core::TaskType;
+using vision_core::ModelInfo;
+using vision_core::Classification;
+using vision_core::Detection;
+using vision_core::InstanceSegmentation;
+using vision_core::OpticalFlow;
+using vision_core::VideoClassification;
 
-std::vector<Result> processSource(const std::vector<cv::Mat>& source, 
-    const std::unique_ptr<TaskInterface>& task, 
+// Convert TritonModelInfo to vision_core::ModelInfo
+vision_core::ModelInfo convertToVisionCoreModelInfo(const TritonModelInfo& triton_info) {
+    vision_core::ModelInfo model_info;
+    model_info.input_shapes = triton_info.input_shapes;
+    model_info.input_formats = triton_info.input_formats;
+    model_info.input_names = triton_info.input_names;
+    model_info.output_names = triton_info.output_names;
+    model_info.input_types = triton_info.input_types;
+    model_info.max_batch_size_ = triton_info.max_batch_size_;
+    model_info.batch_size_ = triton_info.batch_size_;
+    return model_info;
+}
+
+std::vector<Result> processSource(const std::vector<cv::Mat>& source,
+    const std::unique_ptr<TaskInterface>& task,
     const std::unique_ptr<ITriton>&  tritonClient)
 {
     const auto input_data = task->preprocess(source);
@@ -115,7 +142,6 @@ void ProcessVideo(const std::string& sourceName,
     const std::vector<std::string>& class_names) {
     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
     cv::VideoCapture cap(sourceName);
-
     if (!cap.isOpened()) {
         logger.errorf("Could not open the video: {}", sourceName);
         throw std::runtime_error("Could not open the video: " + sourceName);
@@ -324,7 +350,8 @@ int main(int argc, const char* argv[]) {
 
         // Create task instance
         logger.infof("Creating task instance for model type: {}", config->model_type);
-        std::unique_ptr<TaskInterface> task = TaskFactory::createTaskInstance(config->model_type, modelInfo);
+        auto visionCoreModelInfo = convertToVisionCoreModelInfo(modelInfo);
+        std::unique_ptr<TaskInterface> task = TaskFactory::createTaskInstance(config->model_type, visionCoreModelInfo);
 
         if (!task) {
             throw std::runtime_error("Failed to create task instance");

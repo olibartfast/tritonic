@@ -19,12 +19,8 @@ FetchContent_Declare(
   vision-core
   GIT_REPOSITORY ${VISION_CORE_REPO}
   GIT_TAG main  # or specify a branch/tag/commit
-  SOURCE_SUBDIR ""  # Don't try to build it as a CMake project
 )
 FetchContent_MakeAvailable(vision-core)
-
-# Set the tasks directory to the fetched content
-set(TASKS_DIR ${vision-core_SOURCE_DIR}/src/tasks)
 
 option(WITH_SHOW_FRAME "Option description" OFF)
 option(WITH_WRITE_FRAME "Option description" ON)
@@ -49,36 +45,11 @@ find_package(CURL REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(RapidJSON REQUIRED)
 
-# Set the source files
+# Set the source files (only tritonic-specific sources)
 set(SOURCES
     ${PROJECT_SOURCE_DIR}/src/main/client.cpp
-    ${TASKS_DIR}/task_factory.cpp
-    # Add any additional source files here
-)
-
-set(DETECTOR_SOURCES ${TASKS_DIR}  
-  object_detection/src/YOLO.cpp 
-  object_detection/src/YoloNas.cpp
-  object_detection/src/YOLOv10.cpp 
-  object_detection/src/RTDetr.cpp
-  object_detection/src/RFDetr.cpp
-  object_detection/src/RTDetrUltralytics.cpp
-  )
-
-set(CLASSIFIER_SOURCES ${TASKS_DIR}  
-  classification/src/TensorflowClassifier.cpp
-  classification/src/TorchvisionClassifier.cpp
-  classification/src/ViTClassifier.cpp
-  )
-
-set(INSTANCE_SEGMENTATION_SOURCES ${TASKS_DIR}
-   instance_segmentation/src/YOLOSeg.cpp
-   instance_segmentation/src/RFDetrSeg.cpp
-  )
-
-set(OPTICAL_FLOW_SOURCES ${TASKS_DIR}
-  optical_flow/src/RAFT.cpp
-  )  
+    # Add any additional tritonic-specific source files here
+)  
 
 # Set the source files
 set(TRITON_SOURCES ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp)
@@ -91,16 +62,14 @@ set(LOGGER_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/Logger.cpp)
 set(FILESYSTEM_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/FileSystem.cpp)
 
 # Add an executable target
-add_executable(${PROJECT_NAME} ${SOURCES}
-    ${UTILS_SOURCES} 
+add_executable(${PROJECT_NAME}
+    ${SOURCES}
+    ${UTILS_SOURCES}
     ${CONFIG_SOURCES}
     ${LOGGER_SOURCES}
-    ${DETECTOR_SOURCES} 
-    ${CLASSIFIER_SOURCES} 
-    ${INSTANCE_SEGMENTATION_SOURCES} 
-    ${OPTICAL_FLOW_SOURCES}
+    ${FILESYSTEM_SOURCES}
     ${TRITON_SOURCES}
-    )
+)
 
 # Set include directories for the target
 target_include_directories(${PROJECT_NAME}
@@ -110,17 +79,8 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/utils
-    ${TASKS_DIR}
-    ${TASKS_DIR}/object_detection/include
-    ${TASKS_DIR}/object_detection/src
-    ${TASKS_DIR}/classification/include
-    ${TASKS_DIR}/classification/src  
-    ${TASKS_DIR}/instance_segmentation/include
-    ${TASKS_DIR}/instance_segmentation/src  
-    ${TASKS_DIR}/optical_flow/include
-    ${TASKS_DIR}/optical_flow/src
     ${PROJECT_SOURCE_DIR}/src/triton
-    # Add any additional include directories here
+    # vision-core includes are provided automatically through target_link_libraries
 )
 
 # Set link directories for the target
@@ -133,6 +93,7 @@ target_link_directories(${PROJECT_NAME}
 # Link libraries for the target
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
+    vision-core::vision-core
     grpcclient
     httpclient
     ${OpenCV_LIBS}
