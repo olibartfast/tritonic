@@ -1,4 +1,4 @@
 build
-processed.avi
+*.avi
 model_repository
 build_test
