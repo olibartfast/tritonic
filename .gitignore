@@ -2,3 +2,4 @@ build
 processed.avi
 model_repositorybuild_test/
 triton_client_libs/
+build_test/
