@@ -37,6 +37,7 @@ set(TEST_SOURCES
     test_config_manager_basic.cpp
     test_logger.cpp
     test_triton.cpp
+    test_classification_preprocess.cpp
 )
 
 # Source files that need to be tested (without main)
@@ -55,12 +56,13 @@ target_link_libraries(run_tests
     PRIVATE
     GTest::gtest
     GTest::gtest_main
-    GTest::gmock
+    # GTest::gmock
     grpcclient
     httpclient
     ${OpenCV_LIBS}
     CURL::libcurl
     ${PROTOBUF_LIBRARIES}
+    vision-core::vision-core
 )
 
 # Set the same compile definitions as the main project
