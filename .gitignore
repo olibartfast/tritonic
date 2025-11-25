@@ -1,4 +1,5 @@
 build
-processed.avi
-model_repositorybuild_test/
-triton_client_libs/
+*.avi
+model_repository
+build_test
+triton_client_libs
