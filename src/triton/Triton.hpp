@@ -7,7 +7,7 @@
 #include <rapidjson/document.h>
 #include <variant>
 
-using TensorElement = std::variant<float, int32_t, int64_t>;
+using TensorElement = std::variant<float, int32_t, int64_t, uint8_t>;
 
  
 union TritonClient

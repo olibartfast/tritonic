@@ -22,6 +22,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(vision-core)
 
+FetchContent_Declare(
+  fmt
+  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+  GIT_TAG 10.1.1
+)
+FetchContent_MakeAvailable(fmt)
+
 option(WITH_SHOW_FRAME "Option description" OFF)
 option(WITH_WRITE_FRAME "Option description" ON)
 
@@ -48,6 +55,7 @@ find_package(RapidJSON REQUIRED)
 # Set the source files (only tritonic-specific sources)
 set(SOURCES
     ${PROJECT_SOURCE_DIR}/src/main/client.cpp
+    ${PROJECT_SOURCE_DIR}/src/main/App.cpp
     # Add any additional tritonic-specific source files here
 )  
 
@@ -99,6 +107,7 @@ target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBS}
     CURL::libcurl
     ${PROTOBUF_LIBRARIES}
+    fmt::fmt
 )
 
 # Add option for testing
