@@ -4,20 +4,11 @@
 #include "ITriton.hpp"
 #include "ILogger.hpp"
 #include "Config.hpp"
+#include "MockTriton.hpp"
 
 using ::testing::_;
 using ::testing::Return;
 using ::testing::NiceMock;
-
-class MockTriton : public ITriton {
-public:
-    MOCK_METHOD(TritonModelInfo, getModelInfo, (const std::string&, const std::string&, (const std::vector<std::vector<int64_t>>&)), (override));
-    MOCK_METHOD((std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>>), infer, ((const std::vector<std::vector<uint8_t>>&)), (override));
-    MOCK_METHOD(void, setInputShapes, ((const std::vector<std::vector<int64_t>>&)), (override));
-    MOCK_METHOD(void, setInputShape, ((const std::vector<int64_t>&)), (override));
-    MOCK_METHOD(void, printModelInfo, (const TritonModelInfo&), (const, override));
-    MOCK_METHOD(void, createTritonClient, (), (override));
-};
 
 class FakeLogger : public ILogger {
 public:
