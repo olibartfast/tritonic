@@ -4,11 +4,15 @@ cmake_minimum_required(VERSION 3.20)
 # Enable testing
 enable_testing()
 
-# Find required packages for testing
-find_package(GTest REQUIRED)
-
-# Include Google Mock (it's part of GTest)
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG v1.14.0
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
 # Include test directories
 include_directories(
@@ -37,7 +41,9 @@ set(TEST_SOURCES
     test_config_manager_basic.cpp
     test_logger.cpp
     test_triton.cpp
+    test_triton.cpp
     test_classification_preprocess.cpp
+    test_app.cpp
 )
 
 # Source files that need to be tested (without main)
@@ -46,6 +52,7 @@ set(TESTABLE_SOURCES
     ${PROJECT_SOURCE_DIR}/src/utils/Logger.cpp
     ${PROJECT_SOURCE_DIR}/src/utils/utils.cpp
     ${PROJECT_SOURCE_DIR}/src/utils/FileSystem.cpp
+    ${PROJECT_SOURCE_DIR}/src/main/App.cpp
 )
 
 # Create the test executable
@@ -54,15 +61,16 @@ add_executable(run_tests ${TEST_SOURCES} ${TESTABLE_SOURCES})
 # Link libraries
 target_link_libraries(run_tests
     PRIVATE
-    GTest::gtest
-    GTest::gtest_main
-    # GTest::gmock
+    gtest
+    gtest_main
+    gmock
     grpcclient
     httpclient
     ${OpenCV_LIBS}
     CURL::libcurl
     ${PROTOBUF_LIBRARIES}
     vision-core::vision-core
+    fmt::fmt
 )
 
 # Set the same compile definitions as the main project
