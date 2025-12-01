@@ -14,33 +14,12 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-# Include test directories
-include_directories(
-    ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_SOURCE_DIR}/src/utils
-    ${PROJECT_SOURCE_DIR}/src/tasks
-    ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/include
-    ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/src
-    ${PROJECT_SOURCE_DIR}/src/tasks/classification/include
-    ${PROJECT_SOURCE_DIR}/src/tasks/classification/src  
-    ${PROJECT_SOURCE_DIR}/src/tasks/instance_segmentation/include
-    ${PROJECT_SOURCE_DIR}/src/tasks/instance_segmentation/src  
-    ${PROJECT_SOURCE_DIR}/src/tasks/optical_flow/include
-    ${PROJECT_SOURCE_DIR}/src/tasks/optical_flow/src
-    ${PROJECT_SOURCE_DIR}/src/triton
-    ${PROJECT_SOURCE_DIR}/tests/mocks
-    ${OpenCV_INCLUDE_DIRS}
-    $ENV{TritonClientBuild_DIR}/include
-)
-
 # Test source files
 set(TEST_SOURCES
     test_main.cpp
     test_config_basic.cpp
     test_config_manager_basic.cpp
     test_logger.cpp
-    test_triton.cpp
     test_triton.cpp
     test_classification_preprocess.cpp
     test_app.cpp
@@ -57,6 +36,36 @@ set(TESTABLE_SOURCES
 
 # Create the test executable
 add_executable(run_tests ${TEST_SOURCES} ${TESTABLE_SOURCES})
+
+# IMPORTANT: The Triton client libs include bundled gmock/gtest headers that conflict
+# with the FetchContent'd googletest. Use SYSTEM to make TritonClient a system include
+# which is searched AFTER normal includes. Place googletest BEFORE all other includes.
+target_include_directories(run_tests BEFORE
+    PRIVATE
+    ${googletest_SOURCE_DIR}/googletest/include
+    ${googletest_SOURCE_DIR}/googlemock/include
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/src/utils
+    ${PROJECT_SOURCE_DIR}/src/tasks
+    ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/include
+    ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/src
+    ${PROJECT_SOURCE_DIR}/src/tasks/classification/include
+    ${PROJECT_SOURCE_DIR}/src/tasks/classification/src  
+    ${PROJECT_SOURCE_DIR}/src/tasks/instance_segmentation/include
+    ${PROJECT_SOURCE_DIR}/src/tasks/instance_segmentation/src  
+    ${PROJECT_SOURCE_DIR}/src/tasks/optical_flow/include
+    ${PROJECT_SOURCE_DIR}/src/tasks/optical_flow/src
+    ${PROJECT_SOURCE_DIR}/src/triton
+    ${PROJECT_SOURCE_DIR}/tests/mocks
+    ${OpenCV_INCLUDE_DIRS}
+)
+
+# Add TritonClient as SYSTEM include so it's searched AFTER googletest includes
+target_include_directories(run_tests SYSTEM
+    PRIVATE
+    $ENV{TritonClientBuild_DIR}/include
+)
 
 # Link libraries
 target_link_libraries(run_tests
