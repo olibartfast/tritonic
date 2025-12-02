@@ -190,12 +190,11 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
                         cv::Mat mask = cv::Mat(segmentation.mask_height, segmentation.mask_width, 
                                              CV_8UC1, segmentation.mask_data.data());
                         
-                        cv::Mat colorMask = cv::Mat::zeros(mask.size(), CV_8UC3);
+                        cv::Mat colorMask = cv::Mat::zeros(image.size(), CV_8UC3);
                         cv::Scalar color = cv::Scalar(rand() & 255, rand() & 255, rand() & 255);
                         colorMask.setTo(color, mask);
                         
-                        cv::Mat roi = image(segmentation.bbox);
-                        cv::addWeighted(roi, 1, colorMask, 0.7, 0, roi);
+                        cv::addWeighted(image, 1, colorMask, 0.7, 0, image);
                     }
                 }
             }
