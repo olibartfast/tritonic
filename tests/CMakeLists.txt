@@ -23,6 +23,7 @@ set(TEST_SOURCES
     test_triton.cpp
     test_classification_preprocess.cpp
     test_app.cpp
+    test_rfdetr_repro.cpp
 )
 
 # Source files that need to be tested (without main)
