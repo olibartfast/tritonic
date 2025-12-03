@@ -6,6 +6,8 @@
 
 This C++ application enables machine learning tasks (e.g. object detection, classification, optical flow ...) using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
 
+> 🚧 Status: Under Development — expect frequent updates.
+
 ## Table of Contents
 - [Project Structure](#project-structure)
 - [Tested Models](#tested-models)
