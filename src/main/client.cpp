@@ -42,13 +42,7 @@ int main(int argc, const char* argv[]) {
         auto triton = std::make_shared<Triton>(url, protocol, config->model_name, config->model_version, config->verbose);
         
         // Create and run App
-        // We need to wrap the global logger in a shared_ptr wrapper that doesn't delete it
-        // Or better, we should have made Logger a shared_ptr from the start.
-        // For now, let's create a proxy or just pass the address if we change App to take raw pointer?
-        // No, App takes shared_ptr. Let's create a custom deleter.
         std::shared_ptr<ILogger> loggerPtr(&logger, [](ILogger*){});
-        
-        // We need to convert unique_ptr<Config> to shared_ptr<Config>
         std::shared_ptr<Config> configPtr = std::move(config);
         
         App app(triton, configPtr, loggerPtr);
