@@ -10,6 +10,7 @@
 #include "YOLOSeg.hpp"
 #include "RAFT.hpp"
 #include "RFDetr.hpp"
+#include "RFDetrSeg.hpp"
 #include "Logger.hpp"
 
 // Define the map of task creators
@@ -19,6 +20,7 @@ std::map<std::string, TaskFactory::TaskCreator> TaskFactory::taskCreators = {
     {"vit-classifier", [](const TritonModelInfo& modelInfo) { return std::make_unique<ViTClassifier>(modelInfo); }},
     {"yoloseg", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLOSeg>(modelInfo); }},
     {"rfdetr", [](const TritonModelInfo& modelInfo) { return std::make_unique<RFDetr>(modelInfo); }},
+    {"rfdetrseg", [](const TritonModelInfo& modelInfo) { return std::make_unique<RFDetrSeg>(modelInfo); }},
     {"yolonas", [](const TritonModelInfo& modelInfo) { return std::make_unique<YoloNas>(modelInfo); }},
     {"yolov5", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLO>(modelInfo); }},
     {"yolov6", [](const TritonModelInfo& modelInfo) { return std::make_unique<YOLO>(modelInfo); }},

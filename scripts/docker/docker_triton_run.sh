@@ -12,7 +12,7 @@
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 # Default values
-MODEL_REPO=$1
+MODEL_REPO=${1:-}
 TRITON_VERSION=${2:-25.06}
 DEVICE_TYPE=${3:-cpu}
 PYTHON_BACKEND_ARG=${4:-false}
@@ -25,7 +25,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 # Validate required parameters
-if [ $# -lt 1 ]; then
+if [ $# -lt 1 ] || [ -z "$MODEL_REPO" ]; then
     echo "Usage: $0 <model_repository_path> [triton_version] [cpu|gpu] [python_backend|true]"
     echo ""
     echo "Examples:"
@@ -70,19 +70,34 @@ case "${PYTHON_BACKEND_ARG,,}" in
     *) PYTHON_BACKEND=false ;;
 esac
 
+# Determine Docker image early for GPU check
+BASE_IMAGE="nvcr.io/nvidia/tritonserver:$TRITON_VERSION-py3"
+
 # Validate GPU availability if requested
 if [ "$DEVICE_TYPE" = "gpu" ]; then
     echo "🔍 Checking GPU availability..."
-    if ! docker run --rm --gpus=all --entrypoint nvidia-smi nvcr.io/nvidia/cuda:12.2-base-ubuntu20.04 &>/dev/null; then
-        echo "⚠️  Warning: GPU not available or nvidia-container-toolkit not configured properly"
+    
+    # Check if nvidia-smi is available on host
+    if ! nvidia-smi &>/dev/null; then
+        echo "⚠️  Warning: nvidia-smi not available on host"
         echo "💡 Falling back to CPU mode. To fix:"
-        echo "   1. Install nvidia-container-toolkit"
-        echo "   2. Restart Docker daemon"
-        echo "   3. Ensure NVIDIA drivers are installed"
+        echo "   1. Install NVIDIA drivers"
+        echo "   2. Ensure GPU is properly detected"
         DEVICE_TYPE="cpu"
         sleep 2
     else
-        echo "✅ GPU support confirmed"
+        # Test GPU access with the actual Triton image
+        if timeout 10 docker run --rm --gpus=all "$BASE_IMAGE" nvidia-smi &>/dev/null; then
+            echo "✅ GPU support confirmed with Triton image"
+        else
+            echo "⚠️  Warning: GPU not accessible through Docker with Triton image"
+            echo "💡 Falling back to CPU mode. To fix:"
+            echo "   1. Install nvidia-container-toolkit"
+            echo "   2. Restart Docker daemon"
+            echo "   3. Ensure NVIDIA drivers are installed"
+            DEVICE_TYPE="cpu"
+            sleep 2
+        fi
     fi
 fi
 
@@ -94,9 +109,6 @@ echo "🏷️  Triton version: $TRITON_VERSION"
 echo "💻 Device: $DEVICE_TYPE"
 echo "🐍 Python backend: $PYTHON_BACKEND"
 echo ""
-
-# Determine Docker image and setup
-BASE_IMAGE="nvcr.io/nvidia/tritonserver:$TRITON_VERSION-py3"
 
 if [ "$PYTHON_BACKEND" = "true" ]; then
     echo "📦 Python backend enabled - packages will be installed at startup"

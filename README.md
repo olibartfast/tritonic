@@ -2,7 +2,11 @@
 
 # TritonIC - C++ Triton Inference Client for Computer Vision Models
 
+[![CI](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml)
+
 This C++ application enables machine learning tasks (e.g. object detection, classification, optical flow ...) using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
+
+> 🚧 Status: Under Development — expect frequent updates.
 
 ## Table of Contents
 - [Project Structure](#project-structure)
@@ -31,18 +35,19 @@ tritonic/
 │   └── utils/                    # Utility classes
 ├── include/                      # Header files
 ├── deploy/                       # Model deployment scripts
-│   └── classifier/               # Classification models
-│       ├── tensorflow/           # TensorFlow deployments
-│       ├── torchvision/          # Torchvision deployments
-│       └── vit/                  # Vision Transformer deployments
+│   ├── classifier/               # Classification models
+│   │   ├── ...
+│   ├── instance_segmentation/    # Instance segmentation models
+│   │   └── ...
+│   ├── object_detection/         # Object detection models
+│   │   └── ....
+│   ├── optical_flow/             # Optical flow models
+│   └── video_classification/     # Video classification models (TODO)
 ├── scripts/                      # All scripts
 │   ├── docker/                   # Docker-related scripts
 │   │   ├── docker_triton_run.sh  # Run Triton server
 │   │   ├── extract_triton_libs.sh# Extract client libraries
-│   │   ├── run_client.sh         # Run client application
-│   │   ├── run_debug.sh          # Run with debug mode
-│   │   ├── run_optical_flow.sh   # Run optical flow
-│   │   └── run_tests.sh          # Run unit tests
+│   │   └── ...
 │   ├── setup/                    # Setup scripts
 │   └── tools/                    # Utility scripts
 ├── config/                       # Configuration files
@@ -50,16 +55,11 @@ tritonic/
 ├── docs/                         # Documentation
 │   └── guides/                   # User guides
 ├── labels/                       # Label files
-│   ├── coco.txt                  # COCO class labels
-│   └── imagenet.txt              # ImageNet class labels
+│   ├── ...
 ├── data/                         # Data files
-│   ├── images/                   # Test images
-│   ├── videos/                   # Test videos
-│   └── models/                   # Model files
+│   ├── ...
 └── tests/                        # Test files
-    ├── mocks/                    # Mock objects
-    ├── unit/                     # Unit tests
-    └── integration/              # Integration tests
+    ├── ...
 ```
 
 ## Tested Models
@@ -79,6 +79,7 @@ tritonic/
 - [RT-DETRv2](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetrv2_pytorch)
 - [D-FINE](https://github.com/Peterande/D-FINE)
 - [DEIM](https://github.com/ShihuaHuang95/DEIM)
+- [DEIMv2](https://github.com/Intellindust-AI-Lab/DEIMv2)
 - [RF-DETR](https://github.com/roboflow/rf-detr)
 
 ## Instance Segmentation
@@ -87,6 +88,7 @@ tritonic/
 - [YOLOv8](https://github.com/ultralytics/ultralytics)
 - [YOLO11](https://github.com/ultralytics/ultralytics)
 - [YOLOv12](https://github.com/sunsmarterjie/yolov12)
+- [RF-DETR](https://github.com/roboflow/rf-detr)
 
 ## Classification
 
@@ -105,7 +107,7 @@ To build the client libraries, refer to the official [Triton Inference Server cl
 
 ### Alternative: Extract Client Libraries from Docker
 
-For convenience, you can extract pre-built Triton client libraries from the official NVIDIA Triton Server SDK Docker image:
+For convenience, you can extract the pre-built Triton client libraries from the official NVIDIA Triton Server SDK image using [Docker](docs/guides/Docker_setup.md):
 
 ```bash
 # Run the extraction script
@@ -151,6 +153,9 @@ apt install libcurl4-openssl-dev
 ```
 
 6. **OpenCV 4**: Tested version: 4.7.0
+```bash
+apt install libopencv-dev
+```
 
 ## Development Setup
 
@@ -204,6 +209,7 @@ cmake --build .
 - [Instance Segmentation](docs/guides/InstanceSegmentation.md)
 - [Optical Flow](docs/guides/OpticalFlow.md)
 
+
 *Other tasks are in TODO list.*
 
 ## Notes
@@ -223,7 +229,18 @@ To deploy models, set up a model repository following the [Triton Model Reposito
             <model_binary>
 ```
 
-To start Triton Server:
+### Starting Triton Server
+
+Use the provided script for easy setup:
+```bash
+# Start Triton server with GPU support
+./scripts/docker/docker_triton_run.sh /path/to/model_repository 25.06 gpu
+
+# Start with CPU only
+./scripts/docker/docker_triton_run.sh /path/to/model_repository 25.06 cpu
+```
+
+Or manually with Docker:
 ```bash
 docker run --gpus=1 --rm \
   -p 8000:8000 -p 8001:8001 -p 8002:8002 \
@@ -301,20 +318,23 @@ To view all available parameters, run:
 | YOLOv9                 | yolov9                 |
 | YOLOv10                | yolov10                |
 | YOLO11                 | yolo11                 |
-| YOLOv12                | yolov12                 |
+| YOLOv12                | yolov12                |
 | RT-DETR                | rtdetr                 |
 | RT-DETRV2              | rtdetrv2               |
 | RT-DETR Ultralytics    | rtdetrul               |
 | RF-DETR                | rfdetr                 |
+| RF-DETR Segmentation   | rfdetr                 |
 | D-FINE                 | dfine                  |
 | DEIM                   | deim                   |
+| DEIMv2                 | deim                   |
 | Torchvision Classifier | torchvision-classifier |
 | Tensorflow Classifier  | tensorflow-classifier  |
-| ViT Classifier         | vit-classifier     |
+| ViT Classifier         | vit-classifier         |
 | YOLOv5 Segmentation    | yoloseg                |
 | YOLOv8 Segmentation    | yoloseg                |
 | YOLO11 Segmentation    | yoloseg                |
 | YOLO12 Segmentation    | yoloseg                |
+| RF-DETR Segmentation   | rfdetr                 |
 | RAFT Optical Flow      | raft                   |
 
 
