@@ -1,0 +1,263 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/workflows/docker-publish.yml'
+      - '.github/workflows/pre-commit.yml'
+  pull_request:
+    branches: [ master, main, develop ]
+    types: [ opened, synchronize, reopened ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  schedule:
+    # Run security scans weekly on Mondays at 00:00 UTC
+    - cron: '0 0 * * 1'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Cache Triton Client Libraries
+      id: cache-triton
+      uses: actions/cache@v4
+      with:
+        path: triton_client_libs
+        key: triton-client-r25.06-${{ runner.os }}
+
+    - name: Extract Triton Client Libraries
+      if: steps.cache-triton.outputs.cache-hit != 'true'
+      run: |
+        chmod +x scripts/docker/extract_triton_libs.sh
+        ./scripts/docker/extract_triton_libs.sh
+
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          rapidjson-dev \
+          libcurl4-openssl-dev \
+          libprotobuf-dev \
+          protobuf-compiler \
+          libgtest-dev \
+          libgmock-dev
+
+    - name: Install OpenCV
+      run: |
+        sudo apt-get install -y \
+          libopencv-dev \
+          libopencv-core-dev \
+          libopencv-highgui-dev \
+          libopencv-imgproc-dev \
+          libopencv-imgcodecs-dev \
+          libopencv-videoio-dev
+
+    - name: Configure CMake
+      env:
+        TritonClientBuild_DIR: ${{ github.workspace }}/triton_client_libs/install
+      run: |
+        mkdir -p build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON ..
+
+    - name: Build Project
+      run: |
+        cd build
+        cmake --build . -j$(nproc)
+
+    - name: Run Unit Tests
+      env:
+        TritonClientBuild_DIR: ${{ github.workspace }}/triton_client_libs/install
+      run: |
+        cd build
+        # List test executables
+        ls -la tests/ || true
+        ls -la run_tests || true
+        # Run tests directly if CTest doesn't find them
+        if [ -f "tests/run_tests" ]; then
+          ./tests/run_tests --gtest_output=xml:test-results.xml
+        elif [ -f "run_tests" ]; then
+          ./run_tests --gtest_output=xml:test-results.xml
+        else
+          ctest --output-on-failure --verbose
+        fi
+
+  codeql:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp', 'python' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v4
+      with:
+        languages: ${{ matrix.language }}
+
+    - name: Install Dependencies for C++
+      if: matrix.language == 'cpp'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          rapidjson-dev \
+          libcurl4-openssl-dev \
+          libprotobuf-dev \
+          protobuf-compiler \
+          libopencv-dev
+
+    - name: Build C++ Project
+      if: matrix.language == 'cpp'
+      run: |
+        chmod +x scripts/docker/extract_triton_libs.sh
+        ./scripts/docker/extract_triton_libs.sh || true
+        
+        export TritonClientBuild_DIR=$(pwd)/triton_client_libs/install
+        mkdir -p build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release .. || true
+        cmake --build . || true
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v4
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      with:
+        fail-on-severity: moderate
+
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install Pre-commit
+      run: |
+        pip install pre-commit
+
+    - name: Run Pre-commit Hooks
+      run: |
+        pre-commit run --all-files || true
+
+  code-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: AI Code Review
+      uses: freeedcom/ai-codereviewer@v2
+      with:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        exclude: "**/*.md,**/*.txt,**/*.json,**/*.yaml,**/*.yml,**/labels/**,**/data/**"
+        max_files: 10
+
+    - name: Install lizard
+      run: pip install lizard
+
+    - name: Run C++ Complexity Analysis
+      run: |
+        echo "## Code Complexity Analysis" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Functions with High Complexity (CCN > 15)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        lizard -l cpp -w -L 50 -C 15 src/ include/ || true
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Note:** Functions with Cyclomatic Complexity > 15 should be refactored." >> $GITHUB_STEP_SUMMARY
+
+    - name: PR Statistics
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          const files = await github.rest.pulls.listFiles({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: pr.number,
+          });
+          
+          const stats = files.data.reduce((acc, file) => {
+            acc.totalFiles++;
+            acc.additions += file.additions;
+            acc.deletions += file.deletions;
+            acc.changes += file.changes;
+            
+            const ext = file.filename.split('.').pop();
+            acc.fileTypes[ext] = (acc.fileTypes[ext] || 0) + 1;
+            
+            return acc;
+          }, {
+            totalFiles: 0,
+            additions: 0,
+            deletions: 0,
+            changes: 0,
+            fileTypes: {}
+          });
+          
+          const summary = `## Pull Request Statistics
+          
+          📊 **Changes Overview:**
+          - **Files Changed:** ${stats.totalFiles}
+          - **Lines Added:** ${stats.additions}
+          - **Lines Deleted:** ${stats.deletions}
+          - **Total Changes:** ${stats.changes}
+          
+          📁 **File Types:**
+          ${Object.entries(stats.fileTypes).map(([ext, count]) => \`- \${ext}: \${count}\`).join('\\n')}
+          
+          ⚠️ **Review Notes:**
+          ${stats.totalFiles > 20 ? '- This is a large PR. Consider breaking it into smaller PRs for easier review.' : ''}
+          ${stats.changes > 500 ? '- High number of changes. Thorough review recommended.' : ''}
+          ${stats.additions > stats.deletions * 3 ? '- PR adds significantly more code than it removes.' : ''}
+          `;
+          
+          core.summary.addRaw(summary).write();

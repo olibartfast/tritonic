@@ -30,7 +30,12 @@ struct OpticalFlow {
     float max_displacement; // Maximum flow magnitude
 };
 
-using Result = std::variant<Classification, Detection, InstanceSegmentation, OpticalFlow>;
+struct VideoClassification : public Classification{
+    std::string action_label;   // Human-readable action name
+    std::vector<float> frame_scores;  // Confidence scores per frame if needed
+};
+
+using Result = std::variant<Classification, Detection, InstanceSegmentation, OpticalFlow, VideoClassification>;
 using TensorElement = std::variant<float, int32_t, int64_t>;
 
 
@@ -38,7 +43,8 @@ enum class TaskType {
     OpticalFlow,
     Classification,
     Detection,
-    InstanceSegmentation
+    InstanceSegmentation,
+    VideoClassification
 };
 
 class InputDimensionError : public std::runtime_error {

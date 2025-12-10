@@ -96,11 +96,11 @@ std::vector<std::vector<uint8_t>> RTDetr::preprocess(const std::vector<cv::Mat>&
 }
 
 
-std::vector<Result> RTDetr::postprocess(const cv::Size& frame_size, 
+std::vector<Result> RTDetr::postprocess(const cv::Size& frame_size,
                                        const std::vector<std::vector<TensorElement>>& infer_results,
                                        const std::vector<std::vector<int64_t>>& infer_shapes) {
     
-    const float confThreshold = 0.5f, iouThreshold = 0.4f;
+    const float confThreshold = 0.5f;
 
     const auto& scores = infer_results[scores_idx_.value()];
     const auto& boxes = infer_results[boxes_idx_.value()];
@@ -108,12 +108,8 @@ std::vector<Result> RTDetr::postprocess(const cv::Size& frame_size,
 
     int rows = infer_shapes[scores_idx_.value()][1]; // Assuming this is 300
 
-    std::vector<int> classIds;
-    std::vector<float> confidences;
-    std::vector<cv::Rect> boxes_rect;
-    classIds.reserve(rows);
-    confidences.reserve(rows);
-    boxes_rect.reserve(rows);
+    std::vector<Result> detections;
+    detections.reserve(rows);
 
     auto get_float = [](const TensorElement& elem) {
         return std::visit([](auto&& arg) -> float { return static_cast<float>(arg); }, elem);
@@ -138,8 +134,6 @@ std::vector<Result> RTDetr::postprocess(const cv::Size& frame_size,
                 continue;
             }
 
-            classIds.push_back(class_id);
-            confidences.push_back(score);
             float x1 = std::get<float>(boxes[i*4]);
             float y1 = std::get<float>(boxes[i*4 + 1]);
             float x2 = std::get<float>(boxes[i*4 + 2]);
@@ -149,23 +143,14 @@ std::vector<Result> RTDetr::postprocess(const cv::Size& frame_size,
             y2 *= r_h;
             x1 *= r_w;
             y1 *= r_h;
-            boxes_rect.push_back(cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)));
+
+            Detection d;
+            d.bbox = cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2));
+            d.class_confidence = score;
+            d.class_id = class_id;
+            detections.emplace_back(d);
         }
     }
 
-    std::vector<int> indices;
-    cv::dnn::NMSBoxes(boxes_rect, confidences, confThreshold, iouThreshold, indices);
-    
-    std::vector<Result> detections;
-    detections.reserve(indices.size());
-   for (int idx : indices)
-    {
-        Detection d;
-        d.bbox = cv::Rect(boxes_rect[idx]);
-        d.class_confidence = confidences[idx];
-        d.class_id = classIds[idx];
-        detections.emplace_back(d);
-    }                
     return detections; 
 }
-
