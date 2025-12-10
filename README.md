@@ -270,6 +270,42 @@ For dynamic input sizes:
     --input_sizes="c,h,w"
 ```
 
+### Shared Memory Support
+
+Tritonic supports shared memory to improve inference performance by reducing data copying between the client and Triton server. Two types of shared memory are available:
+
+#### System (POSIX) Shared Memory
+Uses CPU-based shared memory for efficient data transfer:
+```bash
+./tritonic \
+    --source=/path/to/source.format \
+    --model=<model_name> \
+    --shared_memory_type=system \
+    ...
+```
+
+#### CUDA Shared Memory
+Uses GPU memory directly for zero-copy inference (requires GPU support):
+```bash
+./tritonic \
+    --source=/path/to/source.format \
+    --model=<model_name> \
+    --shared_memory_type=cuda \
+    --cuda_device_id=0 \
+    ...
+```
+
+**Configuration Options:**
+- `--shared_memory_type` or `-smt`: Shared memory type (`none`, `system`, or `cuda`). Default: `none`
+- `--cuda_device_id` or `-cdi`: CUDA device ID when using CUDA shared memory. Default: `0`
+
+**When to Use Shared Memory:**
+- **System shared memory**: Best for CPU-only deployments or when transferring large data over network
+- **CUDA shared memory**: Best for GPU-accelerated inference with GPU-resident data
+- **Performance gains**: Most noticeable with large inputs/outputs or high-throughput scenarios
+
+See [`examples/shared_memory_example.cpp`](examples/shared_memory_example.cpp) for implementation details.
+
 ### Quick Start with Docker Scripts
 
 Use the provided Docker scripts for quick testing:
