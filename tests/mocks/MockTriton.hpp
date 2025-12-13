@@ -22,4 +22,14 @@ public:
     MOCK_METHOD(void, printModelInfo, (const TritonModelInfo& model_info), (const, override));
     
     MOCK_METHOD(void, createTritonClient, (), (override));
+    
+    // Shared memory methods from master branch
+    MOCK_METHOD(void, registerInputSharedMemory, (), (override));
+    
+    MOCK_METHOD(void, registerOutputSharedMemory, (), (override));
+    
+    MOCK_METHOD(void, unregisterSharedMemory, (), (override));
+    
+    MOCK_METHOD((std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>>),
+                inferWithSharedMemory, (const std::vector<std::vector<uint8_t>>& input_data), (override));
 }; 
