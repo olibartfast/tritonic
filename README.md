@@ -27,40 +27,20 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 
 ```
 tritonic/
-├── src/                          # Source code
-│   ├── main/                     # Main application
-│   │   └── client.cpp           # Main entry point
-│   ├── triton/                   # Triton client code
-│   ├── tasks/                    # Task implementations
-│   └── utils/                    # Utility classes
+├── src/                          # Source code (main app, triton client, tasks, utils)
 ├── include/                      # Header files
-├── deploy/                       # Model deployment scripts
-│   ├── classifier/               # Classification models
-│   │   ├── ...
-│   ├── instance_segmentation/    # Instance segmentation models
-│   │   └── ...
-│   ├── object_detection/         # Object detection models
-│   │   └── ....
-│   ├── optical_flow/             # Optical flow models
-│   └── video_classification/     # Video classification models (TODO)
-├── scripts/                      # All scripts
-│   ├── docker/                   # Docker-related scripts
-│   │   ├── docker_triton_run.sh  # Run Triton server
-│   │   ├── extract_triton_libs.sh# Extract client libraries
-│   │   └── ...
-│   ├── setup/                    # Setup scripts
-│   └── tools/                    # Utility scripts
+├── deploy/                       # Model export scripts (per task type)
+├── scripts/                      # Docker, setup, and utility scripts
 ├── config/                       # Configuration files
-│   └── environments/             # Environment configs
-├── docs/                         # Documentation
-│   └── guides/                   # User guides
-├── labels/                       # Label files
-│   ├── ...
-├── data/                         # Data files
-│   ├── ...
-└── tests/                        # Test files
-    ├── ...
+├── docs/                         # Documentation and guides
+├── labels/                       # Label files (COCO, ImageNet, etc.)
+├── data/                         # Data files (images, videos, outputs)
+└── tests/                        # Unit and integration tests
 ```
+
+**CMake Fetched Dependencies:**
+- [vision-core](https://github.com/olibartfast/vision-core) - Model pre/post processing
+- [fmt](https://github.com/fmtlib/fmt) - Formatting library
 
 ## Tested Models
 
@@ -211,6 +191,10 @@ cmake --build .
 
 
 *Other tasks are in TODO list.*
+
+## Model Pre/Post Processing
+
+All model-specific preprocessing and postprocessing logic is handled by the [vision-core](https://github.com/olibartfast/vision-core) library, which is automatically fetched as a CMake dependency via `FetchContent`. This modular approach keeps the Triton client code clean and allows the vision processing logic to be reused across different inference backends.
 
 ## Notes
 
