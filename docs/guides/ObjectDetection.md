@@ -86,7 +86,7 @@ models.convert_to_onnx(model=net, input_shape=(3,640,640), out_path="yolo_nas_s.
                                                "output_names": ['output0', 'output1']})
 ```
 
-## RT-DETR Family (lyuwenyu)
+## RT-DETR Family
 From [lyuwenyu RT-DETR repository](https://github.com/lyuwenyu/RT-DETR/):
 
 ### Universal Export Launcher Script (Recommended for All Versions)
