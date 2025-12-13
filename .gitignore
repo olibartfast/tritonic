@@ -3,3 +3,4 @@ build
 model_repository
 build_test
 triton_client_libs
+3rdparty
