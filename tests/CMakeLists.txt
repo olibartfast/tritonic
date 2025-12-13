@@ -37,6 +37,7 @@ set(TEST_SOURCES
     test_config_manager_basic.cpp
     test_logger.cpp
     test_triton.cpp
+    test_shared_memory.cpp
 )
 
 # Source files that need to be tested (without main)
@@ -45,6 +46,7 @@ set(TESTABLE_SOURCES
     ${PROJECT_SOURCE_DIR}/src/utils/Logger.cpp
     ${PROJECT_SOURCE_DIR}/src/utils/utils.cpp
     ${PROJECT_SOURCE_DIR}/src/utils/FileSystem.cpp
+    ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp
 )
 
 # Create the test executable
@@ -55,7 +57,6 @@ target_link_libraries(run_tests
     PRIVATE
     GTest::gtest
     GTest::gtest_main
-    GTest::gmock
     grpcclient
     httpclient
     ${OpenCV_LIBS}
