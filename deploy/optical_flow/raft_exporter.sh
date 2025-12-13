@@ -1,15 +1,17 @@
 #!/bin/bash -ex
 
 # Usage: 
-#   ./raft_exporter.sh [--use-venv] [--cpu-only]
-#   USE_VENV=true CPU_ONLY=true ./raft_exporter.sh
-# Default: Use Docker with CUDA
+#   ./raft_exporter.sh [--use-venv] [--cpu-only] [--format=FORMAT]
+#   USE_VENV=true CPU_ONLY=true EXPORT_FORMAT=onnx ./raft_exporter.sh
+# Default: Use Docker with CUDA, traced format
 # With --use-venv: Use virtual environment
 # With --cpu-only: Force CPU execution
+# With --format: Export format (all, traced, scripted, onnx)
 
 # Initialize variables (can be overridden by environment variables)
 USE_VENV=${USE_VENV:-false}
 CPU_ONLY=${CPU_ONLY:-false}
+EXPORT_FORMAT=${EXPORT_FORMAT:-traced}
 
 # Parse command line arguments (override environment variables)
 for arg in "$@"; do
@@ -20,10 +22,14 @@ for arg in "$@"; do
         --cpu-only)
             CPU_ONLY=true
             ;;
+        --format=*)
+            EXPORT_FORMAT="${arg#*=}"
+            ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: $0 [--use-venv] [--cpu-only]"
-            echo "Or set environment variables: USE_VENV=true CPU_ONLY=true $0"
+            echo "Usage: $0 [--use-venv] [--cpu-only] [--format=FORMAT]"
+            echo "Or set environment variables: USE_VENV=true CPU_ONLY=true EXPORT_FORMAT=onnx $0"
+            echo "Available formats: all, traced, scripted, onnx"
             exit 1
             ;;
     esac
@@ -46,7 +52,7 @@ if [[ "$USE_VENV" == "true" ]]; then
     
     # Get script directory and build Python command
     SCRIPT_DIR="$(dirname "$0")"
-    PYTHON_CMD="python $SCRIPT_DIR/raft_exporter.py --model-type large --output-dir exports --format traced"
+    PYTHON_CMD="python $SCRIPT_DIR/raft_exporter.py --model-type large --output-dir exports --format $EXPORT_FORMAT"
     
     if [[ "$CPU_ONLY" == "true" ]]; then
         PYTHON_CMD="$PYTHON_CMD --cpu-only"
@@ -77,7 +83,7 @@ else
     --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 \
       -w /workspace \
       nvcr.io/nvidia/pytorch:24.12-py3 /bin/bash -cx \
-      "pip install onnx-graphsurgeon && python raft_exporter.py --model-type large --output-dir /exports $DEVICE_ARG --format traced"
+      "pip install onnx-graphsurgeon && python raft_exporter.py --model-type large --output-dir /exports $DEVICE_ARG --format $EXPORT_FORMAT"
 fi
 
 echo "RAFT model ready."
