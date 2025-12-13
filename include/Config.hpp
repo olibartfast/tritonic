@@ -32,6 +32,10 @@ struct Config {
     int num_threads = 1;
     bool enable_async = false;
     
+    // Shared memory configuration
+    std::string shared_memory_type = "none";  // "none", "system", or "cuda"
+    int cuda_device_id = 0;
+    
     // Logging configuration
     std::string log_level = "info";
     std::string log_file = "";
