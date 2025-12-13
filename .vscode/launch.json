@@ -175,6 +175,20 @@
             "cwd": "${workspaceFolder}" 
         }, 
         {
+            "name": "rtdetrv4_hgnetv2_s_onnx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tritonic",
+            "args": ["--source=data/images/bus.jpg", 
+            "--serverAddress=localhost",
+            "--labelsFile=labels/coco.txt",
+            "--model=rtdetrv4_hgnetv2_s_onnx",
+            "--model_type=rtdetr"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        },         
+        {
             "name": "rtdetr_r18vd_6x_coco onnx",
             "type": "cppdbg",
             "request": "launch",
