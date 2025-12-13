@@ -345,33 +345,19 @@ To view all available parameters, run:
 ```
 
 #### Model Type Tag Parameters
-| Model                  | Model Type Parameter   |
-|------------------------|------------------------|
-| YOLOv5                 | yolov5                 |
-| YOLOv6                 | yolov6                 |
-| YOLOv7                 | yolov7                 |
-| YOLOv8                 | yolov8                 |
-| YOLOv9                 | yolov9                 |
-| YOLOv10                | yolov10                |
-| YOLO11                 | yolo11                 |
-| YOLOv12                | yolov12                |
-| RT-DETR                | rtdetr                 |
-| RT-DETRV2              | rtdetrv2               |
-| RT-DETR Ultralytics    | rtdetrul               |
-| RF-DETR                | rfdetr                 |
-| RF-DETR Segmentation   | rfdetr                 |
-| D-FINE                 | dfine                  |
-| DEIM                   | deim                   |
-| DEIMv2                 | deim                   |
-| Torchvision Classifier | torchvision-classifier |
-| Tensorflow Classifier  | tensorflow-classifier  |
-| ViT Classifier         | vit-classifier         |
-| YOLOv5 Segmentation    | yoloseg                |
-| YOLOv8 Segmentation    | yoloseg                |
-| YOLO11 Segmentation    | yoloseg                |
-| YOLO12 Segmentation    | yoloseg                |
-| RF-DETR Segmentation   | rfdetr                 |
-| RAFT Optical Flow      | raft                   |
+| Model                  | Model Type Parameter   | Notes |
+|------------------------|------------------------|-------|
+| YOLOv5 / v6 / v7 / v8 / v9 / v11 / v12 | `yolo` | Any `yolo*` variant works |
+| YOLOv10                | `yolov10`              | Specific output format |
+| YOLO-NAS               | `yolonas`              | Specific output format |
+| RT-DETR / RT-DETRv2 / RT-DETRv4 / D-FINE / DEIM / DEIMv2 | `rtdetr` | All RT-DETR style models share the same postprocessor |
+| RT-DETR Ultralytics    | `rtdetrul`             |       |
+| RF-DETR (Detection & Segmentation) | `rfdetr`  |       |
+| YOLOv5/v8/v11/v12 Segmentation | `yoloseg`       |       |
+| Torchvision Classifier | `torchvision-classifier` |     |
+| Tensorflow Classifier  | `tensorflow-classifier` |      |
+| ViT Classifier         | `vit-classifier`       |       |
+| RAFT Optical Flow      | `raft`                 |       |
 
 
 ## Docker Support  
