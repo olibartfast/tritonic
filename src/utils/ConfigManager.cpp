@@ -28,6 +28,8 @@ std::unique_ptr<Config> ConfigManager::loadFromCommandLine(int argc, const char*
         "{confidence_threshold ct |0.5 | confidence threshold}"
         "{nms_threshold nt |0.4 | NMS threshold}"
         "{verbose v      |false | verbose output}"
+        "{shared_memory_type smt |none | shared memory type (none, system, cuda)}"
+        "{cuda_device_id cdi |0  | CUDA device ID for CUDA shared memory}"
         "{log_level ll   |info  | log level (debug, info, warn, error)}"
         "{log_file lf    |      | log file path}";
 
@@ -52,6 +54,8 @@ std::unique_ptr<Config> ConfigManager::loadFromCommandLine(int argc, const char*
     config->confidence_threshold = parser.get<float>("confidence_threshold");
     config->nms_threshold = parser.get<float>("nms_threshold");
     config->verbose = parser.get<bool>("verbose");
+    config->shared_memory_type = parser.get<cv::String>("shared_memory_type");
+    config->cuda_device_id = parser.get<int>("cuda_device_id");
     config->log_level = parser.get<cv::String>("log_level");
     config->log_file = parser.get<cv::String>("log_file");
 
@@ -109,6 +113,8 @@ std::unique_ptr<Config> ConfigManager::loadFromFile(const std::string& filename)
         else if (key == "confidence_threshold") config->confidence_threshold = std::stof(value);
         else if (key == "nms_threshold") config->nms_threshold = std::stof(value);
         else if (key == "verbose") config->verbose = (value == "true");
+        else if (key == "shared_memory_type") config->shared_memory_type = value;
+        else if (key == "cuda_device_id") config->cuda_device_id = std::stoi(value);
         else if (key == "log_level") config->log_level = value;
         else if (key == "log_file") config->log_file = value;
         else if (key == "input_sizes") config->input_sizes = parseInputSizes(value);
@@ -138,6 +144,8 @@ std::unique_ptr<Config> ConfigManager::loadFromEnvironment() {
     config->confidence_threshold = std::stof(getEnvVar("TRITON_CONFIDENCE_THRESHOLD", "0.5"));
     config->nms_threshold = std::stof(getEnvVar("TRITON_NMS_THRESHOLD", "0.4"));
     config->verbose = (getEnvVar("TRITON_VERBOSE", "false") == "true");
+    config->shared_memory_type = getEnvVar("TRITON_SHARED_MEMORY_TYPE", "none");
+    config->cuda_device_id = std::stoi(getEnvVar("TRITON_CUDA_DEVICE_ID", "0"));
     config->log_level = getEnvVar("TRITON_LOG_LEVEL", "info");
     config->log_file = getEnvVar("TRITON_LOG_FILE", "");
     
@@ -178,6 +186,8 @@ void ConfigManager::saveToFile(const Config& config, const std::string& filename
     file << "confidence_threshold=" << config.confidence_threshold << "\n";
     file << "nms_threshold=" << config.nms_threshold << "\n";
     file << "verbose=" << (config.verbose ? "true" : "false") << "\n";
+    file << "shared_memory_type=" << config.shared_memory_type << "\n";
+    file << "cuda_device_id=" << config.cuda_device_id << "\n";
     file << "log_level=" << config.log_level << "\n";
     file << "log_file=" << config.log_file << "\n";
 }
@@ -194,6 +204,10 @@ void ConfigManager::printConfig(const Config& config) {
     logger.infof("  Confidence Threshold: {}", config.confidence_threshold);
     logger.infof("  NMS Threshold: {}", config.nms_threshold);
     logger.infof("  Verbose: {}", config.verbose ? "true" : "false");
+    logger.infof("  Shared Memory Type: {}", config.shared_memory_type);
+    if (config.shared_memory_type == "cuda") {
+        logger.infof("  CUDA Device ID: {}", config.cuda_device_id);
+    }
     logger.infof("  Log Level: {}", config.log_level);
     if (!config.log_file.empty()) {
         logger.infof("  Log File: {}", config.log_file);
