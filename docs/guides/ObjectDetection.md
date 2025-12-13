@@ -86,20 +86,95 @@ models.convert_to_onnx(model=net, input_shape=(3,640,640), out_path="yolo_nas_s.
                                                "output_names": ['output0', 'output1']})
 ```
 
-## RT-DETR/RT-DETRv2
+## RT-DETR Family (lyuwenyu)
 From [lyuwenyu RT-DETR repository](https://github.com/lyuwenyu/RT-DETR/):
 
-### OnnxRuntime
+### Universal Export Launcher Script (Recommended for All Versions)
+
+The tritonic project provides a universal export launcher that supports **all RT-DETR versions** (v1, v2, v3, v4) as well as **D-FINE** and **DEIM** models:
+
+```bash
+bash deploy/object_detection/rt-detr/export.sh \
+    --config <path-to-config.yml> \
+    --resume <path-to-checkpoint.pth> \
+    --repo-dir <path-to-repo> \
+    --download-weights \
+    --weights-dir ./weights \
+    --format onnx
+```
+
+**Options:**
+- `--config` or `-c`: Path to model configuration file
+- `--resume` or `-r`: Path to checkpoint file (will be downloaded if `--download-weights` is used)
+- `--repo-dir`: Path to RT-DETR repository (auto-detected based on config)
+- `--download-weights`: Automatically download pretrained weights
+- `--weights-dir`: Directory to store downloaded weights (default: ./weights)
+- `--format`: Export format: `onnx`, `tensorrt`, or `both` (default: onnx)
+- `--version`: Force specific version: `v1`, `v2`, `v3`, `v4`, `dfine`, `deim`
+- `--clone-repo`: Clone appropriate repository if needed
+- `--install-deps`: Install dependencies from requirements.txt
+- `--skip-venv-check`: Skip virtual environment validation
+- `--no-check`: Skip ONNX model validation
+- `--no-simplify`: Skip ONNX model simplification
+- `--model-info`: Display model FLOPs, MACs, and parameters
+- `--benchmark`: Run performance benchmarks
+
+**Examples:**
+
+RT-DETRv4:
+```bash
+bash deploy/object_detection/rt-detr/export.sh \
+    --config 3rdparty/repositories/pytorch/RT-DETRv4/configs/rtv4/rtv4_hgnetv2_s_coco.yml \
+    --resume weights/rtv4_hgnetv2_s_model.pth \
+    --repo-dir 3rdparty/repositories/pytorch/RT-DETRv4 \
+    --download-weights --format onnx
+```
+
+RT-DETRv2:
+```bash
+bash deploy/object_detection/rt-detr/export.sh \
+    --config 3rdparty/repositories/pytorch/RT-DETR/rtdetrv2_pytorch/configs/rtdetrv2/rtdetrv2_r50vd_6x_coco.yml \
+    --resume weights/rtdetrv2_r50vd_6x_coco.pth \
+    --repo-dir 3rdparty/repositories/pytorch/RT-DETR/rtdetrv2_pytorch \
+    --format onnx
+```
+
+**Notes:**
+- The script automatically detects RT-DETR version from the config file
+- **⚠️ Batch Size Warning**: The export script patches the hardcoded batch size 32 → 1 at runtime to prevent OOM errors. If you experience memory issues, ensure this patching works correctly or manually modify `export_onnx.py`
+- For RT-DETRv3 (PaddlePaddle-based), the script handles the different export pipeline automatically
+
+### Manual Export (Alternative)
+
+#### RT-DETR/RT-DETRv2 (PyTorch)
 ```bash
 export RTDETR_VERSION=rtdetr  # or rtdetrv2
-export MODEL_VERSION=rtdetr_r18vd_6x_coco  # or select other model from RT-DETR/RT-DETRV2 model zoo
+export MODEL_VERSION=rtdetr_r18vd_6x_coco  # or select from model zoo
 cd RT-DETR/${RTDETR_VERSION}_pytorch
 python tools/export_onnx.py -c configs/${RTDETR_VERSION}/${MODEL_VERSION}.yml -r path/to/checkpoint --check
 ```
 
-### TensorRT
+#### RT-DETRv4 (PyTorch)
 ```bash
-trtexec --onnx=<model>.onnx --saveEngine=<model>.engine --minShapes=images:1x3x640x640,orig_target_sizes:1x2 --optShapes=images:1x3x640x640,orig_target_sizes:1x2 --maxShapes=images:1x3x640x640,orig_target_sizes:1x2
+cd 3rdparty/repositories/pytorch/RT-DETRv4
+python tools/deployment/export_onnx.py \
+    -c configs/rtv4/rtv4_hgnetv2_s_coco.yml \
+    -r /path/to/checkpoint.pth \
+    --check --simplify
+```
+
+**Available RT-DETRv4 Models:**
+- `rtv4_hgnetv2_s_coco` - Small model
+- `rtv4_hgnetv2_m_coco` - Medium model  
+- `rtv4_hgnetv2_l_coco` - Large model
+- `rtv4_hgnetv2_x_coco` - Extra large model
+
+### TensorRT (All RT-DETR Variants)
+```bash
+trtexec --onnx=<model>.onnx --saveEngine=<model>.engine \
+    --minShapes=images:1x3x640x640,orig_target_sizes:1x2 \
+    --optShapes=images:1x3x640x640,orig_target_sizes:1x2 \
+    --maxShapes=images:1x3x640x640,orig_target_sizes:1x2
 ```
 
 ## RT-DETR (Ultralytics)
