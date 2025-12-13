@@ -24,6 +24,7 @@ set(TEST_SOURCES
     test_classification_preprocess.cpp
     test_app.cpp
     test_rfdetr_repro.cpp
+    test_optical_flow.cpp
 )
 
 # Source files that need to be tested (without main)
@@ -33,6 +34,7 @@ set(TESTABLE_SOURCES
     ${PROJECT_SOURCE_DIR}/src/utils/utils.cpp
     ${PROJECT_SOURCE_DIR}/src/utils/FileSystem.cpp
     ${PROJECT_SOURCE_DIR}/src/main/App.cpp
+    ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp
 )
 
 # Create the test executable
