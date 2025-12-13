@@ -249,7 +249,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/tritonic",
-            "args": ["--source='data/raft/frame_001.png,data/raft/frame_002.png'", 
+            "args": ["--source='data/images/raft/frame_001.png,data/images/raft/frame_002.png'", 
             "--serverAddress=localhost",
             "--model=raft_large_onnx",
             "--model_type=raft",
