@@ -25,6 +25,7 @@ set(TEST_SOURCES
     test_app.cpp
     test_rfdetr_repro.cpp
     test_optical_flow.cpp
+    test_shared_memory.cpp
 )
 
 # Source files that need to be tested (without main)

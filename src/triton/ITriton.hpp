@@ -49,4 +49,25 @@ public:
      * Create the underlying Triton client connection
      */
     virtual void createTritonClient() = 0;
+    
+    /**
+     * Register input tensors with shared memory regions
+     */
+    virtual void registerInputSharedMemory() = 0;
+    
+    /**
+     * Register output tensors with shared memory regions
+     */
+    virtual void registerOutputSharedMemory() = 0;
+    
+    /**
+     * Unregister all shared memory regions
+     */
+    virtual void unregisterSharedMemory() = 0;
+    
+    /**
+     * Perform inference using shared memory for inputs and outputs
+     */
+    virtual std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> 
+            inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_data) = 0;
 }; 

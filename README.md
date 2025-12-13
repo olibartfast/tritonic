@@ -6,6 +6,8 @@
 
 This C++ application enables machine learning tasks (e.g. object detection, classification, optical flow ...) using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
 
+> 🚧 Status: Under Development — expect frequent updates.
+
 ## Table of Contents
 - [Project Structure](#project-structure)
 - [Tested Models](#tested-models)
@@ -105,7 +107,7 @@ To build the client libraries, refer to the official [Triton Inference Server cl
 
 ### Alternative: Extract Client Libraries from Docker
 
-For convenience, you can extract pre-built Triton client libraries from the official NVIDIA Triton Server SDK Docker image:
+For convenience, you can extract the pre-built Triton client libraries from the official NVIDIA Triton Server SDK image using [Docker](docs/guides/Docker_setup.md):
 
 ```bash
 # Run the extraction script
@@ -151,6 +153,9 @@ apt install libcurl4-openssl-dev
 ```
 
 6. **OpenCV 4**: Tested version: 4.7.0
+```bash
+apt install libopencv-dev
+```
 
 ## Development Setup
 
@@ -264,6 +269,42 @@ For dynamic input sizes:
 ```bash
     --input_sizes="c,h,w"
 ```
+
+### Shared Memory Support
+
+Tritonic supports shared memory to improve inference performance by reducing data copying between the client and Triton server. Two types of shared memory are available:
+
+#### System (POSIX) Shared Memory
+Uses CPU-based shared memory for efficient data transfer:
+```bash
+./tritonic \
+    --source=/path/to/source.format \
+    --model=<model_name> \
+    --shared_memory_type=system \
+    ...
+```
+
+#### CUDA Shared Memory
+Uses GPU memory directly for zero-copy inference (requires GPU support):
+```bash
+./tritonic \
+    --source=/path/to/source.format \
+    --model=<model_name> \
+    --shared_memory_type=cuda \
+    --cuda_device_id=0 \
+    ...
+```
+
+**Configuration Options:**
+- `--shared_memory_type` or `-smt`: Shared memory type (`none`, `system`, or `cuda`). Default: `none`
+- `--cuda_device_id` or `-cdi`: CUDA device ID when using CUDA shared memory. Default: `0`
+
+**When to Use Shared Memory:**
+- **System shared memory**: Best for CPU-only deployments or when transferring large data over network
+- **CUDA shared memory**: Best for GPU-accelerated inference with GPU-resident data
+- **Performance gains**: Most noticeable with large inputs/outputs or high-throughput scenarios
+
+See [`examples/shared_memory_example.cpp`](examples/shared_memory_example.cpp) for implementation details.
 
 ### Quick Start with Docker Scripts
 
