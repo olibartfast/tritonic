@@ -331,7 +331,8 @@ To view all available parameters, run:
 #### Model Type Tag Parameters
 | Model                  | Model Type Parameter   | Notes |
 |------------------------|------------------------|-------|
-| YOLOv5 / v6 / v7 / v8 / v9 / v11 / v12 | `yolo` | Any `yolo*` variant works |
+| YOLOv5 / v6 / v7 / v8 / v9 / v11 / v12 | `yolo` | Any `yolo*` variant works. Standard format |
+| YOLOv7 End-to-End      | `yolov7e2e`            | Only for YOLOv7 exported with `--grid --end2end` flags (requires TensorRT backend) |
 | YOLOv10                | `yolov10`              | Specific output format |
 | YOLO-NAS               | `yolonas`              | Specific output format |
 | RT-DETR / RT-DETRv2 / RT-DETRv4 / D-FINE / DEIM / DEIMv2 | `rtdetr` | All RT-DETR style models share the same postprocessor |

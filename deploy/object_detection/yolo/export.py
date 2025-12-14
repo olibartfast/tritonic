@@ -472,8 +472,9 @@ class YOLOExporter:
             '--weights', str(Path(self.model_path).absolute()),
             '--img-size', str(self.imgsz), str(self.imgsz),
             '--batch-size', str(self.batch_size),
-            '--grid',
-            '--end2end',
+            # NOTE: Removed --grid and --end2end flags for ONNX Runtime compatibility
+            # These flags add TensorRT NMS plugin which requires TensorRT backend
+            # Standard export produces [1, 25200, 85] format compatible with ONNX Runtime
         ]
         
         if simplify:
