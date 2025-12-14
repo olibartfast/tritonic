@@ -117,7 +117,23 @@
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-        },          
+        },  
+        {
+            "name": "yolov8x_onnx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tritonic",
+            "args": ["--source=data/images/dog.jpg", 
+            "--serverAddress=localhost",
+            "--labelsFile=labels/coco.txt",
+            "--model=yolov8x_onnx",
+            "--model_type=yolov8",
+            "--input_sizes=\"3,640,640\""//,
+            //
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        },                 
         {
             "name": "resnet50_tensorflow",
             "type": "cppdbg",
