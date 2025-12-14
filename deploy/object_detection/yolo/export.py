@@ -330,16 +330,19 @@ class YOLOExporter:
         
         # Check if we have a repo directory
         if repo_dir and Path(repo_dir).exists():
+            # Resolve repo_dir to absolute path
+            repo_dir = Path(repo_dir).resolve()
+            
             # Use the repo's export.py
-            export_script = Path(repo_dir) / 'export.py'
+            export_script = repo_dir / 'export.py'
             if not export_script.exists():
                 logger.error(f"export.py not found in {repo_dir}")
                 logger.info("Clone the repo with: ./clone_repo.sh --version v5")
                 sys.exit(1)
             
-            # Build command to run from repo directory
+            # Build command to run from repo directory (use relative path since cwd=repo_dir)
             cmd = [
-                sys.executable, str(export_script),
+                sys.executable, 'export.py',
                 '--weights', str(Path(self.model_path).absolute()),
                 '--img-size', str(self.imgsz),
                 '--batch-size', str(self.batch_size),
@@ -356,10 +359,10 @@ class YOLOExporter:
             logger.info(f"Command: {' '.join(cmd)}")
             
             # Run from repo directory
-            result = subprocess.run(cmd, cwd=repo_dir, check=True)
+            result = subprocess.run(cmd, cwd=str(repo_dir), check=True)
             
-            # Find the exported ONNX file
-            expected_onnx = Path(self.model_path).with_suffix('.onnx')
+            # Find the exported ONNX file (YOLOv5 exports next to the weights file)
+            expected_onnx = Path(self.model_path).absolute().with_suffix('.onnx')
             if expected_onnx.exists():
                 dest_path = self.output_dir / expected_onnx.name
                 shutil.move(str(expected_onnx), str(dest_path))
