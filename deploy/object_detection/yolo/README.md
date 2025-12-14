@@ -139,6 +139,11 @@ python export.py --model yolov5s.pt --version v5 --repo-dir ./repositories/yolov
 python export.py --model yolov7.pt --version v7 --repo-dir ./repositories/yolov7 --format onnx
 ```
 
+**Note on YOLOv7 Export:**
+- The default export creates standard YOLO format `[1, 25200, 85]` compatible with **ONNX Runtime**
+- Model type to use: `yolo` (same as v5/v6/v8)
+- For end-to-end export with TensorRT NMS plugin (requires **TensorRT backend**), manually add `--grid --end2end` flags to the YOLOv7 export.py command and use model type `yolov7e2e`
+
 ### TensorRT Export
 
 ```bash
