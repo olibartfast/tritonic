@@ -69,21 +69,21 @@
         "--serverAddress=localhost",
         "--labelsFile=labels/coco.txt",
         "--model=yolov9e_onnx",
-        "--model_type=yolov9"
+        "--model_type=yolo"
         ],
         "environment": [{ "name": "config", "value": "Debug" }],
         "cwd": "${workspaceFolder}" 
         },
         {
-            "name": "yolov5s_onnx",
+            "name": "yolov5x_onnx",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/tritonic",
             "args": ["--source=data/images/dog.jpg", 
             "--serverAddress=localhost",
             "--labelsFile=labels/coco.txt",
-            "--model=yolov5s_onnx",
-            "--model_type=yolov5"
+            "--model=yolov5x_onnx",
+            "--model_type=yolo"
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
@@ -97,7 +97,7 @@
             "--serverAddress=localhost",
             "--labelsFile=labels/coco.txt",
             "--model=yolov12s_onnx",
-            "--model_type=yolov12"
+            "--model_type=yolo"
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
@@ -111,7 +111,7 @@
             "--serverAddress=192.168.1.212",
             "--labelsFile=labels/coco.txt",
             "--model=yolov8m_onnx",
-            "--model_type=yolov8",
+            "--model_type=yolo",
             "--input_sizes=\"3,640,640\""//,
             //
             ],
@@ -127,7 +127,7 @@
             "--serverAddress=localhost",
             "--labelsFile=labels/coco.txt",
             "--model=yolov8x_onnx",
-            "--model_type=yolov8",
+            "--model_type=yolo",
             "--input_sizes=\"3,640,640\""//,
             //
             ],
@@ -329,7 +329,7 @@
                 "--serverAddress=localhost",
                 "--labelsFile=labels/coco.txt",
                 "--model=deimv2_dinov3_s_coco_onnx",
-                "--model_type=deim"
+                "--model_type=rtdetr"
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
