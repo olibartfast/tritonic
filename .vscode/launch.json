@@ -4,6 +4,20 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+       {
+            "name": "YOLOv5x-Seg Onnx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tritonic",
+            "args": ["--source=data/images/person.jpg", 
+            "--serverAddress=localhost",
+            "--labelsFile=labels/coco.txt",
+            "--model=yolov5x-seg_onnx",
+            "--model_type=yoloseg"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        },        
         {
         "name": "YOLOv8x-Seg Onnx",
         "type": "cppdbg",
@@ -47,34 +61,6 @@
             "cwd": "${workspaceFolder}" 
         },                     
         {
-            "name": "YOLOv5x-Seg Onnx",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/tritonic",
-            "args": ["--source=data/images/person.jpg", 
-            "--serverAddress=localhost",
-            "--labelsFile=labels/coco.txt",
-            "--model=yolov5x-seg_onnx",
-            "--model_type=yoloseg"
-            ],
-            "environment": [{ "name": "config", "value": "Debug" }],
-            "cwd": "${workspaceFolder}" 
-        },          
-        {
-        "name": "yolov9e_onnx",
-        "type": "cppdbg",
-        "request": "launch",
-        "program": "${workspaceFolder}/build/tritonic",
-        "args": ["--source=data/images/dog.jpg", 
-        "--serverAddress=localhost",
-        "--labelsFile=labels/coco.txt",
-        "--model=yolov9e_onnx",
-        "--model_type=yolo"
-        ],
-        "environment": [{ "name": "config", "value": "Debug" }],
-        "cwd": "${workspaceFolder}" 
-        },
-        {
             "name": "yolov5x_onnx",
             "type": "cppdbg",
             "request": "launch",
@@ -87,21 +73,22 @@
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-        },     
+        }, 
         {
-            "name": "yolov12s_onnx",
+            "name": "yolov6l_onnx",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/tritonic",
-            "args": ["--source=data/images/bus.jpg", 
+            "args": ["--source=data/images/dog.jpg", 
             "--serverAddress=localhost",
             "--labelsFile=labels/coco.txt",
-            "--model=yolov12s_onnx",
-            "--model_type=yolo"
-            ],
+            "--model=yolov6l_onnx",
+            "--model_type=yolo",
+            "--input_sizes=\"3,640,640\""
+                ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-        },   
+        },                
         {
             "name": "yolov8m_onnx",
             "type": "cppdbg",
@@ -133,7 +120,35 @@
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-        },                 
+        },   
+        {
+            "name": "yolov9e_onnx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tritonic",
+            "args": ["--source=data/images/dog.jpg", 
+            "--serverAddress=localhost",
+            "--labelsFile=labels/coco.txt",
+            "--model=yolov9e_onnx",
+            "--model_type=yolo"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        },   
+        {
+            "name": "yolov12s_onnx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tritonic",
+            "args": ["--source=data/images/bus.jpg", 
+            "--serverAddress=localhost",
+            "--labelsFile=labels/coco.txt",
+            "--model=yolov12s_onnx",
+            "--model_type=yolo"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        },                                    
         {
             "name": "resnet50_tensorflow",
             "type": "cppdbg",
@@ -175,7 +190,22 @@
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-        },            
+        },    
+        {
+            "name": "deimv2_dinov3_s_coco_onnx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tritonic",
+            "args": [
+                "--source=data/images/dog.jpg", 
+                "--serverAddress=localhost",
+                "--labelsFile=labels/coco.txt",
+                "--model=deimv2_dinov3_s_coco_onnx",
+                "--model_type=rtdetr"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        },                
         {
             "name": "rtdetr_r18vd_6x_coco onnx",
             "type": "cppdbg",
@@ -318,22 +348,7 @@
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-        },       
-        {
-            "name": "deimv2_dinov3_s_coco_onnx",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/tritonic",
-            "args": [
-                "--source=data/images/dog.jpg", 
-                "--serverAddress=localhost",
-                "--labelsFile=labels/coco.txt",
-                "--model=deimv2_dinov3_s_coco_onnx",
-                "--model_type=rtdetr"
-            ],
-            "environment": [{ "name": "config", "value": "Debug" }],
-            "cwd": "${workspaceFolder}" 
-        }                       
+        }                      
                          
 
     ]
