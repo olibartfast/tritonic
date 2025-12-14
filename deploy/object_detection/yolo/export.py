@@ -426,13 +426,17 @@ class YOLOExporter:
             sys.exit(1)
         
         # YOLOv6 uses its own export script
-        export_script = Path(repo_dir) / 'deploy' / 'ONNX' / 'export_onnx.py'
+        repo_dir = Path(repo_dir).resolve()
+        export_script = repo_dir / 'deploy' / 'ONNX' / 'export_onnx.py'
         if not export_script.exists():
             logger.error(f"Export script not found: {export_script}")
             sys.exit(1)
         
+        # Use path relative to repo_dir for subprocess
+        relative_export = 'deploy/ONNX/export_onnx.py'
+        
         cmd = [
-            sys.executable, str(export_script),
+            sys.executable, relative_export,
             '--weights', str(Path(self.model_path).absolute()),
             '--img-size', str(self.imgsz),
             '--batch-size', str(self.batch_size),
@@ -442,7 +446,7 @@ class YOLOExporter:
             cmd.append('--simplify')
         
         logger.info(f"Running: {' '.join(cmd)}")
-        subprocess.run(cmd, cwd=repo_dir, check=True)
+        subprocess.run(cmd, cwd=str(repo_dir), check=True)
         
         return str(output_path)
     
@@ -457,13 +461,14 @@ class YOLOExporter:
             logger.info("Then run: python export.py --model weights.pt --version v7 --repo-dir ./repositories/yolov7")
             sys.exit(1)
         
-        export_script = Path(repo_dir) / 'export.py'
+        repo_dir = Path(repo_dir).resolve()
+        export_script = repo_dir / 'export.py'
         if not export_script.exists():
             logger.error(f"export.py not found in {repo_dir}")
             sys.exit(1)
         
         cmd = [
-            sys.executable, str(export_script),
+            sys.executable, 'export.py',
             '--weights', str(Path(self.model_path).absolute()),
             '--img-size', str(self.imgsz), str(self.imgsz),
             '--batch-size', str(self.batch_size),
@@ -475,10 +480,10 @@ class YOLOExporter:
             cmd.append('--simplify')
         
         logger.info(f"Running: {' '.join(cmd)}")
-        subprocess.run(cmd, cwd=repo_dir, check=True)
+        subprocess.run(cmd, cwd=str(repo_dir), check=True)
         
-        # Find exported file
-        expected_onnx = Path(self.model_path).with_suffix('.onnx')
+        # Find exported file (YOLOv7 exports next to weights file)
+        expected_onnx = Path(self.model_path).absolute().with_suffix('.onnx')
         if expected_onnx.exists():
             dest_path = self.output_dir / expected_onnx.name
             shutil.move(str(expected_onnx), str(dest_path))
