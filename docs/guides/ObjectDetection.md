@@ -18,7 +18,7 @@ python3 export.py --model yolov5s.pt --version v5 --repo-dir ./repositories/yolo
 See [deploy/object_detection/yolo/README.md](../../deploy/object_detection/yolo/README.md) for detailed usage.
 
 ---
-
+### Manual Export (Alternative)
 ## YOLOv8/YOLO11/YOLOv12
 Install using [Ultralytics official documentation (pip ultralytics package version >= 8.3.0)](https://docs.ultralytics.com/quickstart/)
 
