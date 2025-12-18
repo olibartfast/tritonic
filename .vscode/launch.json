@@ -164,7 +164,35 @@
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-        },   
+        },  
+       {
+            "name": "yolov9c_onnx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tritonic",
+            "args": ["--source=data/images/dog.jpg", 
+            "--serverAddress=localhost",
+            "--labelsFile=labels/coco.txt",
+            "--model=yolov9c_onnx",
+            "--model_type=yolo"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        },  
+       {
+            "name": "yolov10n_onnx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tritonic",
+            "args": ["--source=data/images/dog.jpg", 
+            "--serverAddress=localhost",
+            "--labelsFile=labels/coco.txt",
+            "--model=yolov10n_onnx",
+            "--model_type=yolov10"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        },                 
         {
             "name": "yolov12s_onnx",
             "type": "cppdbg",
