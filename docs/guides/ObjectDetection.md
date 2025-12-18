@@ -1,5 +1,24 @@
 # Object Detection Model Export Guide for Triton Server Deployment
 
+## Quick Start with Universal YOLO Exporter
+
+The tritonic project provides a universal YOLO exporter supporting **all YOLO versions** (v5-v12, NAS):
+
+```bash
+cd deploy/object_detection/yolo
+
+# For ultralytics-based models (v8, v9, v10, v11, v12)
+python3 export.py --model yolov8n.pt --version v8 --format onnx --download-weights
+
+# For repository-based models (v5, v6, v7)
+./clone_repo.sh --version v5 --output-dir ./repositories
+python3 export.py --model yolov5s.pt --version v5 --repo-dir ./repositories/yolov5 --format onnx
+```
+
+See [deploy/object_detection/yolo/README.md](../../deploy/object_detection/yolo/README.md) for detailed usage.
+
+---
+
 ## YOLOv8/YOLO11/YOLOv12
 Install using [Ultralytics official documentation (pip ultralytics package version >= 8.3.0)](https://docs.ultralytics.com/quickstart/)
 
@@ -9,6 +28,9 @@ yolo export model=best.pt format=onnx   # for ONNX format
 # OR
 yolo export model=best.pt format=torchscript   # for TorchScript format
 ```
+
+**Output Format**: `[1, 84, 8400]` where 84 = 4 bbox coords + 80 class scores (no objectness score)
+**Model Type**: `yolo`
 
 ### TensorRT
 ```bash
@@ -29,20 +51,30 @@ yolo export format=onnx model=yolov10model.pt   # for ONNX format
 yolo export format=torchscript model=yolov10model.pt   # for TorchScript format
 ```
 
+**Output Format**: `[1, 300, 6]` where 6 = [x1, y1, x2, y2, confidence, class_id] (end-to-end with NMS)
+**Model Type**: `yolov10`
+
 ### TensorRT
 ```bash
 trtexec --onnx=yolov10model.onnx --saveEngine=yolov10model.engine --fp16
 ```
 
 ## YOLOv9
-From [yolov9 repo](https://github.com/WongKinYiu/yolov9):
+From [yolov9 repo](https://github.com/WongKinYiu/yolov9) or ultralytics package:
 
 ### OnnxRuntime/TorchScript
 ```bash
+# From ultralytics (recommended)
+yolo export model=yolov9c.pt format=onnx
+
+# OR from original repo
 python export.py --weights yolov9-c/e-converted.pt --include onnx   # for ONNX format
 # OR
 python export.py --weights yolov9-c/e-converted.pt --include torchscript   # for TorchScript format
 ```
+
+**Output Format**: `[1, 84, 8400]` where 84 = 4 bbox coords + 80 class scores (no objectness score)
+**Model Type**: `yolo`
 
 ### TensorRT
 ```bash
@@ -56,6 +88,10 @@ From [yolov5 repo](https://github.com/ultralytics/yolov5/issues/251):
 python export.py --weights <yolov5_version>.pt --include onnx
 ```
 
+**Output Format**: `[1, 25200, 85]` where 85 = 4 bbox coords + 1 objectness + 80 class scores
+**Model Type**: `yolo`
+**Note**: YOLOv5/v6/v7 have objectness score at index 4, which is handled automatically by vision-core
+
 ### Libtorch
 ```bash
 python export.py --weights <yolov5_version>.pt --include torchscript
@@ -63,7 +99,11 @@ python export.py --weights <yolov5_version>.pt --include torchscript
 
 ## YOLOv6
 ### OnnxRuntime
-Export weights to ONNX format or download from [yolov6 repo](https://github.com/meituan/YOLOv6/tree/main/deploy/ONNX). Postprocessing code is identical to YOLOv5-v7.
+Export weights to ONNX format or download from [yolov6 repo](https://github.com/meituan/YOLOv6/tree/main/deploy/ONNX).
+
+**Output Format**: `[1, 25200, 85]` where 85 = 4 bbox coords + 1 objectness + 80 class scores
+**Model Type**: `yolo`
+**Note**: Postprocessing code is identical to YOLOv5/v7
 
 ## YOLOv7
 ### OnnxRuntime/Libtorch
@@ -71,7 +111,15 @@ From [yolov7 repo](https://github.com/WongKinYiu/yolov7#export):
 ```bash
 python export.py --weights <yolov7_version>.pt --grid --simplify --topk-all 100 --iou-thres 0.65 --conf-thres 0.35 --img-size 640 640 --max-wh 640
 ```
-**Note**: Don't use the end-to-end parameter.
+
+**Output Format**: `[1, 25200, 85]` where 85 = 4 bbox coords + 1 objectness + 80 class scores
+**Model Type**: `yolo`
+
+**Important Notes**:
+- Use `--grid` to combine multi-scale outputs into single tensor
+- Use `--simplify` to optimize ONNX graph
+- **Do NOT use** `--end2end` flag (adds TensorRT NMS plugin, requires TensorRT backend)
+- For TensorRT end-to-end format, add `--end2end` and use model type `yolov7e2e`
 
 ## YOLO-NAS
 ### OnnxRuntime
