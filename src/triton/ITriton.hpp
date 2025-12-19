@@ -7,7 +7,7 @@
 #include <variant>
 #include "TritonModelInfo.hpp"
 
-using TensorElement = std::variant<float, int32_t, int64_t>;
+using TensorElement = std::variant<float, int32_t, int64_t, uint8_t>;
 
 /**
  * Interface for Triton inference client operations.

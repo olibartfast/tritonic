@@ -1,5 +1,24 @@
 # Object Detection Model Export Guide for Triton Server Deployment
 
+## Quick Start with Universal YOLO Exporter
+
+The tritonic project provides a universal YOLO exporter supporting **all YOLO versions** (v5-v12, NAS):
+
+```bash
+cd deploy/object_detection/yolo
+
+# For ultralytics-based models (v8, v9, v10, v11, v12)
+python3 export.py --model yolov8n.pt --version v8 --format onnx --download-weights
+
+# For repository-based models (v5, v6, v7)
+./clone_repo.sh --version v5 --output-dir ./repositories
+python3 export.py --model yolov5s.pt --version v5 --repo-dir ./repositories/yolov5 --format onnx
+```
+
+See [deploy/object_detection/yolo/README.md](../../deploy/object_detection/yolo/README.md) for detailed usage.
+
+---
+### Manual Export (Alternative)
 ## YOLOv8/YOLO11/YOLOv12
 Install using [Ultralytics official documentation (pip ultralytics package version >= 8.3.0)](https://docs.ultralytics.com/quickstart/)
 
@@ -9,6 +28,9 @@ yolo export model=best.pt format=onnx   # for ONNX format
 # OR
 yolo export model=best.pt format=torchscript   # for TorchScript format
 ```
+
+**Output Format**: `[1, 84, 8400]` where 84 = 4 bbox coords + 80 class scores (no objectness score)
+**Model Type**: `yolo`
 
 ### TensorRT
 ```bash
@@ -29,20 +51,30 @@ yolo export format=onnx model=yolov10model.pt   # for ONNX format
 yolo export format=torchscript model=yolov10model.pt   # for TorchScript format
 ```
 
+**Output Format**: `[1, 300, 6]` where 6 = [x1, y1, x2, y2, confidence, class_id] (end-to-end with NMS)
+**Model Type**: `yolov10`
+
 ### TensorRT
 ```bash
 trtexec --onnx=yolov10model.onnx --saveEngine=yolov10model.engine --fp16
 ```
 
 ## YOLOv9
-From [yolov9 repo](https://github.com/WongKinYiu/yolov9):
+From [yolov9 repo](https://github.com/WongKinYiu/yolov9) or ultralytics package:
 
 ### OnnxRuntime/TorchScript
 ```bash
+# From ultralytics (recommended)
+yolo export model=yolov9c.pt format=onnx
+
+# OR from original repo
 python export.py --weights yolov9-c/e-converted.pt --include onnx   # for ONNX format
 # OR
 python export.py --weights yolov9-c/e-converted.pt --include torchscript   # for TorchScript format
 ```
+
+**Output Format**: `[1, 84, 8400]` where 84 = 4 bbox coords + 80 class scores (no objectness score)
+**Model Type**: `yolo`
 
 ### TensorRT
 ```bash
@@ -56,6 +88,10 @@ From [yolov5 repo](https://github.com/ultralytics/yolov5/issues/251):
 python export.py --weights <yolov5_version>.pt --include onnx
 ```
 
+**Output Format**: `[1, 25200, 85]` where 85 = 4 bbox coords + 1 objectness + 80 class scores
+**Model Type**: `yolo`
+**Note**: YOLOv5/v6/v7 have objectness score at index 4, which is handled automatically by vision-core
+
 ### Libtorch
 ```bash
 python export.py --weights <yolov5_version>.pt --include torchscript
@@ -63,7 +99,11 @@ python export.py --weights <yolov5_version>.pt --include torchscript
 
 ## YOLOv6
 ### OnnxRuntime
-Export weights to ONNX format or download from [yolov6 repo](https://github.com/meituan/YOLOv6/tree/main/deploy/ONNX). Postprocessing code is identical to YOLOv5-v7.
+Export weights to ONNX format or download from [yolov6 repo](https://github.com/meituan/YOLOv6/tree/main/deploy/ONNX).
+
+**Output Format**: `[1, 25200, 85]` where 85 = 4 bbox coords + 1 objectness + 80 class scores
+**Model Type**: `yolo`
+**Note**: Postprocessing code is identical to YOLOv5/v7
 
 ## YOLOv7
 ### OnnxRuntime/Libtorch
@@ -71,7 +111,15 @@ From [yolov7 repo](https://github.com/WongKinYiu/yolov7#export):
 ```bash
 python export.py --weights <yolov7_version>.pt --grid --simplify --topk-all 100 --iou-thres 0.65 --conf-thres 0.35 --img-size 640 640 --max-wh 640
 ```
-**Note**: Don't use the end-to-end parameter.
+
+**Output Format**: `[1, 25200, 85]` where 85 = 4 bbox coords + 1 objectness + 80 class scores
+**Model Type**: `yolo`
+
+**Important Notes**:
+- Use `--grid` to combine multi-scale outputs into single tensor
+- Use `--simplify` to optimize ONNX graph
+- **Do NOT use** `--end2end` flag (adds TensorRT NMS plugin, requires TensorRT backend)
+- For TensorRT end-to-end format, add `--end2end` and use model type `yolov7e2e`
 
 ## YOLO-NAS
 ### OnnxRuntime
@@ -86,20 +134,95 @@ models.convert_to_onnx(model=net, input_shape=(3,640,640), out_path="yolo_nas_s.
                                                "output_names": ['output0', 'output1']})
 ```
 
-## RT-DETR/RT-DETRv2
+## RT-DETR Family
 From [lyuwenyu RT-DETR repository](https://github.com/lyuwenyu/RT-DETR/):
 
-### OnnxRuntime
+### Universal Export Launcher Script (Recommended for All Versions)
+
+The tritonic project provides a universal export launcher that supports **all RT-DETR versions** (v1, v2, v3, v4) as well as **D-FINE** and **DEIM** models:
+
+```bash
+bash deploy/object_detection/rt-detr/export.sh \
+    --config <path-to-config.yml> \
+    --resume <path-to-checkpoint.pth> \
+    --repo-dir <path-to-repo> \
+    --download-weights \
+    --weights-dir ./weights \
+    --format onnx
+```
+
+**Options:**
+- `--config` or `-c`: Path to model configuration file
+- `--resume` or `-r`: Path to checkpoint file (will be downloaded if `--download-weights` is used)
+- `--repo-dir`: Path to RT-DETR repository (auto-detected based on config)
+- `--download-weights`: Automatically download pretrained weights
+- `--weights-dir`: Directory to store downloaded weights (default: ./weights)
+- `--format`: Export format: `onnx`, `tensorrt`, or `both` (default: onnx)
+- `--version`: Force specific version: `v1`, `v2`, `v3`, `v4`, `dfine`, `deim`
+- `--clone-repo`: Clone appropriate repository if needed
+- `--install-deps`: Install dependencies from requirements.txt
+- `--skip-venv-check`: Skip virtual environment validation
+- `--no-check`: Skip ONNX model validation
+- `--no-simplify`: Skip ONNX model simplification
+- `--model-info`: Display model FLOPs, MACs, and parameters
+- `--benchmark`: Run performance benchmarks
+
+**Examples:**
+
+RT-DETRv4:
+```bash
+bash deploy/object_detection/rt-detr/export.sh \
+    --config 3rdparty/repositories/pytorch/RT-DETRv4/configs/rtv4/rtv4_hgnetv2_s_coco.yml \
+    --resume weights/rtv4_hgnetv2_s_model.pth \
+    --repo-dir 3rdparty/repositories/pytorch/RT-DETRv4 \
+    --download-weights --format onnx
+```
+
+RT-DETRv2:
+```bash
+bash deploy/object_detection/rt-detr/export.sh \
+    --config 3rdparty/repositories/pytorch/RT-DETR/rtdetrv2_pytorch/configs/rtdetrv2/rtdetrv2_r50vd_6x_coco.yml \
+    --resume weights/rtdetrv2_r50vd_6x_coco.pth \
+    --repo-dir 3rdparty/repositories/pytorch/RT-DETR/rtdetrv2_pytorch \
+    --format onnx
+```
+
+**Notes:**
+- The script automatically detects RT-DETR version from the config file
+- **⚠️ Batch Size Warning**: The export script patches the hardcoded batch size 32 → 1 at runtime to prevent OOM errors. If you experience memory issues, ensure this patching works correctly or manually modify `export_onnx.py`
+- For RT-DETRv3 (PaddlePaddle-based), the script handles the different export pipeline automatically
+
+### Manual Export (Alternative)
+
+#### RT-DETR/RT-DETRv2 (PyTorch)
 ```bash
 export RTDETR_VERSION=rtdetr  # or rtdetrv2
-export MODEL_VERSION=rtdetr_r18vd_6x_coco  # or select other model from RT-DETR/RT-DETRV2 model zoo
+export MODEL_VERSION=rtdetr_r18vd_6x_coco  # or select from model zoo
 cd RT-DETR/${RTDETR_VERSION}_pytorch
 python tools/export_onnx.py -c configs/${RTDETR_VERSION}/${MODEL_VERSION}.yml -r path/to/checkpoint --check
 ```
 
-### TensorRT
+#### RT-DETRv4 (PyTorch)
 ```bash
-trtexec --onnx=<model>.onnx --saveEngine=<model>.engine --minShapes=images:1x3x640x640,orig_target_sizes:1x2 --optShapes=images:1x3x640x640,orig_target_sizes:1x2 --maxShapes=images:1x3x640x640,orig_target_sizes:1x2
+cd 3rdparty/repositories/pytorch/RT-DETRv4
+python tools/deployment/export_onnx.py \
+    -c configs/rtv4/rtv4_hgnetv2_s_coco.yml \
+    -r /path/to/checkpoint.pth \
+    --check --simplify
+```
+
+**Available RT-DETRv4 Models:**
+- `rtv4_hgnetv2_s_coco` - Small model
+- `rtv4_hgnetv2_m_coco` - Medium model  
+- `rtv4_hgnetv2_l_coco` - Large model
+- `rtv4_hgnetv2_x_coco` - Extra large model
+
+### TensorRT (All RT-DETR Variants)
+```bash
+trtexec --onnx=<model>.onnx --saveEngine=<model>.engine \
+    --minShapes=images:1x3x640x640,orig_target_sizes:1x2 \
+    --optShapes=images:1x3x640x640,orig_target_sizes:1x2 \
+    --maxShapes=images:1x3x640x640,orig_target_sizes:1x2
 ```
 
 ## RT-DETR (Ultralytics)

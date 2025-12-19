@@ -5,6 +5,30 @@ message(STATUS ${PROJECT_NAME})
 message(STATUS $ENV{TritonClientBuild_DIR})
 set(CMAKE_CXX_STANDARD 20)
 
+# Fetch vision-core repository for tasks
+include(FetchContent)
+
+# Set GIT_CONFIG to allow credential helper or use token from environment
+if(DEFINED ENV{GITHUB_TOKEN})
+  set(VISION_CORE_REPO "https://$ENV{GITHUB_TOKEN}@github.com/olibartfast/vision-core.git")
+else()
+  set(VISION_CORE_REPO "https://github.com/olibartfast/vision-core.git")
+endif()
+
+FetchContent_Declare(
+  vision-core
+  GIT_REPOSITORY ${VISION_CORE_REPO}
+  GIT_TAG main  # or specify a branch/tag/commit
+)
+FetchContent_MakeAvailable(vision-core)
+
+FetchContent_Declare(
+  fmt
+  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+  GIT_TAG 10.1.1
+)
+FetchContent_MakeAvailable(fmt)
+
 option(WITH_SHOW_FRAME "Option description" OFF)
 option(WITH_WRITE_FRAME "Option description" ON)
 
@@ -28,36 +52,12 @@ find_package(CURL REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(RapidJSON REQUIRED)
 
-# Set the source files
+# Set the source files (only tritonic-specific sources)
 set(SOURCES
     ${PROJECT_SOURCE_DIR}/src/main/client.cpp
-    ${PROJECT_SOURCE_DIR}/src/tasks/task_factory.cpp
-    # Add any additional source files here
-)
-
-set(DETECTOR_SOURCES ${PROJECT_SOURCE_DIR}  
-  src/tasks/object_detection/src/YOLO.cpp 
-  src/tasks/object_detection/src/YoloNas.cpp
-  src/tasks/object_detection/src/YOLOv10.cpp 
-  src/tasks/object_detection/src/RTDetr.cpp
-  src/tasks/object_detection/src/RFDetr.cpp
-  src/tasks/object_detection/src/RTDetrUltralytics.cpp
-  )
-
-set(CLASSIFIER_SOURCES ${PROJECT_SOURCE_DIR}  
-  src/tasks/classification/src/TensorflowClassifier.cpp
-  src/tasks/classification/src/TorchvisionClassifier.cpp
-  src/tasks/classification/src/ViTClassifier.cpp
-  )
-
-set(INSTANCE_SEGMENTATION_SOURCES ${PROJECT_SOURCE_DIR}
-   src/tasks/instance_segmentation/src/YOLOSeg.cpp
-   src/tasks/instance_segmentation/src/RFDetrSeg.cpp
-  )
-
-set(OPTICAL_FLOW_SOURCES ${PROJECT_SOURCE_DIR}
-  src/tasks/optical_flow/src/RAFT.cpp
-  )  
+    ${PROJECT_SOURCE_DIR}/src/main/App.cpp
+    # Add any additional tritonic-specific source files here
+)  
 
 # Set the source files
 set(TRITON_SOURCES ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp)
@@ -70,16 +70,14 @@ set(LOGGER_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/Logger.cpp)
 set(FILESYSTEM_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/FileSystem.cpp)
 
 # Add an executable target
-add_executable(${PROJECT_NAME} ${SOURCES}
-    ${UTILS_SOURCES} 
+add_executable(${PROJECT_NAME}
+    ${SOURCES}
+    ${UTILS_SOURCES}
     ${CONFIG_SOURCES}
     ${LOGGER_SOURCES}
-    ${DETECTOR_SOURCES} 
-    ${CLASSIFIER_SOURCES} 
-    ${INSTANCE_SEGMENTATION_SOURCES} 
-    ${OPTICAL_FLOW_SOURCES}
+    ${FILESYSTEM_SOURCES}
     ${TRITON_SOURCES}
-    )
+)
 
 # Set include directories for the target
 target_include_directories(${PROJECT_NAME}
@@ -89,17 +87,8 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/utils
-    ${PROJECT_SOURCE_DIR}/src/tasks
-    ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/include
-    ${PROJECT_SOURCE_DIR}/src/tasks/object_detection/src
-    ${PROJECT_SOURCE_DIR}/src/tasks/classification/include
-    ${PROJECT_SOURCE_DIR}/src/tasks/classification/src  
-    ${PROJECT_SOURCE_DIR}/src/tasks/instance_segmentation/include
-    ${PROJECT_SOURCE_DIR}/src/tasks/instance_segmentation/src  
-    ${PROJECT_SOURCE_DIR}/src/tasks/optical_flow/include
-    ${PROJECT_SOURCE_DIR}/src/tasks/optical_flow/src
     ${PROJECT_SOURCE_DIR}/src/triton
-    # Add any additional include directories here
+    # vision-core includes are provided automatically through target_link_libraries
 )
 
 # Set link directories for the target
@@ -112,11 +101,13 @@ target_link_directories(${PROJECT_NAME}
 # Link libraries for the target
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
+    vision-core::vision-core
     grpcclient
     httpclient
     ${OpenCV_LIBS}
     CURL::libcurl
     ${PROTOBUF_LIBRARIES}
+    fmt::fmt
 )
 
 # Add option for testing

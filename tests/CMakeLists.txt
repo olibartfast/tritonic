@@ -4,14 +4,50 @@ cmake_minimum_required(VERSION 3.20)
 # Enable testing
 enable_testing()
 
-# Find required packages for testing
-find_package(GTest REQUIRED)
-
-# Include Google Mock (it's part of GTest)
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG v1.14.0
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
-# Include test directories
-include_directories(
+# Test source files
+set(TEST_SOURCES
+    test_main.cpp
+    test_config_basic.cpp
+    test_config_manager_basic.cpp
+    test_logger.cpp
+    test_triton.cpp
+    test_classification_preprocess.cpp
+    test_app.cpp
+    test_rfdetr_repro.cpp
+    test_optical_flow.cpp
+    test_shared_memory.cpp
+)
+
+# Source files that need to be tested (without main)
+set(TESTABLE_SOURCES
+    ${PROJECT_SOURCE_DIR}/src/utils/ConfigManager.cpp
+    ${PROJECT_SOURCE_DIR}/src/utils/Logger.cpp
+    ${PROJECT_SOURCE_DIR}/src/utils/utils.cpp
+    ${PROJECT_SOURCE_DIR}/src/utils/FileSystem.cpp
+    ${PROJECT_SOURCE_DIR}/src/main/App.cpp
+    ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp
+)
+
+# Create the test executable
+add_executable(run_tests ${TEST_SOURCES} ${TESTABLE_SOURCES})
+
+# IMPORTANT: The Triton client libs include bundled gmock/gtest headers that conflict
+# with the FetchContent'd googletest. Use SYSTEM to make TritonClient a system include
+# which is searched AFTER normal includes. Place googletest BEFORE all other includes.
+target_include_directories(run_tests BEFORE
+    PRIVATE
+    ${googletest_SOURCE_DIR}/googletest/include
+    ${googletest_SOURCE_DIR}/googlemock/include
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/utils
@@ -27,41 +63,27 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/src/triton
     ${PROJECT_SOURCE_DIR}/tests/mocks
     ${OpenCV_INCLUDE_DIRS}
+)
+
+# Add TritonClient as SYSTEM include so it's searched AFTER googletest includes
+target_include_directories(run_tests SYSTEM
+    PRIVATE
     $ENV{TritonClientBuild_DIR}/include
 )
-
-# Test source files
-set(TEST_SOURCES
-    test_main.cpp
-    test_config_basic.cpp
-    test_config_manager_basic.cpp
-    test_logger.cpp
-    test_triton.cpp
-    test_shared_memory.cpp
-)
-
-# Source files that need to be tested (without main)
-set(TESTABLE_SOURCES
-    ${PROJECT_SOURCE_DIR}/src/utils/ConfigManager.cpp
-    ${PROJECT_SOURCE_DIR}/src/utils/Logger.cpp
-    ${PROJECT_SOURCE_DIR}/src/utils/utils.cpp
-    ${PROJECT_SOURCE_DIR}/src/utils/FileSystem.cpp
-    ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp
-)
-
-# Create the test executable
-add_executable(run_tests ${TEST_SOURCES} ${TESTABLE_SOURCES})
 
 # Link libraries
 target_link_libraries(run_tests
     PRIVATE
-    GTest::gtest
-    GTest::gtest_main
+    gtest
+    gtest_main
+    gmock
     grpcclient
     httpclient
     ${OpenCV_LIBS}
     CURL::libcurl
     ${PROTOBUF_LIBRARIES}
+    vision-core::vision-core
+    fmt::fmt
 )
 
 # Set the same compile definitions as the main project
