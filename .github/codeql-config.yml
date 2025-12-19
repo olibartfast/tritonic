@@ -15,10 +15,6 @@ paths:
   - 'src/**'
   - 'include/**'
 
-# Disable queries that are too memory-intensive
+# Use security-and-quality queries
 queries:
   - uses: security-and-quality
-  - exclude:
-      id:
-        - cpp/poorly-documented-function
-        - cpp/fixme-comment
