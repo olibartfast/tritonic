@@ -16,7 +16,7 @@
 #include <cuda.h>
 #endif
 
-using TensorElement = std::variant<float, int32_t, int64_t>;
+using TensorElement = std::variant<float, int32_t, int64_t, uint8_t>;
 
 enum class SharedMemoryType {
     SYSTEM_SHARED_MEMORY,  // Host CPU shared memory (POSIX)

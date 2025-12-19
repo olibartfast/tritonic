@@ -1,4 +1,8 @@
 build
-*.avi
+/**.avi
 model_repository
 build_test
+triton_client_libs
+3rdparty
+weights
+**/*.pt

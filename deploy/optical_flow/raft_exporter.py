@@ -219,6 +219,9 @@ def parse_args():
                       default=None,
                       help='Device to use (default: use cuda if available)')
 
+    parser.add_argument('--cpu-only', action='store_true',
+                      help='Force CPU-only execution (overrides --device)')
+
     parser.add_argument('--dynamic', action='store_true',
                       help='Enable dynamic batching for traced export')
     
@@ -229,13 +232,16 @@ def main():
     args = parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
     
-    #     
     # Handle device selection
-    if args.device:
+    if args.cpu_only:
+        device = torch.device('cpu')
+        print(f"Using device: {device} (forced CPU-only)")
+    elif args.device:
         device = torch.device(args.device)
+        print(f"Using device: {device} (specified)")
     else:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Using device: {device}")
+        print(f"Using device: {device} (auto-detected)")
     
     # Determine which models to export
     model_types = ['small', 'large'] if args.model_type == 'both' else [args.model_type]

@@ -36,7 +36,7 @@ struct VideoClassification : public Classification{
 };
 
 using Result = std::variant<Classification, Detection, InstanceSegmentation, OpticalFlow, VideoClassification>;
-using TensorElement = std::variant<float, int32_t, int64_t>;
+using TensorElement = std::variant<float, int32_t, int64_t, uint8_t>;
 
 
 enum class TaskType {

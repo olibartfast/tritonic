@@ -1,87 +1,97 @@
 #pragma once
-#include <string>
-#include <memory>
+
+#include <iostream>
 #include <fstream>
+#include <string>
 #include <mutex>
-#include <sstream>
+#include <chrono>
+#include <iomanip>
+#include <fmt/core.h>
+#include "ILogger.hpp"
 
-enum class LogLevel {
-    DEBUG = 0,
-    INFO = 1,
-    WARN = 2,
-    ERROR = 3,
-    FATAL = 4
-};
-
-class Logger {
+class Logger : public ILogger {
 public:
-    static Logger& getInstance();
-    
-    void setLogLevel(LogLevel level);
-    void setLogFile(const std::string& filename);
-    void setConsoleOutput(bool enable);
-    
-    void debug(const std::string& message);
-    void info(const std::string& message);
-    void warn(const std::string& message);
-    void error(const std::string& message);
-    void fatal(const std::string& message);
-    
-    template<typename... Args>
-    void debugf(const std::string& format, Args... args) {
-        log(LogLevel::DEBUG, formatMessage(format, args...));
+    static Logger& getInstance() {
+        static Logger instance;
+        return instance;
     }
-    
-    template<typename... Args>
-    void infof(const std::string& format, Args... args) {
-        log(LogLevel::INFO, formatMessage(format, args...));
+
+    void setLogLevel(LogLevel level) override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        currentLevel_ = level;
     }
-    
-    template<typename... Args>
-    void warnf(const std::string& format, Args... args) {
-        log(LogLevel::WARN, formatMessage(format, args...));
+
+    void setLogFile(const std::string& filename) override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (fileStream_.is_open()) {
+            fileStream_.close();
+        }
+        fileStream_.open(filename, std::ios::app);
     }
-    
-    template<typename... Args>
-    void errorf(const std::string& format, Args... args) {
-        log(LogLevel::ERROR, formatMessage(format, args...));
+
+    void setConsoleOutput(bool enable) override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        consoleOutput_ = enable;
     }
-    
-    template<typename... Args>
-    void fatalf(const std::string& format, Args... args) {
-        log(LogLevel::FATAL, formatMessage(format, args...));
+
+    void log(LogLevel level, const std::string& message) override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (level < currentLevel_) return;
+
+        auto now = std::chrono::system_clock::now();
+        auto time = std::chrono::system_clock::to_time_t(now);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M:%S")
+           << '.' << std::setfill('0') << std::setw(3) << ms.count()
+           << " [" << getLevelString(level) << "] " << message;
+
+        std::string logMessage = ss.str();
+
+        if (consoleOutput_) {
+            std::cout << logMessage << std::endl;
+        }
+
+        if (fileStream_.is_open()) {
+            fileStream_ << logMessage << std::endl;
+        }
     }
+
+    void debug(const std::string& message) override { log(LogLevel::DEBUG, message); }
+    void info(const std::string& message) override { log(LogLevel::INFO, message); }
+    void warn(const std::string& message) override { log(LogLevel::WARN, message); }
+    void error(const std::string& message) override { log(LogLevel::ERROR, message); }
+    void fatal(const std::string& message) override { log(LogLevel::FATAL, message); }
 
 private:
-    Logger() = default;
-    ~Logger() = default;
+    Logger() : currentLevel_(LogLevel::INFO), consoleOutput_(true) {}
+    ~Logger() {
+        if (fileStream_.is_open()) {
+            fileStream_.close();
+        }
+    }
     Logger(const Logger&) = delete;
     Logger& operator=(const Logger&) = delete;
-    
-    void log(LogLevel level, const std::string& message);
-    std::string getCurrentTimestamp();
-    std::string levelToString(LogLevel level);
-    std::string formatMessage(const std::string& format);
-    
-    template<typename T, typename... Args>
-    std::string formatMessage(const std::string& format, T value, Args... args) {
-        size_t pos = format.find("{}");
-        if (pos == std::string::npos) {
-            return format;
+
+    std::string getLevelString(LogLevel level) {
+        switch (level) {
+            case LogLevel::DEBUG: return "DEBUG";
+            case LogLevel::INFO:  return "INFO ";
+            case LogLevel::WARN:  return "WARN ";
+            case LogLevel::ERROR: return "ERROR";
+            case LogLevel::FATAL: return "FATAL";
+            default: return "UNKNOWN";
         }
-        
-        std::ostringstream oss;
-        oss << value;
-        std::string result = format.substr(0, pos) + oss.str() + format.substr(pos + 2);
-        return formatMessage(result, args...);
     }
-    
-    LogLevel current_level_ = LogLevel::INFO;
-    std::string log_file_;
-    std::ofstream file_stream_;
-    bool console_output_ = true;
-    std::mutex log_mutex_;
+
+    LogLevel currentLevel_;
+    std::ofstream fileStream_;
+    bool consoleOutput_;
+    std::mutex mutex_;
 };
 
-// Global logger instance for easier access
-extern Logger& logger; 
+// Global logger instance for backward compatibility (if needed)
+// But we should prefer dependency injection.
+// For now, we can keep the global instance but encourage using the interface.
+extern Logger& logger;
