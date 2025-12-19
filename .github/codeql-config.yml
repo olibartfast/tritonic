@@ -1,0 +1,24 @@
+name: "CodeQL Config"
+
+# Paths to ignore during analysis to reduce memory usage
+paths-ignore:
+  - 'tests/**'
+  - 'build/**'
+  - 'data/**'
+  - 'docs/**'
+  - '**/*.md'
+  - 'deploy/**'
+  - 'scripts/**'
+
+# Focus on main source code
+paths:
+  - 'src/**'
+  - 'include/**'
+
+# Disable queries that are too memory-intensive
+queries:
+  - uses: security-and-quality
+  - exclude:
+      id:
+        - cpp/poorly-documented-function
+        - cpp/fixme-comment

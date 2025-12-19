@@ -110,6 +110,19 @@ jobs:
         language: [ 'cpp', 'python' ]
 
     steps:
+    - name: Free Disk Space
+      if: matrix.language == 'cpp'
+      run: |
+        echo "Available disk space before cleanup:"
+        df -h
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /usr/local/share/boost
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        sudo docker image prune --all --force || true
+        echo "Available disk space after cleanup:"
+        df -h
+
     - name: Checkout repository
       uses: actions/checkout@v4
 
@@ -117,6 +130,7 @@ jobs:
       uses: github/codeql-action/init@v4
       with:
         languages: ${{ matrix.language }}
+        config-file: ./.github/codeql-config.yml
 
     - name: Install Dependencies for C++
       if: matrix.language == 'cpp'
@@ -140,11 +154,16 @@ jobs:
         export TritonClientBuild_DIR=$(pwd)/triton_client_libs/install
         mkdir -p build
         cd build
-        cmake -DCMAKE_BUILD_TYPE=Release .. || true
-        cmake --build . || true
+        # Use less parallelism to reduce memory pressure
+        cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF .. || true
+        cmake --build . -j2 || true
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
+      with:
+        # Reduce memory usage
+        ram: 4096
+        threads: 2
 
   dependency-review:
     name: Dependency Review
