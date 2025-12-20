@@ -1,3 +1,0 @@
-tensorflow
-onnx
-onnx-graphsurgeon

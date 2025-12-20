@@ -1,5 +1,0 @@
-torch
-torchvision
-timm
-onnx
-onnx-graphsurgeon

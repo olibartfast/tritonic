@@ -17,15 +17,22 @@ yolo export model=yolov8/yolo11/yolo12 n/s/m/x-seg.pt format=onnx/torchscript/op
 
 
 ## RF-DETR
+
+**⚠️ Export tools have moved to vision-core for reusability across inference engines.**
+
 ### ONNX Export for Instance Segmentation
 
-For instance segmentation, use the `RFDETRSegPreview` model class or the provided export script.
-
-#### Using Python Script
+For instance segmentation, use the export script from vision-core:
 
 ```bash
-python deploy/instance_segmentation/rf-detr/export.py --simplify --input_size 432
+# Clone vision-core if not already available
+git clone https://github.com/olibartfast/vision-core.git
+cd vision-core/export/segmentation/rfdetr
+
+python export.py --simplify --input_size 432
 ```
+
+See [vision-core export documentation](https://github.com/olibartfast/vision-core/tree/main/export) for detailed usage.
 
 **Available Options:**
 - `--output_dir`: Path to save exported model (default: current directory)

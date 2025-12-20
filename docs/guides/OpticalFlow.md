@@ -1,8 +1,21 @@
 # Optical Flow Models Export Guide
 
 ## RAFT
+
+**⚠️ Export tools have moved to vision-core for reusability across inference engines.**
+
 ## Export Options
-To export use [raft_exporter.py](https://github.com/olibartfast/tritonic/blob/master/deploy/optical_flow/raft_exporter.py)  inside script folder.  
+To export, use the raft_exporter from vision-core:
+
+```bash
+# Clone vision-core if not already available
+git clone https://github.com/olibartfast/vision-core.git
+cd vision-core/export/optical_flow/raft
+
+python raft_exporter.py [options]
+```
+
+See [vision-core export documentation](https://github.com/olibartfast/vision-core/tree/main/export) for detailed usage.  
 
 The export script supports several configuration options:
 

@@ -4,11 +4,23 @@ This guide explains how to deploy and use Hugging Face Vision Transformer models
 
 ## Overview
 
+**⚠️ Export tools have moved to vision-core for reusability across inference engines.**
+
 ViT (Vision Transformer) models apply transformer architectures to image classification tasks by treating images as sequences of patches. TritonIC supports ViT models through three deployment methods:
 
 1. **Python Backend with Pipeline** - Simplest setup with automatic preprocessing
 2. **Python Backend Standard** - More control with custom preprocessing  
 3. **ONNX Backend** - Best performance with GPU optimization
+
+For model export, use:
+```bash
+# Clone vision-core if not already available  
+git clone https://github.com/olibartfast/vision-core.git
+cd vision-core/export/classification/vit/onnx
+python export.py
+```
+
+See [vision-core export documentation](https://github.com/olibartfast/vision-core/tree/main/export) for detailed usage.
 
 ## Quick Comparison
 
