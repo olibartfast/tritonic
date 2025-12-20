@@ -1,9 +1,25 @@
 ## Instructions
 
+**⚠️ Export tools have moved to vision-core for reusability across inference engines.**
+
 ### Export the model for the inference
 ## Models from Torchvision Pytorch API
 
-* Select a model from https://pytorch.org/vision/stable/models.html#classification, for example resnet50, then write a python script like below:
+Use the provided export script for Torchvision models:
+
+```bash
+# Clone vision-core if not already available
+git clone https://github.com/olibartfast/vision-core.git
+cd vision-core/export/classification/torchvision
+
+# Export ResNet50 to ONNX
+python export_torchvision_classifier.py --library torchvision --model resnet50 --export_format onnx --output_onnx resnet50.onnx
+
+# Or export to TorchScript
+python export_torchvision_classifier.py --library torchvision --model resnet50 --export_format torchscript --output_script resnet50.pt
+```
+
+Alternatively, you can manually export models from https://pytorch.org/vision/stable/models.html#classification:
 
 #### OnnxRuntime
  ```python

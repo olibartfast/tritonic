@@ -2,10 +2,14 @@
 
 ## Quick Start with Universal YOLO Exporter
 
-The tritonic project provides a universal YOLO exporter supporting **all YOLO versions** (v5-v12, NAS):
+**⚠️ Export tools have moved to vision-core for reusability across inference engines.**
+
+Use the universal YOLO exporter supporting **all YOLO versions** (v5-v12, NAS):
 
 ```bash
-cd deploy/object_detection/yolo
+# Clone vision-core if not already available
+git clone https://github.com/olibartfast/vision-core.git
+cd vision-core/export/detection/yolo
 
 # For ultralytics-based models (v8, v9, v10, v11, v12)
 python3 export.py --model yolov8n.pt --version v8 --format onnx --download-weights
@@ -15,7 +19,7 @@ python3 export.py --model yolov8n.pt --version v8 --format onnx --download-weigh
 python3 export.py --model yolov5s.pt --version v5 --repo-dir ./repositories/yolov5 --format onnx
 ```
 
-See [deploy/object_detection/yolo/README.md](../../deploy/object_detection/yolo/README.md) for detailed usage.
+See [vision-core export documentation](https://github.com/olibartfast/vision-core/tree/main/export) for detailed usage.
 
 ---
 ### Manual Export (Alternative)
@@ -139,10 +143,16 @@ From [lyuwenyu RT-DETR repository](https://github.com/lyuwenyu/RT-DETR/):
 
 ### Universal Export Launcher Script (Recommended for All Versions)
 
-The tritonic project provides a universal export launcher that supports **all RT-DETR versions** (v1, v2, v3, v4) as well as **D-FINE** and **DEIM** models:
+**⚠️ Export tools have moved to vision-core for reusability across inference engines.**
+
+Use the universal export launcher that supports **all RT-DETR versions** (v1, v2, v3, v4) as well as **D-FINE** and **DEIM** models:
 
 ```bash
-bash deploy/object_detection/rt-detr/export.sh \
+# Clone vision-core if not already available
+git clone https://github.com/olibartfast/vision-core.git
+cd vision-core/export/detection/rtdetr
+
+bash export.sh \
     --config <path-to-config.yml> \
     --resume <path-to-checkpoint.pth> \
     --repo-dir <path-to-repo> \
@@ -171,7 +181,7 @@ bash deploy/object_detection/rt-detr/export.sh \
 
 RT-DETRv4:
 ```bash
-bash deploy/object_detection/rt-detr/export.sh \
+bash export.sh \
     --config 3rdparty/repositories/pytorch/RT-DETRv4/configs/rtv4/rtv4_hgnetv2_s_coco.yml \
     --resume weights/rtv4_hgnetv2_s_model.pth \
     --repo-dir 3rdparty/repositories/pytorch/RT-DETRv4 \
@@ -180,7 +190,7 @@ bash deploy/object_detection/rt-detr/export.sh \
 
 RT-DETRv2:
 ```bash
-bash deploy/object_detection/rt-detr/export.sh \
+bash export.sh \
     --config 3rdparty/repositories/pytorch/RT-DETR/rtdetrv2_pytorch/configs/rtdetrv2/rtdetrv2_r50vd_6x_coco.yml \
     --resume weights/rtdetrv2_r50vd_6x_coco.pth \
     --repo-dir 3rdparty/repositories/pytorch/RT-DETR/rtdetrv2_pytorch \
@@ -303,10 +313,16 @@ Follow the procedure described in the [RF-DETR documentation](https://github.com
 
 #### Option 1 — Using the Python Script
 
+**⚠️ Export tools have moved to vision-core.**
+
 Run the export script with your desired parameters:
 
 ```bash
-python deploy/object_detection/rf-detr/export.py <input_params>  # use --help for details
+# Clone vision-core if not already available
+git clone https://github.com/olibartfast/vision-core.git
+cd vision-core/export/detection/rfdetr
+
+python export.py <input_params>  # use --help for details
 ```
 
 #### Option 2 — Using Python API
