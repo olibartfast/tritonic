@@ -57,6 +57,7 @@ tritonic/
 - [YOLO-NAS](https://github.com/Deci-AI/super-gradients)
 - [RT-DETR](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetr_pytorch)
 - [RT-DETRv2](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetrv2_pytorch)
+- [RT-DETRv4](https://github.com/RT-DETRs/RT-DETRv4)
 - [D-FINE](https://github.com/Peterande/D-FINE)
 - [DEIM](https://github.com/ShihuaHuang95/DEIM)
 - [DEIMv2](https://github.com/Intellindust-AI-Lab/DEIMv2)
