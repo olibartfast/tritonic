@@ -2,11 +2,7 @@
 
 This directory contains Triton Inference Server-specific deployment utilities.
 
-## ⚠️ Important: Export Tools Moved
-
-**Generic model export scripts have been moved to the vision-core repository.**
-
-For model export (ONNX, TorchScript, TensorRT conversion), please use:
+For automatic model export (ONNX, TorchScript, TensorRT conversion), please see:
 - **Vision-Core Export Tools**: [https://github.com/olibartfast/vision-core](https://github.com/olibartfast/vision-core)
 
 ## What's in this directory
@@ -27,23 +23,18 @@ deploy/
     └── vitpose/                 # Triton ensemble configs
 ```
 
-## Quick Migration Guide
-
-### Before (old structure):
+## Export a model
+For detailed export instructions, see: [vision-core export documentation](https://github.com/olibartfast/vision-core/tree/main/export)
 ```bash
-# Old way
-python deploy/object_detection/yolo/export.py --model yolov8n.pt
-```
-
-### After (new structure):
-```bash
-# New way - use vision-core export tools
+# Using vision-core export tools
 git clone https://github.com/olibartfast/vision-core.git
 cd vision-core/export/detection/yolo
 python export.py --model yolov8n.pt
 
+
 # Then deploy to Triton if needed
-cd ../../tritonic/deploy/instance_segmentation/rf-detr
+## here below rf-detr instance  segmentation example
+cd tritonic/deploy/instance_segmentation/rf-detr
 ./deploy_triton_model.sh model.engine
 ```
 
@@ -58,9 +49,7 @@ The remaining files in this directory provide:
 
 ## Usage Workflow
 
-1. **Export Model**: Use vision-core export tools to create ONNX/TensorRT models
+1. **Export Model**: Use vision-core export tools or manually to create ONNX/TensorRT models
 2. **Deploy to Triton**: Use scripts in this directory to set up Triton model repository
 3. **Configure**: Edit `config.pbtxt` files for your specific model requirements
 4. **Run**: Start Triton server with your model repository
-
-For detailed export instructions, see: [vision-core export documentation](https://github.com/olibartfast/vision-core/tree/main/export)
