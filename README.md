@@ -331,8 +331,9 @@ To view all available parameters, run:
 | YOLO-NAS               | `yolonas`              | Specific output format |
 | RT-DETR / RT-DETRv2 / RT-DETRv4 / D-FINE / DEIM / DEIMv2 | `rtdetr` | All RT-DETR style models share the same postprocessor |
 | RT-DETR Ultralytics    | `rtdetrul`             |       |
-| RF-DETR (Detection & Segmentation) | `rfdetr`  |       |
+| RF-DETR Detection | `rfdetr`  |       |
 | YOLOv5/v8/v11/v12 Segmentation | `yoloseg`       |       |
+| RF-DETR Segmentation | `rfdetrseg`  |       |
 | Torchvision Classifier | `torchvision-classifier` |     |
 | Tensorflow Classifier  | `tensorflow-classifier` |      |
 | ViT Classifier         | `vit-classifier`       |       |
