@@ -39,8 +39,8 @@ tritonic/
 ```
 
 **CMake Fetched Dependencies:**
-- [vision-core](https://github.com/olibartfast/vision-core) - Model pre/post processing
-- [fmt](https://github.com/fmtlib/fmt) - Formatting library
+- [vision-core](https://github.com/olibartfast/vision-core) - Model pre/post processing and task management
+- [vision-infra](https://github.com/olibartfast/vision-infra) - Core infrastructure components (logging, configuration, filesystem)
 
 ## Tested Models
 
@@ -193,9 +193,15 @@ cmake --build .
 
 *Other tasks are in TODO list.*
 
-## Model Pre/Post Processing
+## Architecture
 
-All model-specific preprocessing and postprocessing logic is handled by the [vision-core](https://github.com/olibartfast/vision-core) library, which is automatically fetched as a CMake dependency via `FetchContent`. This modular approach keeps the Triton client code clean and allows the vision processing logic to be reused across different inference backends.
+TritonIC uses a modular architecture with two key libraries:
+
+- **[vision-core](https://github.com/olibartfast/vision-core)**: Handles all model-specific preprocessing and postprocessing logic, task management, and computer vision algorithms. This library provides a clean abstraction layer for different model types and allows the vision processing logic to be reused across different inference backends.
+
+- **[vision-infra](https://github.com/olibartfast/vision-infra)**: Provides core infrastructure components including logging, configuration management, and filesystem utilities. This library ensures consistent behavior and reduces code duplication across vision-related projects.
+
+Both libraries are automatically fetched as CMake dependencies via `FetchContent`, keeping the Triton client code focused on inference orchestration.
 
 ## Notes
 
