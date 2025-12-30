@@ -48,7 +48,7 @@ endif()
 FetchContent_Declare(
   vision-infra
   GIT_REPOSITORY ${VISION_INFRA_REPO}
-  GIT_TAG f486fac
+  GIT_TAG master
 )
 
 # Disable warnings as errors for vision-infra
