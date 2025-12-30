@@ -8,6 +8,22 @@ set(CMAKE_CXX_STANDARD 20)
 # Fetch vision-core repository for tasks
 include(FetchContent)
 
+# Auto-detect offline mode by testing network connectivity
+if(NOT DEFINED FETCHCONTENT_FULLY_DISCONNECTED)
+  execute_process(
+    COMMAND ping -c 1 -W 1 github.com
+    RESULT_VARIABLE NO_CONNECTION
+    OUTPUT_QUIET
+    ERROR_QUIET
+  )
+  if(NO_CONNECTION)
+    message(STATUS "No network connection detected - enabling offline mode")
+    set(FETCHCONTENT_FULLY_DISCONNECTED ON CACHE BOOL "Operate in offline mode" FORCE)
+  else()
+    set(FETCHCONTENT_FULLY_DISCONNECTED OFF CACHE BOOL "Operate in offline mode")
+  endif()
+endif()
+
 # Set GIT_CONFIG to allow credential helper or use token from environment
 if(DEFINED ENV{GITHUB_TOKEN})
   set(VISION_CORE_REPO "https://$ENV{GITHUB_TOKEN}@github.com/olibartfast/vision-core.git")
@@ -18,9 +34,30 @@ endif()
 FetchContent_Declare(
   vision-core
   GIT_REPOSITORY ${VISION_CORE_REPO}
-  GIT_TAG main  # or specify a branch/tag/commit
+  GIT_TAG master
 )
 FetchContent_MakeAvailable(vision-core)
+
+# Set vision-infra repository URL with token support
+if(DEFINED ENV{GITHUB_TOKEN})
+  set(VISION_INFRA_REPO "https://$ENV{GITHUB_TOKEN}@github.com/olibartfast/vision-infra.git")
+else()
+  set(VISION_INFRA_REPO "https://github.com/olibartfast/vision-infra.git")
+endif()
+
+FetchContent_Declare(
+  vision-infra
+  GIT_REPOSITORY ${VISION_INFRA_REPO}
+  GIT_TAG f486fac
+)
+
+# Disable warnings as errors for vision-infra
+set(ENABLE_WARNINGS_SAVED ${ENABLE_WARNINGS})
+set(ENABLE_WARNINGS OFF CACHE BOOL "Disable warnings for vision-infra" FORCE)
+FetchContent_MakeAvailable(vision-infra)
+if(DEFINED ENABLE_WARNINGS_SAVED)
+  set(ENABLE_WARNINGS ${ENABLE_WARNINGS_SAVED} CACHE BOOL "Restore warnings setting" FORCE)
+endif()
 
 FetchContent_Declare(
   fmt
@@ -88,7 +125,7 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/utils
     ${PROJECT_SOURCE_DIR}/src/triton
-    # vision-core includes are provided automatically through target_link_libraries
+    # vision-core and vision-infra includes are provided automatically through target_link_libraries
 )
 
 # Set link directories for the target
@@ -102,6 +139,7 @@ target_link_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
     vision-core::vision-core
+    vision-infra::vision-infra
     grpcclient
     httpclient
     ${OpenCV_LIBS}
