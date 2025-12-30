@@ -59,12 +59,6 @@ if(DEFINED ENABLE_WARNINGS_SAVED)
   set(ENABLE_WARNINGS ${ENABLE_WARNINGS_SAVED} CACHE BOOL "Restore warnings setting" FORCE)
 endif()
 
-FetchContent_Declare(
-  fmt
-  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-  GIT_TAG 10.1.1
-)
-FetchContent_MakeAvailable(fmt)
 
 option(WITH_SHOW_FRAME "Option description" OFF)
 option(WITH_WRITE_FRAME "Option description" ON)
@@ -101,18 +95,11 @@ set(TRITON_SOURCES ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp)
 
 set(UTILS_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/utils.cpp)
 
-# Add configuration and logging sources
-set(CONFIG_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/ConfigManager.cpp)
-set(LOGGER_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/Logger.cpp)
-set(FILESYSTEM_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/FileSystem.cpp)
 
 # Add an executable target
 add_executable(${PROJECT_NAME}
     ${SOURCES}
     ${UTILS_SOURCES}
-    ${CONFIG_SOURCES}
-    ${LOGGER_SOURCES}
-    ${FILESYSTEM_SOURCES}
     ${TRITON_SOURCES}
 )
 
@@ -145,7 +132,6 @@ target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBS}
     CURL::libcurl
     ${PROTOBUF_LIBRARIES}
-    fmt::fmt
 )
 
 # Add option for testing
