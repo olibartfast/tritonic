@@ -19,30 +19,30 @@ App::App(std::shared_ptr<ITriton> triton,
 
 int App::run() {
     try {
-        logger_->info("Starting Triton Client Application");
-        logger_->info("Current path is " + std::string(std::filesystem::current_path()));
+        logger_->infof("Starting Triton Client Application");
+        logger_->infof("Current path is {}", std::string(std::filesystem::current_path()));
 
         // Connect to Triton
         tritonClient_->createTritonClient();
 
-        logger_->infof("Getting model info for: {}", config_->model_name);
-        TritonModelInfo modelInfo = tritonClient_->getModelInfo(config_->model_name, config_->server_address, config_->input_sizes);
+        logger_->infof("Getting model info for: {}", config_->GetModelName());
+        TritonModelInfo modelInfo = tritonClient_->getModelInfo(config_->GetModelName(), config_->GetServerAddress(), config_->GetInputSizes());
 
         // Create task instance
-        logger_->infof("Creating task instance for model type: {}", config_->model_type);
+        logger_->infof("Creating task instance for model type: {}", config_->GetModelType());
         auto visionCoreModelInfo = convertToVisionCoreModelInfo(modelInfo);
-        task_ = TaskFactory::createTaskInstance(config_->model_type, visionCoreModelInfo);
+        task_ = TaskFactory::createTaskInstance(config_->GetModelType(), visionCoreModelInfo);
 
         if (!task_) {
             throw std::runtime_error("Failed to create task instance");
         }
 
         // Load class names
-        class_names_ = task_->readLabelNames(config_->labels_file);
-        logger_->infof("Loaded {} class names from {}", class_names_.size(), config_->labels_file);
+        class_names_ = task_->readLabelNames(config_->GetLabelsFile());
+        logger_->infof("Loaded {} class names from {}", class_names_.size(), config_->GetLabelsFile());
 
         // Parse source files
-        std::vector<std::string> sourceNames = split(config_->source, ',');
+        std::vector<std::string> sourceNames = split(config_->GetSource(), ',');
         
         // Categorize source files
         std::vector<std::string> image_list;
@@ -72,17 +72,17 @@ int App::run() {
         
         // Process videos
         if (!video_list.empty()) {
-            logger_->info("Processing videos");
+            logger_->infof("Processing videos");
             for (const auto& sourceName : video_list) {
                 processVideo(sourceName);
             }
         }
 
-        logger_->info("Application completed successfully");
+        logger_->infof("Application completed successfully");
         return 0;
 
     } catch (const std::exception& e) {
-        logger_->error("Application error: " + std::string(e.what()));
+        logger_->errorf("Application error: {}", std::string(e.what()));
         return 1;
     } catch (...) {
         logger_->fatal("An unknown error occurred");
@@ -110,7 +110,7 @@ std::vector<vision_core::Result> App::processSource(const std::vector<cv::Mat>& 
 
 void App::processImages(const std::vector<std::string>& sourceNames) {
     if (task_->getTaskType() == TaskType::OpticalFlow) {
-        logger_->info("Processing optical flow for image pairs");
+        logger_->infof("Processing optical flow for image pairs");
         for(size_t i = 0; i < sourceNames.size() - 1; i++) {
             std::vector<std::string> flowInputs = {sourceNames[i], sourceNames[i+1]};
             
@@ -146,12 +146,12 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             std::string sourceDir = flowInputs[0].substr(0, flowInputs[0].find_last_of("/\\"));
             std::string outputDir = sourceDir + "/output";
             std::filesystem::create_directories(outputDir);
-            std::string processedFrameFilename = outputDir + "/processed_frame_" + config_->model_name + ".jpg";
+            std::string processedFrameFilename = outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
             logger_->infof("Saving frame to: {}", processedFrameFilename);
             cv::imwrite(processedFrameFilename, image);
         }
     } else {
-        logger_->info("Processing individual images");
+        logger_->infof("Processing individual images");
         for (const auto& sourceName : sourceNames) {
             cv::Mat image = cv::imread(sourceName);
             if (image.empty()) {
@@ -202,7 +202,7 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             // Save result
             std::string outputDir = sourceDir + "/output";
             std::filesystem::create_directories(outputDir);
-            std::string processedFrameFilename = outputDir + "/processed_frame_" + config_->model_name + ".jpg";
+            std::string processedFrameFilename = outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
             logger_->infof("Saving frame to: {}", processedFrameFilename);
             cv::imwrite(processedFrameFilename, image);
         }
@@ -218,7 +218,7 @@ void App::processVideo(const std::string& sourceName) {
     }
 
     cv::VideoWriter outputVideo;
-    if (config_->write_frame) {
+    if (config_->GetWriteFrame()) {
         cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH), (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
         int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
         std::string outputDir = sourceDir + "/output";
@@ -236,7 +236,7 @@ void App::processVideo(const std::string& sourceName) {
     
     // Read first frame
     if (!cap.read(current_frame)) {
-        logger_->error("Failed to read first frame");
+        logger_->errorf("Failed to read first frame");
         throw std::runtime_error("Failed to read first frame");
     }
 
@@ -259,7 +259,7 @@ void App::processVideo(const std::string& sourceName) {
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         logger_->infof("Infer time: {} ms", diff);
 
-        if (config_->show_frame || config_->write_frame) {
+        if (config_->GetShowFrame() || config_->GetWriteFrame()) {
             // Create visualization frame
             if (task_->getTaskType() == TaskType::OpticalFlow) {
                 visualization_frame = cv::Mat::zeros(current_frame.size(), current_frame.type());
@@ -318,12 +318,12 @@ void App::processVideo(const std::string& sourceName) {
             cv::putText(visualization_frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
         }
 
-        if (config_->show_frame) {
+        if (config_->GetShowFrame()) {
             cv::imshow("video feed", visualization_frame);
             cv::waitKey(1);
         }
 
-        if (config_->write_frame) {
+        if (config_->GetWriteFrame()) {
             outputVideo.write(visualization_frame);
         }
 

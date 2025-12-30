@@ -15,9 +15,7 @@ std::vector<std::string> FileSystem::readLines(const std::string& filename) cons
     return lines;
 }
 
-bool FileSystem::fileExists(const std::string& filename) const {
-    return std::filesystem::exists(filename);
-}
+// fileExists is now a non-virtual wrapper around Exists()
 
 cv::Mat FileSystem::readImage(const std::string& filename) const {
     return cv::imread(filename);

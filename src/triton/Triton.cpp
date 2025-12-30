@@ -132,7 +132,7 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
             }
             shape = input_sizes[inputIndex];
         } else if (!input_sizes.empty()) {
-            logger.warn("Input sizes provided, but model does not have dynamic shapes. Ignoring provided input sizes.");
+            logger.warnf("Input sizes provided, but model does not have dynamic shapes. Ignoring provided input sizes.");
         }
 
         if (info.max_batch_size_ > 0 && shape.size() < 4) {
@@ -781,7 +781,7 @@ Triton::inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_dat
                                                         model_info_.output_names);
     result_ptr.reset(result);
     
-    logger.info("Inference with shared memory completed successfully");
+    logger.infof("Inference with shared memory completed successfully");
     return std::make_tuple(std::move(infer_results), std::move(infer_shapes));
 }
 
