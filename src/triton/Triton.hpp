@@ -2,7 +2,7 @@
 #include "common.hpp"
 #include "TritonModelInfo.hpp"
 #include "ITriton.hpp"
-#include <vision-infra/core/Logger.hpp>
+#include <vision-infra/vision-infra.hpp>
 #include <curl/curl.h>
 #include <rapidjson/document.h>
 #include <variant>
@@ -106,29 +106,30 @@ public:
     }
 
     void printModelInfo(const TritonModelInfo& model_info) const override {
-        auto logger = vision_infra::Logger::getInstance();
-        logger->infof("Model Information:");
-        logger->infof("  Inputs:");
+        auto logger = std::dynamic_pointer_cast<vision_infra::core::Logger>(
+            vision_infra::core::LoggerManager::GetLogger("triton"));
+        logger->Info("Model Information:");
+        logger->Info("  Inputs:");
         for (size_t i = 0; i < model_info.input_names.size(); ++i) {
-            logger->infof("    {}:", model_info.input_names[i]);
-            logger->infof("      Format: {}", model_info.input_formats[i]);
+            logger->Info("    " + model_info.input_names[i] + ":");
+            logger->Info("      Format: " + model_info.input_formats[i]);
             std::string shape_str = "      Shape: [";
             for (size_t j = 0; j < model_info.input_shapes[i].size(); ++j) {
                 shape_str += std::to_string(model_info.input_shapes[i][j]);
                 if (j < model_info.input_shapes[i].size() - 1) shape_str += ", ";
             }
             shape_str += "]";
-            logger->info(shape_str);
-            logger->infof("      Type: {}", getOpenCVTypeString(model_info.input_types[i]));
+            logger->Info(shape_str);
+            logger->Info("      Type: " + getOpenCVTypeString(model_info.input_types[i]));
         }
         
-        logger->infof("  Outputs:");
+        logger->Info("  Outputs:");
         for (const auto& output_name : model_info.output_names) {
-            logger->infof("    {}", output_name);
+            logger->Info("    " + output_name);
         }
         
-        logger->infof("  Max Batch Size: {}", model_info.max_batch_size_);
-        logger->infof("  Batch Size: {}", model_info.batch_size_);
+        logger->Info("  Max Batch Size: " + std::to_string(model_info.max_batch_size_));
+        logger->Info("  Batch Size: " + std::to_string(model_info.batch_size_));
     }
 
     std::string getOpenCVTypeString(int type) const {

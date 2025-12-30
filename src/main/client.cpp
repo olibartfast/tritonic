@@ -1,23 +1,23 @@
 #include "App.hpp"
-#include <vision-infra/config/Config.hpp>
-#include <vision-infra/core/Logger.hpp>
-#include <vision-infra/config/ConfigManager.hpp>
+#include <vision-infra/vision-infra.hpp>
 #include "Triton.hpp"
 #include <iostream>
 
 int main(int argc, const char* argv[]) {
     try {
         // Initialize logging
-        auto logger = vision_infra::Logger::getInstance();
-        logger->setLogLevel(vision_infra::LogLevel::INFO);
-        logger->setConsoleOutput(true);
+        auto logger = std::dynamic_pointer_cast<vision_infra::core::Logger>(
+            vision_infra::core::LoggerManager::GetLogger("tritonic"));
+        logger->SetLevel(vision_infra::core::LogLevel::INFO);
+        logger->EnableConsoleOutput(true);
         
         // Load configuration
-        std::unique_ptr<vision_infra::Config> config;
+        std::unique_ptr<vision_infra::config::InferenceConfig> config;
         try {
-            config = vision_infra::ConfigManager::loadFromCommandLine(argc, argv);
+            vision_infra::config::ConfigManager configManager;
+            config = configManager.LoadFromCommandLine(argc, argv);
         } catch (const std::invalid_argument& e) {
-            logger->error("Command line configuration error: " + std::string(e.what()));
+            logger->Error("Command line configuration error: " + std::string(e.what()));
             return 1;
         }
         
@@ -27,15 +27,15 @@ int main(int argc, const char* argv[]) {
         
         // Configure logger
         if (!config->GetLogFile().empty()) {
-            logger->setLogFile(config->GetLogFile());
+            logger->SetOutputFile(config->GetLogFile());
         }
         
-        if (config->GetLogLevel() == "debug") logger->setLogLevel(vision_infra::LogLevel::DEBUG);
-        else if (config->GetLogLevel() == "warn") logger->setLogLevel(vision_infra::LogLevel::WARN);
-        else if (config->GetLogLevel() == "error") logger->setLogLevel(vision_infra::LogLevel::ERROR);
-        else logger->setLogLevel(vision_infra::LogLevel::INFO);
+        if (config->GetLogLevel() == "debug") logger->SetLevel(vision_infra::core::LogLevel::DEBUG);
+        else if (config->GetLogLevel() == "warn") logger->SetLevel(vision_infra::core::LogLevel::WARN);
+        else if (config->GetLogLevel() == "error") logger->SetLevel(vision_infra::core::LogLevel::ERROR);
+        else logger->SetLevel(vision_infra::core::LogLevel::INFO);
         
-        vision_infra::ConfigManager::printConfig(*config);
+        // Configuration loaded successfully
         
         // Create dependencies
         std::string url = config->GetServerAddress() + ":" + std::to_string(config->GetPort());
@@ -44,7 +44,7 @@ int main(int argc, const char* argv[]) {
         auto triton = std::make_shared<Triton>(url, protocol, config->GetModelName(), config->GetModelVersion(), config->GetVerbose());
         
         // Create and run App
-        std::shared_ptr<vision_infra::Config> configPtr = std::move(config);
+        std::shared_ptr<vision_infra::config::InferenceConfig> configPtr = std::move(config);
         
         App app(triton, configPtr, logger);
         return app.run();
