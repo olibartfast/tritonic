@@ -13,8 +13,8 @@ using vision_core::OpticalFlow;
 using vision_core::VideoClassification;
 
 App::App(std::shared_ptr<ITriton> triton, 
-         std::shared_ptr<Config> config,
-         std::shared_ptr<ILogger> logger)
+         std::shared_ptr<vision_infra::Config> config,
+         std::shared_ptr<vision_infra::Logger> logger)
     : tritonClient_(triton), config_(config), logger_(logger) {}
 
 int App::run() {
