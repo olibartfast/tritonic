@@ -6,3 +6,11 @@ triton_client_libs
 3rdparty
 weights
 **/*.pt
+# Prevent CMake artifacts in source directories
+tests/_deps/
+tests/CMakeFiles/
+tests/CMakeCache.txt
+tests/cmake_install.cmake
+tests/Makefile
+**/CMakeFiles/
+**/CMakeCache.txt

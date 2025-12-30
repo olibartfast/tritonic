@@ -1,8 +1,8 @@
 #pragma once
-#include "common.hpp"
 #include "TritonModelInfo.hpp"
 #include "ITriton.hpp"
 #include <vision-infra/vision-infra.hpp>
+#include <opencv2/opencv.hpp>
 #include <curl/curl.h>
 #include <rapidjson/document.h>
 #include <variant>
@@ -10,6 +10,11 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+// Include heavy Triton dependencies only where needed
+#include "grpc_client.h"
+#include "http_client.h"
+namespace tc = triton::client;
 
 #ifdef TRITONIC_ENABLE_CUDA
 #include <cuda_runtime.h>
