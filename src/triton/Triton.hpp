@@ -106,8 +106,8 @@ public:
     }
 
     void printModelInfo(const TritonModelInfo& model_info) const override {
-        logger.info("Model Information:");
-        logger.info("  Inputs:");
+        logger.infof("Model Information:");
+        logger.infof("  Inputs:");
         for (size_t i = 0; i < model_info.input_names.size(); ++i) {
             logger.infof("    {}:", model_info.input_names[i]);
             logger.infof("      Format: {}", model_info.input_formats[i]);
@@ -121,7 +121,7 @@ public:
             logger.infof("      Type: {}", getOpenCVTypeString(model_info.input_types[i]));
         }
         
-        logger.info("  Outputs:");
+        logger.infof("  Outputs:");
         for (const auto& output_name : model_info.output_names) {
             logger.infof("    {}", output_name);
         }

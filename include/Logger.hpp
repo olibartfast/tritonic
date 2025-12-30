@@ -91,7 +91,5 @@ private:
     std::mutex mutex_;
 };
 
-// Global logger instance for backward compatibility (if needed)
-// But we should prefer dependency injection.
-// For now, we can keep the global instance but encourage using the interface.
+// Global logger instance
 extern Logger& logger;

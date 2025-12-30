@@ -24,22 +24,22 @@ int main(int argc, const char* argv[]) {
         }
         
         // Configure logger
-        if (!config->log_file.empty()) {
-            logger.setLogFile(config->log_file);
+        if (!config->GetLogFile().empty()) {
+            logger.setLogFile(config->GetLogFile());
         }
         
-        if (config->log_level == "debug") logger.setLogLevel(LogLevel::DEBUG);
-        else if (config->log_level == "warn") logger.setLogLevel(LogLevel::WARN);
-        else if (config->log_level == "error") logger.setLogLevel(LogLevel::ERROR);
+        if (config->GetLogLevel() == "debug") logger.setLogLevel(LogLevel::DEBUG);
+        else if (config->GetLogLevel() == "warn") logger.setLogLevel(LogLevel::WARN);
+        else if (config->GetLogLevel() == "error") logger.setLogLevel(LogLevel::ERROR);
         else logger.setLogLevel(LogLevel::INFO);
         
         ConfigManager::printConfig(*config);
         
         // Create dependencies
-        std::string url = config->server_address + ":" + std::to_string(config->port);
-        ProtocolType protocol = config->protocol == "grpc" ? ProtocolType::GRPC : ProtocolType::HTTP;
+        std::string url = config->GetServerAddress() + ":" + std::to_string(config->GetPort());
+        ProtocolType protocol = config->GetProtocol() == "grpc" ? ProtocolType::GRPC : ProtocolType::HTTP;
         
-        auto triton = std::make_shared<Triton>(url, protocol, config->model_name, config->model_version, config->verbose);
+        auto triton = std::make_shared<Triton>(url, protocol, config->GetModelName(), config->GetModelVersion(), config->GetVerbose());
         
         // Create and run App
         std::shared_ptr<ILogger> loggerPtr(&logger, [](ILogger*){});
