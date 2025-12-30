@@ -1,5 +1,7 @@
 #include "Triton.hpp"
 
+static auto logger = vision_infra::Logger::getInstance();
+
 static size_t WriteCallback(char* ptr, size_t size, size_t nmemb, std::string& data) {
     size_t totalSize = size * nmemb;
     data.append(ptr, totalSize);
@@ -105,7 +107,7 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
     const auto& inputs = responseJson["input"].GetArray();
     size_t inputIndex = 0;  // Keep track of index for error messages and input_sizes access
     for (const auto& input : inputs) {
-        logger.infof("Input {}: {}", inputIndex, input["name"].GetString());
+        logger->infof("Input {}: {}", inputIndex, input["name"].GetString());
         info.input_names.push_back(input["name"].GetString());
         
         std::string format = input["format"].GetString();
@@ -132,7 +134,7 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
             }
             shape = input_sizes[inputIndex];
         } else if (!input_sizes.empty()) {
-            logger.warnf("Input sizes provided, but model does not have dynamic shapes. Ignoring provided input sizes.");
+            logger->warnf("Input sizes provided, but model does not have dynamic shapes. Ignoring provided input sizes.");
         }
 
         if (info.max_batch_size_ > 0 && shape.size() < 4) {
@@ -150,7 +152,7 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
             info.input_types.push_back(CV_32S);
         } else if (datatype == "INT64") {
             info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
-            logger.warnf("Warning: INT64 type detected for input '{}'. Will be mapped to CV_32S.", info.input_names.back());
+            logger->warnf("Warning: INT64 type detected for input '{}'. Will be mapped to CV_32S.", info.input_names.back());
         } else {
             throw std::runtime_error("Unsupported data type: " + datatype);
         }
@@ -365,7 +367,7 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
         inputs.emplace_back(input);
 
         if (input_data[i].empty()) {
-            logger.warnf("Warning: Empty input data for {}", model_info_.input_names[i]);
+            logger->warnf("Warning: Empty input data for {}", model_info_.input_names[i]);
             continue;  // Skip appending empty data
         }
 
@@ -374,7 +376,7 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
             throw std::runtime_error("Failed setting input " + model_info_.input_names[i] + ": " + err.Message());
         }
 
-        logger.debugf("Input {} set with {} bytes of data", model_info_.input_names[i], input_data[i].size());
+        logger->debugf("Input {} set with {} bytes of data", model_info_.input_names[i], input_data[i].size());
     }
 
     // Create vector of raw pointers for the API call
@@ -438,7 +440,7 @@ std::unique_ptr<SharedMemoryRegion> Triton::createSystemSharedMemoryRegion(const
         throw std::runtime_error("Failed to map system shared memory region: " + region->name);
     }
     
-    logger.infof("Created system shared memory region '{}' with key '{}' and size {} bytes", 
+    logger->infof("Created system shared memory region '{}' with key '{}' and size {} bytes", 
                  region->name, region->key, region->size);
     
     return region;
@@ -467,7 +469,7 @@ std::unique_ptr<SharedMemoryRegion> Triton::createCudaSharedMemoryRegion(const s
                                 "': " + cudaGetErrorString(cuda_err));
     }
     
-    logger.infof("Created CUDA shared memory region '{}' on device {} with size {} bytes", 
+    logger->infof("Created CUDA shared memory region '{}' on device {} with size {} bytes", 
                  region->name, cuda_device_id_, region->size);
     
     return region;
@@ -543,7 +545,7 @@ void Triton::registerInputSharedMemory() {
                                    region->name + "': " + err.Message());
         }
         
-        logger.infof("Registered {} input shared memory '{}' for input '{}'", 
+        logger->infof("Registered {} input shared memory '{}' for input '{}'", 
                     (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY ? "system" : "CUDA"),
                     region->name, input_name);
         input_shm_regions_.push_back(std::move(region));
@@ -594,7 +596,7 @@ void Triton::registerOutputSharedMemory() {
                                    region->name + "': " + err.Message());
         }
         
-        logger.infof("Registered {} output shared memory '{}' for output '{}'", 
+        logger->infof("Registered {} output shared memory '{}' for output '{}'", 
                     (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY ? "system" : "CUDA"),
                     region->name, output_name);
         output_shm_regions_.push_back(std::move(region));
@@ -623,10 +625,10 @@ void Triton::unregisterSharedMemory() {
         }
         
         if (!err.IsOk()) {
-            logger.warnf("Failed to unregister input shared memory '{}': {}", 
+            logger->warnf("Failed to unregister input shared memory '{}': {}", 
                         region->name, err.Message());
         } else {
-            logger.infof("Unregistered input shared memory '{}'", region->name);
+            logger->infof("Unregistered input shared memory '{}'", region->name);
         }
     }
     
@@ -649,10 +651,10 @@ void Triton::unregisterSharedMemory() {
         }
         
         if (!err.IsOk()) {
-            logger.warnf("Failed to unregister output shared memory '{}': {}", 
+            logger->warnf("Failed to unregister output shared memory '{}': {}", 
                         region->name, err.Message());
         } else {
-            logger.infof("Unregistered output shared memory '{}'", region->name);
+            logger->infof("Unregistered output shared memory '{}'", region->name);
         }
     }
     
@@ -718,7 +720,7 @@ Triton::inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_dat
         }
         
         inputs.emplace_back(input);
-        logger.infof("Input '{}' set with shared memory region '{}'", input_name, region->name);
+        logger->infof("Input '{}' set with shared memory region '{}'", input_name, region->name);
     }
     
     // Create outputs with shared memory (if available)
@@ -740,7 +742,7 @@ Triton::inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_dat
                 throw std::runtime_error("Failed to set shared memory for output " + output_name + 
                                        ": " + err.Message());
             }
-            logger.infof("Output '{}' set with shared memory region '{}'", output_name, region->name);
+            logger->infof("Output '{}' set with shared memory region '{}'", output_name, region->name);
         }
         
         outputs.emplace_back(output);
@@ -781,7 +783,7 @@ Triton::inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_dat
                                                         model_info_.output_names);
     result_ptr.reset(result);
     
-    logger.infof("Inference with shared memory completed successfully");
+    logger->infof("Inference with shared memory completed successfully");
     return std::make_tuple(std::move(infer_results), std::move(infer_shapes));
 }
 
@@ -792,9 +794,9 @@ void Triton::setSharedMemoryType(SharedMemoryType type, int cuda_device) {
     // Unregister any existing shared memory regions
     unregisterSharedMemory();
     
-    logger.infof("Shared memory type set to {}", 
+    logger->infof("Shared memory type set to {}", 
                 (type == SharedMemoryType::SYSTEM_SHARED_MEMORY ? "System" : "CUDA"));
     if (type == SharedMemoryType::CUDA_SHARED_MEMORY) {
-        logger.infof("CUDA device ID: {}", cuda_device);
+        logger->infof("CUDA device ID: {}", cuda_device);
     }
 }
