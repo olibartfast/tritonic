@@ -4,34 +4,27 @@
 #include <sstream>
 #include "vision-core/core/task_factory.hpp"
 
-using vision_core::TaskFactory;
-using vision_core::TaskType;
-using vision_core::Classification;
-using vision_core::Detection;
-using vision_core::InstanceSegmentation;
-using vision_core::OpticalFlow;
-using vision_core::VideoClassification;
 
 App::App(std::shared_ptr<ITriton> triton, 
-         std::shared_ptr<vision_infra::Config> config,
-         std::shared_ptr<vision_infra::Logger> logger)
+         std::shared_ptr<vision_infra::config::InferenceConfig> config,
+         std::shared_ptr<vision_infra::core::Logger> logger)
     : tritonClient_(triton), config_(config), logger_(logger) {}
 
 int App::run() {
     try {
-        logger_->infof("Starting Triton Client Application");
-        logger_->infof("Current path is {}", std::string(std::filesystem::current_path()));
+        logger_->Info("Starting Triton Client Application");
+        logger_->Info("Current path is " + std::string(std::filesystem::current_path()));
 
         // Connect to Triton
         tritonClient_->createTritonClient();
 
-        logger_->infof("Getting model info for: {}", config_->GetModelName());
+        logger_->Info("Getting model info for: " + config_->GetModelName());
         TritonModelInfo modelInfo = tritonClient_->getModelInfo(config_->GetModelName(), config_->GetServerAddress(), config_->GetInputSizes());
 
         // Create task instance
-        logger_->infof("Creating task instance for model type: {}", config_->GetModelType());
+        logger_->Info("Creating task instance for model type: " + config_->GetModelType());
         auto visionCoreModelInfo = convertToVisionCoreModelInfo(modelInfo);
-        task_ = TaskFactory::createTaskInstance(config_->GetModelType(), visionCoreModelInfo);
+        task_ = vision_core::TaskFactory::createTaskInstance(config_->GetModelType(), visionCoreModelInfo);
 
         if (!task_) {
             throw std::runtime_error("Failed to create task instance");
@@ -39,7 +32,7 @@ int App::run() {
 
         // Load class names
         class_names_ = task_->readLabelNames(config_->GetLabelsFile());
-        logger_->infof("Loaded {} class names from {}", class_names_.size(), config_->GetLabelsFile());
+        logger_->Info("Loaded " + std::to_string(class_names_.size()) + " class names from " + config_->GetLabelsFile());
 
         // Parse source files
         std::vector<std::string> sourceNames = split(config_->GetSource(), ',');
@@ -50,12 +43,12 @@ int App::run() {
         for (const auto& sourceName : sourceNames) {
             if (isImageFile(sourceName)) {
                 image_list.push_back(sourceName);
-                logger_->debug("Added image file: " + sourceName);
+                logger_->Debug("Added image file: " + sourceName);
             } else if (isVideoFile(sourceName)) {
                 video_list.push_back(sourceName);
-                logger_->debug("Added video file: " + sourceName);
+                logger_->Debug("Added video file: " + sourceName);
             } else {
-                logger_->warn("Unknown file type: " + sourceName);
+                logger_->Warn("Unknown file type: " + sourceName);
             }
         }
 
@@ -63,7 +56,7 @@ int App::run() {
             throw std::runtime_error("No valid image or video files provided");
         }
         
-        logger_->infof("Processing {} images and {} videos", image_list.size(), video_list.size());
+        logger_->Info("Processing " + std::to_string(image_list.size()) + " images and " + std::to_string(video_list.size()) + " videos");
         
         // Process images
         if (!image_list.empty()) {
@@ -72,20 +65,20 @@ int App::run() {
         
         // Process videos
         if (!video_list.empty()) {
-            logger_->infof("Processing videos");
+            logger_->Info("Processing videos");
             for (const auto& sourceName : video_list) {
                 processVideo(sourceName);
             }
         }
 
-        logger_->infof("Application completed successfully");
+        logger_->Info("Application completed successfully");
         return 0;
 
     } catch (const std::exception& e) {
-        logger_->errorf("Application error: {}", std::string(e.what()));
+        logger_->Error("Application error: " + std::string(e.what()));
         return 1;
     } catch (...) {
-        logger_->fatal("An unknown error occurred");
+        logger_->Fatal("An unknown error occurred");
         return 1;
     }
 }
@@ -109,8 +102,8 @@ std::vector<vision_core::Result> App::processSource(const std::vector<cv::Mat>& 
 }
 
 void App::processImages(const std::vector<std::string>& sourceNames) {
-    if (task_->getTaskType() == TaskType::OpticalFlow) {
-        logger_->infof("Processing optical flow for image pairs");
+    if (task_->getTaskType() == vision_core::TaskType::OpticalFlow) {
+        logger_->Info("Processing optical flow for image pairs");
         for(size_t i = 0; i < sourceNames.size() - 1; i++) {
             std::vector<std::string> flowInputs = {sourceNames[i], sourceNames[i+1]};
             
@@ -119,7 +112,7 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             for (const auto& name : flowInputs) {
                 cv::Mat img = cv::imread(name);
                 if (img.empty()) {
-                    logger_->errorf("Could not open or read the image: {}", name);
+                    logger_->Error("Could not open or read the image: " + name);
                     continue;
                 }
                 images.push_back(img);
@@ -131,13 +124,13 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             std::vector<vision_core::Result> predictions = processSource(images);
             auto end = std::chrono::steady_clock::now();
             auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-            logger_->infof("Infer time for {} images: {} ms", images.size(), diff);
+            logger_->Info("Infer time for " + std::to_string(images.size()) + " images: " + std::to_string(diff) + " ms");
             
             // Visualization for optical flow
             cv::Mat& image = images[0];
             for (const auto& prediction : predictions) {
-                if (std::holds_alternative<OpticalFlow>(prediction)) {
-                    OpticalFlow flow = std::get<OpticalFlow>(prediction);
+                if (std::holds_alternative<vision_core::OpticalFlow>(prediction)) {
+                    vision_core::OpticalFlow flow = std::get<vision_core::OpticalFlow>(prediction);
                     flow.flow.copyTo(image);
                 }
             }
@@ -147,15 +140,15 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             std::string outputDir = sourceDir + "/output";
             std::filesystem::create_directories(outputDir);
             std::string processedFrameFilename = outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
-            logger_->infof("Saving frame to: {}", processedFrameFilename);
+            logger_->Info("Saving frame to: " + processedFrameFilename);
             cv::imwrite(processedFrameFilename, image);
         }
     } else {
-        logger_->infof("Processing individual images");
+        logger_->Info("Processing individual images");
         for (const auto& sourceName : sourceNames) {
             cv::Mat image = cv::imread(sourceName);
             if (image.empty()) {
-                logger_->errorf("Could not open or read the image: {}", sourceName);
+                logger_->Error("Could not open or read the image: " + sourceName);
                 continue;
             }
             
@@ -163,24 +156,24 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             std::vector<vision_core::Result> predictions = processSource({image});
             auto end = std::chrono::steady_clock::now();
             auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-            logger_->infof("Infer time for 1 image: {} ms", diff);
+            logger_->Info("Infer time for 1 image: " + std::to_string(diff) + " ms");
             
             // Visualization
             std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
             for (const auto& prediction : predictions) {
-                if (std::holds_alternative<Classification>(prediction)) {
-                    Classification classification = std::get<Classification>(prediction);
-                    logger_->infof("Image {}: {}: {}", sourceName, class_names_[classification.class_id], classification.class_confidence);
+                if (std::holds_alternative<vision_core::Classification>(prediction)) {
+                    vision_core::Classification classification = std::get<vision_core::Classification>(prediction);
+                    logger_->Info("Image " + sourceName + ": " + class_names_[classification.class_id] + ": " + std::to_string(classification.class_confidence));
                     drawLabel(image, class_names_[classification.class_id], classification.class_confidence, 30, 30);
                 } 
-                else if (std::holds_alternative<Detection>(prediction)) {
-                    Detection detection = std::get<Detection>(prediction);
+                else if (std::holds_alternative<vision_core::Detection>(prediction)) {
+                    vision_core::Detection detection = std::get<vision_core::Detection>(prediction);
                     cv::rectangle(image, detection.bbox, cv::Scalar(255, 0, 0), 2);
                     drawLabel(image, class_names_[detection.class_id], detection.class_confidence, 
                               detection.bbox.x, detection.bbox.y - 1);
                 }
-                else if (std::holds_alternative<InstanceSegmentation>(prediction)) {
-                    InstanceSegmentation segmentation = std::get<InstanceSegmentation>(prediction);
+                else if (std::holds_alternative<vision_core::InstanceSegmentation>(prediction)) {
+                    vision_core::InstanceSegmentation segmentation = std::get<vision_core::InstanceSegmentation>(prediction);
                     
                     cv::rectangle(image, segmentation.bbox, cv::Scalar(255, 0, 0), 2);
                     drawLabel(image, class_names_[segmentation.class_id], segmentation.class_confidence, 
@@ -203,7 +196,7 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             std::string outputDir = sourceDir + "/output";
             std::filesystem::create_directories(outputDir);
             std::string processedFrameFilename = outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
-            logger_->infof("Saving frame to: {}", processedFrameFilename);
+            logger_->Info("Saving frame to: " + processedFrameFilename);
             cv::imwrite(processedFrameFilename, image);
         }
     }
@@ -213,7 +206,7 @@ void App::processVideo(const std::string& sourceName) {
     std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
     cv::VideoCapture cap(sourceName);
     if (!cap.isOpened()) {
-        logger_->errorf("Could not open the video: {}", sourceName);
+        logger_->Error("Could not open the video: " + sourceName);
         throw std::runtime_error("Could not open the video: " + sourceName);
     }
 
@@ -226,7 +219,7 @@ void App::processVideo(const std::string& sourceName) {
         outputVideo.open(outputDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
 
         if (!outputVideo.isOpened()) {
-            logger_->errorf("Could not open the output video for write: {}", sourceName);
+            logger_->Error("Could not open the output video for write: " + sourceName);
             return;
         }
     }
@@ -236,7 +229,7 @@ void App::processVideo(const std::string& sourceName) {
     
     // Read first frame
     if (!cap.read(current_frame)) {
-        logger_->errorf("Failed to read first frame");
+        logger_->Error("Failed to read first frame");
         throw std::runtime_error("Failed to read first frame");
     }
 
@@ -244,7 +237,7 @@ void App::processVideo(const std::string& sourceName) {
         auto start = std::chrono::steady_clock::now();
         std::vector<vision_core::Result> predictions;
 
-        if (task_->getTaskType() == TaskType::OpticalFlow) {
+        if (task_->getTaskType() == vision_core::TaskType::OpticalFlow) {
             if (!previous_frame.empty()) {
                 // Process optical flow between previous and current frame
                 std::vector<cv::Mat> frame_pair = {previous_frame, current_frame};
@@ -257,23 +250,23 @@ void App::processVideo(const std::string& sourceName) {
 
         auto end = std::chrono::steady_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        logger_->infof("Infer time: {} ms", diff);
+        logger_->Info("Infer time: " + std::to_string(diff) + " ms");
 
         if (config_->GetShowFrame() || config_->GetWriteFrame()) {
             // Create visualization frame
-            if (task_->getTaskType() == TaskType::OpticalFlow) {
+            if (task_->getTaskType() == vision_core::TaskType::OpticalFlow) {
                 visualization_frame = cv::Mat::zeros(current_frame.size(), current_frame.type());
                 for (const auto& prediction : predictions) {
-                    if (std::holds_alternative<OpticalFlow>(prediction)) {
-                        OpticalFlow flow = std::get<OpticalFlow>(prediction);
+                    if (std::holds_alternative<vision_core::OpticalFlow>(prediction)) {
+                        vision_core::OpticalFlow flow = std::get<vision_core::OpticalFlow>(prediction);
                         flow.flow.copyTo(visualization_frame);
                     }
                 }
             } else {
                 current_frame.copyTo(visualization_frame);
                 for (const auto& prediction : predictions) {
-                    if (std::holds_alternative<Detection>(prediction)) {
-                        Detection detection = std::get<Detection>(prediction);
+                    if (std::holds_alternative<vision_core::Detection>(prediction)) {
+                        vision_core::Detection detection = std::get<vision_core::Detection>(prediction);
                         // Ensure bounding box is within frame boundaries
                         cv::Rect safeBbox = detection.bbox & cv::Rect(0, 0, visualization_frame.cols, visualization_frame.rows);
                         
@@ -283,8 +276,8 @@ void App::processVideo(const std::string& sourceName) {
                                      safeBbox.x, safeBbox.y - 1);
                         }
                     }
-                    else if (std::holds_alternative<InstanceSegmentation>(prediction)) {
-                        InstanceSegmentation segmentation = std::get<InstanceSegmentation>(prediction);
+                    else if (std::holds_alternative<vision_core::InstanceSegmentation>(prediction)) {
+                        vision_core::InstanceSegmentation segmentation = std::get<vision_core::InstanceSegmentation>(prediction);
                         
                         cv::Rect safeBbox = segmentation.bbox & cv::Rect(0, 0, visualization_frame.cols, visualization_frame.rows);
                         

@@ -6,23 +6,22 @@
 #include <opencv2/opencv.hpp>
 
 #include "ITriton.hpp"
-#include <vision-infra/config/Config.hpp>
-#include <vision-infra/core/Logger.hpp>
+#include <vision-infra/vision-infra.hpp>
 #include "vision-core/core/task_interface.hpp"
 #include "vision-core/core/result_types.hpp"
 
 class App {
 public:
     App(std::shared_ptr<ITriton> triton, 
-        std::shared_ptr<vision_infra::Config> config,
-        std::shared_ptr<vision_infra::Logger> logger);
+        std::shared_ptr<vision_infra::config::InferenceConfig> config,
+        std::shared_ptr<vision_infra::core::Logger> logger);
     
     int run();
 
 private:
     std::shared_ptr<ITriton> tritonClient_;
-    std::shared_ptr<vision_infra::Config> config_;
-    std::shared_ptr<vision_infra::Logger> logger_;
+    std::shared_ptr<vision_infra::config::InferenceConfig> config_;
+    std::shared_ptr<vision_infra::core::Logger> logger_;
     std::unique_ptr<vision_core::TaskInterface> task_;
     std::vector<std::string> class_names_;
 
