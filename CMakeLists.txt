@@ -18,7 +18,7 @@ endif()
 FetchContent_Declare(
   vision-core
   GIT_REPOSITORY ${VISION_CORE_REPO}
-  GIT_TAG main  # or specify a branch/tag/commit
+  GIT_TAG master  # or specify a branch/tag/commit
 )
 FetchContent_MakeAvailable(vision-core)
 
