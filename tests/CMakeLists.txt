@@ -17,15 +17,14 @@ FetchContent_MakeAvailable(googletest)
 # Test source files
 set(TEST_SOURCES
     test_main.cpp
-    test_config_basic.cpp
-    test_config_manager_basic.cpp
-    test_logger.cpp
     test_triton.cpp
     test_classification_preprocess.cpp
-    test_app.cpp
     test_rfdetr_repro.cpp
     test_optical_flow.cpp
-    test_shared_memory.cpp
+    test_integration.cpp
+    test_task_factory.cpp
+    test_task_interface.cpp
+    test_yolo.cpp
 )
 
 # Source files that need to be tested (without main)
