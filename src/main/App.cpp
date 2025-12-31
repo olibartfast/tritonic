@@ -97,8 +97,8 @@ vision_core::ModelInfo App::convertToVisionCoreModelInfo(const TritonModelInfo& 
 
 std::vector<vision_core::Result> App::processSource(const std::vector<cv::Mat>& source) {
     const auto input_data = task_->preprocess(source);
-    auto [infer_results, infer_shapes] = tritonClient_->infer(input_data);
-    return task_->postprocess(cv::Size(source.front().cols, source.front().rows), infer_results, infer_shapes);
+    auto tensors = tritonClient_->infer(input_data);
+    return task_->postprocess(cv::Size(source.front().cols, source.front().rows), tensors);
 }
 
 void App::processImages(const std::vector<std::string>& sourceNames) {
