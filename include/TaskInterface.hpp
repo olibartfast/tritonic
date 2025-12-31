@@ -6,6 +6,7 @@
 #include <variant>
 #include <stdexcept>
 #include "TritonModelInfo.hpp"
+#include "CommonTypes.hpp"
 
 struct Classification {
     // fields specific to Classification
@@ -36,7 +37,6 @@ struct VideoClassification : public Classification{
 };
 
 using Result = std::variant<Classification, Detection, InstanceSegmentation, OpticalFlow, VideoClassification>;
-using TensorElement = std::variant<float, int32_t, int64_t, uint8_t>;
 
 
 enum class TaskType {
@@ -70,8 +70,7 @@ public:
     // Pure virtual functions
     virtual std::vector<Result> postprocess(
         const cv::Size& frame_size, 
-        const std::vector<std::vector<TensorElement>>& infer_results, 
-        const std::vector<std::vector<int64_t>>& infer_shapes) = 0;
+        const std::vector<Tensor>& tensors) = 0;
     
     virtual std::vector<std::vector<uint8_t>> preprocess(
         const std::vector<cv::Mat>& imgs) = 0;

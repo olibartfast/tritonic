@@ -1,8 +1,8 @@
 #pragma once
-#include "common.hpp"
 #include "TritonModelInfo.hpp"
 #include "ITriton.hpp"
 #include <vision-infra/vision-infra.hpp>
+#include <opencv2/opencv.hpp>
 #include <curl/curl.h>
 #include <rapidjson/document.h>
 #include <variant>
@@ -11,12 +11,16 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+// Include heavy Triton dependencies only where needed
+#include "grpc_client.h"
+#include "http_client.h"
+namespace tc = triton::client;
+
 #ifdef TRITONIC_ENABLE_CUDA
 #include <cuda_runtime.h>
 #include <cuda.h>
 #endif
 
-using TensorElement = std::variant<float, int32_t, int64_t, uint8_t>;
 
 enum class SharedMemoryType {
     SYSTEM_SHARED_MEMORY,  // Host CPU shared memory (POSIX)
@@ -153,8 +157,8 @@ public:
     void setInputShape(const std::vector<int64_t>& shape) override;
 
     void createTritonClient() override;
-    std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> infer(const std::vector<std::vector<uint8_t>>& input_data) override;
-    std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> getInferResults(
+    std::vector<Tensor> infer(const std::vector<std::vector<uint8_t>>& input_data) override;
+    std::vector<Tensor> getInferResults(
         tc::InferResult* result,
         const size_t batch_size,
         const std::vector<std::string>& output_names);
@@ -166,7 +170,7 @@ public:
     void registerInputSharedMemory() override;
     void registerOutputSharedMemory() override;
     void unregisterSharedMemory() override;
-    std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_data) override;
+    std::vector<Tensor> inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_data) override;
     size_t calculateTensorSize(const std::vector<int64_t>& shape, const std::string& datatype);
     void setSharedMemoryType(SharedMemoryType type, int cuda_device = 0);
 };
