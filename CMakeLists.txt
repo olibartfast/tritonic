@@ -93,13 +93,12 @@ set(SOURCES
 # Set the source files
 set(TRITON_SOURCES ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp)
 
-set(UTILS_SOURCES ${PROJECT_SOURCE_DIR}/src/utils/utils.cpp)
+# Utils removed - using vision-infra utilities instead
 
 
 # Add an executable target
 add_executable(${PROJECT_NAME}
     ${SOURCES}
-    ${UTILS_SOURCES}
     ${TRITON_SOURCES}
 )
 
@@ -139,5 +138,86 @@ option(BUILD_TESTING "Build the testing tree." OFF)
 
 # Enable testing if requested
 if(BUILD_TESTING)
-    add_subdirectory(tests)
+    enable_testing()
+    
+    # Fetch GoogleTest (reuse FetchContent from above if already included)
+    if(NOT TARGET gtest)
+        include(FetchContent)
+        FetchContent_Declare(
+          googletest
+          GIT_REPOSITORY https://github.com/google/googletest.git
+          GIT_TAG v1.14.0
+        )
+        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(googletest)
+    endif()
+    
+    # Collect test files
+    file(GLOB UNIT_TEST_SOURCES "tests/unit/*.cpp")
+    file(GLOB INTEGRATION_TEST_SOURCES "tests/integration/*.cpp")
+    
+    # Main test runner
+    set(TEST_MAIN tests/test_main.cpp)
+    
+    # Create unit test executable if unit tests exist
+    if(UNIT_TEST_SOURCES)
+        add_executable(tritonic_unit_tests 
+            ${TEST_MAIN}
+            ${UNIT_TEST_SOURCES}
+        )
+        
+        target_include_directories(tritonic_unit_tests PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+            ${PROJECT_SOURCE_DIR}/src
+            ${PROJECT_SOURCE_DIR}/src/triton
+            ${PROJECT_SOURCE_DIR}/tests/mocks
+            ${OpenCV_INCLUDE_DIRS}
+        )
+        
+        target_link_libraries(tritonic_unit_tests PRIVATE
+            gtest gtest_main
+            ${OpenCV_LIBS}
+        )
+        
+        add_test(NAME UnitTests COMMAND tritonic_unit_tests)
+        set_tests_properties(UnitTests PROPERTIES
+            TIMEOUT 60
+            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        )
+    endif()
+    
+    # Create integration test executable if integration tests exist  
+    if(INTEGRATION_TEST_SOURCES)
+        add_executable(tritonic_integration_tests
+            ${TEST_MAIN}
+            ${INTEGRATION_TEST_SOURCES}
+            # Integration tests can include project sources for full testing
+            src/triton/Triton.cpp
+            src/main/App.cpp
+        )
+        
+        target_include_directories(tritonic_integration_tests PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+            ${PROJECT_SOURCE_DIR}/src
+            ${PROJECT_SOURCE_DIR}/src/triton
+            ${PROJECT_SOURCE_DIR}/tests/mocks
+            ${OpenCV_INCLUDE_DIRS}
+        )
+        
+        target_link_libraries(tritonic_integration_tests PRIVATE
+            gtest gtest_main gmock
+            vision-core::vision-core
+            vision-infra::vision-infra
+            grpcclient httpclient
+            ${OpenCV_LIBS}
+            CURL::libcurl
+            ${PROTOBUF_LIBRARIES}
+        )
+        
+        add_test(NAME IntegrationTests COMMAND tritonic_integration_tests)
+        set_tests_properties(IntegrationTests PROPERTIES
+            TIMEOUT 120
+            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        )
+    endif()
 endif()

@@ -6,8 +6,7 @@
 #include <tuple>
 #include <variant>
 #include "TritonModelInfo.hpp"
-
-using TensorElement = std::variant<float, int32_t, int64_t, uint8_t>;
+#include "CommonTypes.hpp"
 
 /**
  * Interface for Triton inference client operations.
@@ -27,8 +26,7 @@ public:
     /**
      * Perform inference with the given input data
      */
-    virtual std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> 
-            infer(const std::vector<std::vector<uint8_t>>& input_data) = 0;
+    virtual std::vector<Tensor> infer(const std::vector<std::vector<uint8_t>>& input_data) = 0;
     
     /**
      * Set input shapes for dynamic shape models
@@ -68,6 +66,5 @@ public:
     /**
      * Perform inference using shared memory for inputs and outputs
      */
-    virtual std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> 
-            inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_data) = 0;
+    virtual std::vector<Tensor> inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_data) = 0;
 }; 

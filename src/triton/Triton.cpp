@@ -265,7 +265,7 @@ void Triton::createTritonClient() {
     }
 }
 
-std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> Triton::getInferResults(
+std::vector<Tensor> Triton::getInferResults(
     tc::InferResult* result,
     const size_t batch_size,
     const std::vector<std::string>& output_names)
@@ -274,8 +274,8 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
         throw std::runtime_error("Inference failed with error: " + result->RequestStatus().Message());
     }
 
-    std::vector<std::vector<TensorElement>> infer_results;
-    std::vector<std::vector<int64_t>> infer_shapes;
+    std::vector<Tensor> tensors;
+    tensors.reserve(output_names.size());
 
     for (const auto& outputName : output_names) {
         std::vector<int64_t> infer_shape;
@@ -321,14 +321,13 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
             throw std::runtime_error("Unsupported datatype: " + output_datatype);
         }
 
-        infer_results.push_back(std::move(infer_result));
-        infer_shapes.push_back(std::move(infer_shape));
+        tensors.emplace_back(std::move(infer_result), std::move(infer_shape));
     }
 
-    return std::make_tuple(infer_results, infer_shapes);
+    return tensors;
 }
 
-std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> Triton::infer(const std::vector<std::vector<uint8_t>>& input_data) {
+std::vector<Tensor> Triton::infer(const std::vector<std::vector<uint8_t>>& input_data) {
     tc::Error err;
     std::vector<std::unique_ptr<tc::InferInput>> inputs;
     std::vector<std::unique_ptr<tc::InferRequestedOutput>> outputs;
@@ -398,11 +397,11 @@ std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int6
         throw std::runtime_error("Failed sending synchronous infer request: " + err.Message());
     }
 
-    auto [infer_results, infer_shapes] = getInferResults(result, model_info_.batch_size_, model_info_.output_names);
+    auto tensors = getInferResults(result, model_info_.batch_size_, model_info_.output_names);
     result_ptr.reset(result);
 
     // Smart pointers automatically clean up inputs and outputs
-    return std::make_tuple(std::move(infer_results), std::move(infer_shapes));
+    return tensors;
 }
 
 std::unique_ptr<SharedMemoryRegion> Triton::createSharedMemoryRegion(const std::string& name, size_t size) {
@@ -655,8 +654,7 @@ void Triton::unregisterSharedMemory() {
     output_shm_regions_.clear();
 }
 
-std::tuple<std::vector<std::vector<TensorElement>>, std::vector<std::vector<int64_t>>> 
-Triton::inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_data) {
+std::vector<Tensor> Triton::inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_data) {
     tc::Error err;
     std::vector<std::unique_ptr<tc::InferInput>> inputs;
     std::vector<std::unique_ptr<tc::InferRequestedOutput>> outputs;
@@ -772,12 +770,12 @@ Triton::inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_dat
                                 err.Message());
     }
     
-    auto [infer_results, infer_shapes] = getInferResults(result, model_info_.batch_size_, 
-                                                        model_info_.output_names);
+    auto tensors = getInferResults(result, model_info_.batch_size_, 
+                                  model_info_.output_names);
     result_ptr.reset(result);
     
     logger->Info("Inference with shared memory completed successfully");
-    return std::make_tuple(std::move(infer_results), std::move(infer_shapes));
+    return tensors;
 }
 
 void Triton::setSharedMemoryType(SharedMemoryType type, int cuda_device) {
