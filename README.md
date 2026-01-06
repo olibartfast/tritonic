@@ -184,7 +184,7 @@ cmake --build .
 ## Tasks
 
 ### Export Instructions
-- [Object Detection](docs/guides/ObjectDetection.md)
+- [Object Detection](https://github.com/olibartfast/vision-core/blob/master/export/detection/ObjectDetection.md)
 - [Classification](docs/guides/Classification.md)
 - [ViT Classification](docs/guides/ViTClassification.md)
 - [Instance Segmentation](docs/guides/InstanceSegmentation.md)
