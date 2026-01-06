@@ -2,9 +2,6 @@
 
 This directory contains Triton Inference Server-specific deployment utilities.
 
-For automatic model export (ONNX, TorchScript, TensorRT conversion), please see:
-- **Vision-Core Export Tools**: [https://github.com/olibartfast/vision-core](https://github.com/olibartfast/vision-core)
-
 ## What's in this directory
 
 This directory now contains only Triton-specific deployment files:
@@ -24,7 +21,7 @@ deploy/
 ```
 
 ## Export a model
-For detailed export instructions, see: [vision-core export documentation](https://github.com/olibartfast/vision-core/tree/master/export)
+For detailed export instructions, see: [vision-core export documentation](https://github.com/olibartfast/vision-core/blob/master/export/README.md)
 ```bash
 # Using vision-core export tools
 git clone https://github.com/olibartfast/vision-core.git
