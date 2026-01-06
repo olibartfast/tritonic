@@ -185,11 +185,9 @@ cmake --build .
 
 ### Export Instructions
 - [Object Detection](https://github.com/olibartfast/vision-core/blob/master/export/detection/ObjectDetection.md)
-- [Classification](docs/guides/Classification.md)
-- [ViT Classification](docs/guides/ViTClassification.md)
-- [Instance Segmentation](docs/guides/InstanceSegmentation.md)
-- [Optical Flow](docs/guides/OpticalFlow.md)
-
+- [Classification](https://github.com/olibartfast/vision-core/blob/master/export/classification/Classification.md)
+- [Instance Segmentation](https://github.com/olibartfast/vision-core/blob/master/export/segmentation/InstanceSegmentation.md)
+- [Optical Flow](https://github.com/olibartfast/vision-core/blob/master/export/optical_flow/OpticalFlow.md)
 
 *Other tasks are in TODO list.*
 
