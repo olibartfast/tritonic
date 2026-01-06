@@ -24,7 +24,7 @@ deploy/
 ```
 
 ## Export a model
-For detailed export instructions, see: [vision-core export documentation](https://github.com/olibartfast/vision-core/tree/main/export)
+For detailed export instructions, see: [vision-core export documentation](https://github.com/olibartfast/vision-core/tree/master/export)
 ```bash
 # Using vision-core export tools
 git clone https://github.com/olibartfast/vision-core.git
