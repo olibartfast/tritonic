@@ -49,10 +49,9 @@ tritonic/
 - [YOLOv5](https://github.com/ultralytics/yolov5)
 - [YOLOv6](https://github.com/meituan/YOLOv6)
 - [YOLOv7](https://github.com/WongKinYiu/yolov7)
-- [YOLOv8](https://github.com/ultralytics/ultralytics)
+- [YOLOv8/YOLO11/YOLO26](https://github.com/ultralytics/ultralytics)
 - [YOLOv9](https://github.com/WongKinYiu/yolov9)
 - [YOLOv10](https://github.com/THU-MIG/yolov10)
-- [YOLO11](https://github.com/ultralytics/ultralytics)
 - [YOLOv12](https://github.com/sunsmarterjie/yolov12)
 - [YOLO-NAS](https://github.com/Deci-AI/super-gradients)
 - [RT-DETR](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetr_pytorch)
@@ -66,8 +65,7 @@ tritonic/
 ## Instance Segmentation
 
 - [YOLOv5](https://github.com/ultralytics/yolov5)
-- [YOLOv8](https://github.com/ultralytics/ultralytics)
-- [YOLO11](https://github.com/ultralytics/ultralytics)
+- [YOLOv8/YOLO11](https://github.com/ultralytics/ultralytics)
 - [YOLOv12](https://github.com/sunsmarterjie/yolov12)
 - [RF-DETR](https://github.com/roboflow/rf-detr)
 
@@ -332,6 +330,7 @@ To view all available parameters, run:
 | YOLOv5 / v6 / v7 / v8 / v9 / v11 / v12 | `yolo` | Any `yolo*` variant works. Standard format |
 | YOLOv7 End-to-End      | `yolov7e2e`            | Only for YOLOv7 exported with `--grid --end2end` flags (requires TensorRT backend) |
 | YOLOv10                | `yolov10`              | Specific output format |
+| YOLO26                | `yolo26`              | Specific output format (i.e. is the same of yolov10) |
 | YOLO-NAS               | `yolonas`              | Specific output format |
 | RT-DETR / RT-DETRv2 / RT-DETRv4 / D-FINE / DEIM / DEIMv2 | `rtdetr` | All RT-DETR style models share the same postprocessor |
 | RT-DETR Ultralytics    | `rtdetrul`             |       |
