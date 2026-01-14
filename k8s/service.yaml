@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: triton-service
+  namespace: triton
+  labels:
+    app: triton-server
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  - name: grpc
+    port: 8001
+    targetPort: 8001
+    protocol: TCP
+  - name: metrics
+    port: 8002
+    targetPort: 8002
+    protocol: TCP
+  selector:
+    app: triton-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: triton-service-nodeport
+  namespace: triton
+  labels:
+    app: triton-server
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+    nodePort: 30800
+    protocol: TCP
+  - name: grpc
+    port: 8001
+    targetPort: 8001
+    nodePort: 30801
+    protocol: TCP
+  - name: metrics
+    port: 8002
+    targetPort: 8002
+    nodePort: 30802
+    protocol: TCP
+  selector:
+    app: triton-server

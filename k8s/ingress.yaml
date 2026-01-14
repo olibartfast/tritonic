@@ -1,0 +1,36 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: triton-ingress
+  namespace: triton
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: triton.local  # Change to your domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: triton-service
+            port:
+              number: 8000
+      - path: /metrics
+        pathType: Prefix
+        backend:
+          service:
+            name: triton-service
+            port:
+              number: 8002
+  # Uncomment for HTTPS with cert-manager
+  # tls:
+  # - hosts:
+  #   - triton.local
+  #   secretName: triton-tls

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: triton-config
+  namespace: triton
+data:
+  # Triton server configuration
+  TRITON_SERVER_ARGS: "--model-repository=/models --backend-config=tensorflow,allow_soft_placement=true --log-verbose=1"
+  # Model repository path inside container
+  MODEL_REPOSITORY_PATH: "/models"

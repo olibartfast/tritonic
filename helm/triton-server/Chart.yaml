@@ -1,0 +1,18 @@
+apiVersion: v2
+name: triton-server
+description: A Helm chart for NVIDIA Triton Inference Server
+type: application
+version: 0.1.0
+appVersion: "25.06"
+keywords:
+  - triton
+  - inference
+  - ml
+  - ai
+  - nvidia
+home: https://github.com/triton-inference-server/server
+sources:
+  - https://github.com/triton-inference-server/server
+maintainers:
+  - name: TritonIC
+    email: info@tritonic.dev
