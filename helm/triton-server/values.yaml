@@ -1,0 +1,161 @@
+# Default values for triton-server.
+replicaCount: 1
+
+image:
+  repository: nvcr.io/nvidia/tritonserver
+  tag: "25.06-py3"
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Server configuration
+server:
+  # Model repository configuration
+  modelRepository:
+    # Path to model repository (can be local path or cloud storage)
+    path: "/models"
+    # For hostPath volume
+    hostPath: "/tmp/triton-models"
+    # For PVC
+    storageClass: "manual"
+    size: "10Gi"
+    accessMode: "ReadWriteMany"
+  
+  # Server arguments
+  args:
+    - "--model-repository=/models"
+    - "--log-verbose=1"
+    - "--allow-http=true"
+    - "--allow-grpc=true"
+    - "--allow-metrics=true"
+  
+  # Additional environment variables
+  env: []
+    # - name: NVIDIA_VISIBLE_DEVICES
+    #   value: "all"
+
+# GPU configuration
+gpu:
+  enabled: false
+  count: 1
+  nodeSelector: {}
+    # accelerator: nvidia-tesla-k80
+
+# Service configuration
+service:
+  type: ClusterIP
+  ports:
+    http: 8000
+    grpc: 8001
+    metrics: 8002
+  
+  # NodePort configuration (if type is NodePort)
+  nodePort:
+    http: 30800
+    grpc: 30801
+    metrics: 30802
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+    # nginx.ingress.kubernetes.io/rewrite-target: /
+    # nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    # nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+  hosts:
+    - host: triton.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service:
+            name: triton-server
+            port: 8000
+  tls: []
+  #  - secretName: triton-tls
+  #    hosts:
+  #      - triton.local
+
+# Resource configuration
+resources:
+  cpu:
+    requests:
+      memory: "2Gi"
+      cpu: "1000m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+  gpu:
+    requests:
+      memory: "4Gi"
+      cpu: "2000m"
+      nvidia.com/gpu: 1
+    limits:
+      memory: "8Gi"
+      cpu: "4000m"
+      nvidia.com/gpu: 1
+
+# Autoscaling configuration
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Pod Security Context
+podSecurityContext: {}
+  # fsGroup: 2000
+
+# Container Security Context
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# Health checks
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /v2/health/live
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /v2/health/ready
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 5
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Storage configuration
+storage:
+  # Storage type: hostPath, pvc, or configMap
+  type: "hostPath"
+  
+  # For PVC storage
+  pvc:
+    create: true
+    storageClass: "manual"
+    size: "10Gi"
+    accessMode: "ReadWriteMany"
+  
+  # For hostPath storage
+  hostPath:
+    path: "/tmp/triton-models"
+    type: "DirectoryOrCreate"

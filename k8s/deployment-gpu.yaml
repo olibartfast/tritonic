@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triton-server-gpu
+  namespace: triton
+  labels:
+    app: triton-server
+    variant: gpu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: triton-server
+      variant: gpu
+  template:
+    metadata:
+      labels:
+        app: triton-server
+        variant: gpu
+    spec:
+      containers:
+      - name: triton-server
+        image: nvcr.io/nvidia/tritonserver:25.06-py3
+        ports:
+        - containerPort: 8000
+          name: http
+        - containerPort: 8001
+          name: grpc
+        - containerPort: 8002
+          name: metrics
+        env:
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "all"
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: "compute,utility"
+        - name: TRITON_SERVER_ARGS
+          valueFrom:
+            configMapKeyRef:
+              name: triton-config
+              key: TRITON_SERVER_ARGS
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - |
+          echo "Starting Triton Server (GPU mode)..."
+          echo "Available GPUs:"
+          nvidia-smi -L || echo "No GPUs detected"
+          tritonserver --model-repository=/models \
+                      --log-verbose=1 \
+                      --allow-http=true \
+                      --allow-grpc=true \
+                      --allow-metrics=true
+        volumeMounts:
+        - name: triton-models
+          mountPath: /models
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2000m"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "8Gi"
+            cpu: "4000m"
+            nvidia.com/gpu: 1
+        livenessProbe:
+          httpGet:
+            path: /v2/health/live
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /v2/health/ready
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: triton-models
+        persistentVolumeClaim:
+          claimName: triton-models-pvc
+      nodeSelector:
+        accelerator: nvidia-tesla-k80  # Adjust based on your GPU type
