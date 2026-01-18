@@ -18,6 +18,14 @@ DEVICE_TYPE=${3:-cpu}
 PYTHON_BACKEND_ARG=${4:-false}
 MODEL_CONTROL_MODE_ARG=${5:-poll}
 
+# Smart detection: if 4th arg is explicit/poll, treat it as model mode
+if [[ "${PYTHON_BACKEND_ARG,,}" == "explicit" || "${PYTHON_BACKEND_ARG,,}" == "poll" ]]; then
+    if [ -z "${5:-}" ]; then
+        MODEL_CONTROL_MODE_ARG=$PYTHON_BACKEND_ARG
+        PYTHON_BACKEND_ARG="false"
+    fi
+fi
+
 # Cleanup function for graceful shutdown
 cleanup() {
     echo ""
