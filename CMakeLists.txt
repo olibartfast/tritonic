@@ -102,7 +102,6 @@ set(SOURCES
 # Set the source files
 set(TRITON_SOURCES 
     ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp
-    ${PROJECT_SOURCE_DIR}/src/triton/TritonClientWrapper.cpp
 )
 
 # Utils removed - using vision-infra utilities instead
@@ -177,7 +176,6 @@ if(BUILD_TESTING)
             ${TEST_MAIN}
             ${UNIT_TEST_SOURCES}
             src/triton/Triton.cpp
-            src/triton/TritonClientWrapper.cpp
         )
         
         target_include_directories(tritonic_unit_tests PRIVATE

@@ -16,6 +16,7 @@ MODEL_REPO=${1:-}
 TRITON_VERSION=${2:-25.06}
 DEVICE_TYPE=${3:-cpu}
 PYTHON_BACKEND_ARG=${4:-false}
+MODEL_CONTROL_MODE_ARG=${5:-poll}
 
 # Cleanup function for graceful shutdown
 cleanup() {
@@ -26,18 +27,19 @@ trap cleanup EXIT INT TERM
 
 # Validate required parameters
 if [ $# -lt 1 ] || [ -z "$MODEL_REPO" ]; then
-    echo "Usage: $0 <model_repository_path> [triton_version] [cpu|gpu] [python_backend|true]"
+    echo "Usage: $0 <model_repository_path> [triton_version] [cpu|gpu] [python_backend|true] [model_control_mode]"
     echo ""
     echo "Examples:"
     echo "  $0 \$HOME/model_repository 25.06 cpu"
     echo "  $0 \$HOME/model_repository 25.06 gpu python_backend"
-    echo "  $0 \$HOME/model_repository 25.06 gpu true"
+    echo "  $0 \$HOME/model_repository 25.06 gpu true explicit"
     echo ""
     echo "Parameters:"
     echo "  model_repository_path: Path to your model repository (required)"
     echo "  triton_version: Docker image version (default: 25.06)"
     echo "  device_type: cpu or gpu (default: cpu)"
     echo "  python_backend: python_backend|true|1|yes to enable (default: false)"
+    echo "  model_control_mode: poll or explicit (default: poll)"
     exit 1
 fi
 
@@ -68,6 +70,16 @@ esac
 case "${PYTHON_BACKEND_ARG,,}" in
     python_backend|true|1|yes|on) PYTHON_BACKEND=true ;;
     *) PYTHON_BACKEND=false ;;
+esac
+
+# Normalize model control mode
+case "${MODEL_CONTROL_MODE_ARG,,}" in
+    explicit) MODEL_CONTROL_MODE="explicit" ;;
+    poll) MODEL_CONTROL_MODE="poll" ;;
+    *) 
+        echo "❌ Error: Invalid model control mode '$MODEL_CONTROL_MODE_ARG'. Use 'poll' or 'explicit'."
+        exit 1
+        ;;
 esac
 
 # Determine Docker image early for GPU check
@@ -108,6 +120,7 @@ echo "📁 Model repository: $MODEL_REPO"
 echo "🏷️  Triton version: $TRITON_VERSION"
 echo "💻 Device: $DEVICE_TYPE"
 echo "🐍 Python backend: $PYTHON_BACKEND"
+echo "🎮 Model control mode: $MODEL_CONTROL_MODE"
 echo ""
 
 if [ "$PYTHON_BACKEND" = "true" ]; then
@@ -135,7 +148,7 @@ else
 fi
 
 # Triton server arguments
-TRITON_ARGS="--model-repository=/models"
+TRITON_ARGS="--model-repository=/models --model-control-mode=$MODEL_CONTROL_MODE"
 
 # Add CPU-specific optimizations
 if [ "$DEVICE_TYPE" = "cpu" ]; then
