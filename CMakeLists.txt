@@ -2,8 +2,17 @@ cmake_minimum_required(VERSION 3.20)
 
 project(tritonic)
 message(STATUS ${PROJECT_NAME})
-message(STATUS $ENV{TritonClientBuild_DIR})
 set(CMAKE_CXX_STANDARD 20)
+
+set(TRITON_CLIENT_BUILD_DIR "$ENV{TritonClientBuild_DIR}" CACHE PATH "Path to Triton client build directory")
+
+# Set default if not provided
+if(NOT TRITON_CLIENT_BUILD_DIR OR TRITON_CLIENT_BUILD_DIR STREQUAL "")
+    set(TRITON_CLIENT_BUILD_DIR "${CMAKE_SOURCE_DIR}/triton_client_libs/install" CACHE PATH "Path to Triton client build directory" FORCE)
+    message(STATUS "TritonClientBuild_DIR not set, using default: ${TRITON_CLIENT_BUILD_DIR}")
+endif()
+
+message(STATUS "Using Triton Client Build Dir: ${TRITON_CLIENT_BUILD_DIR}")
 
 # Fetch vision-core repository for tasks
 include(FetchContent)
@@ -72,8 +81,8 @@ if(WITH_WRITE_FRAME)
   message(STATUS "Write frame enabled")
 endif()
 
-set(TritonClient_DIR "$ENV{TritonClientBuild_DIR}/lib/cmake/TritonClient")
-set(TritonCommon_DIR "$ENV{TritonClientBuild_DIR}/lib/cmake/TritonCommon")
+set(TritonClient_DIR "${TRITON_CLIENT_BUILD_DIR}/lib/cmake/TritonClient")
+set(TritonCommon_DIR "${TRITON_CLIENT_BUILD_DIR}/lib/cmake/TritonCommon")
 
 
 find_package(OpenCV REQUIRED)
@@ -91,7 +100,10 @@ set(SOURCES
 )  
 
 # Set the source files
-set(TRITON_SOURCES ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp)
+set(TRITON_SOURCES 
+    ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp
+    ${PROJECT_SOURCE_DIR}/src/triton/TritonClientWrapper.cpp
+)
 
 # Utils removed - using vision-infra utilities instead
 
@@ -106,7 +118,7 @@ add_executable(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME}
     PRIVATE
     ${OpenCV_INCLUDE_DIRS}
-    $ENV{TritonClientBuild_DIR}/include
+    ${TRITON_CLIENT_BUILD_DIR}/include
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/utils
@@ -117,7 +129,7 @@ target_include_directories(${PROJECT_NAME}
 # Set link directories for the target
 target_link_directories(${PROJECT_NAME}
     PRIVATE
-    $ENV{TritonClientBuild_DIR}/lib
+    ${TRITON_CLIENT_BUILD_DIR}/lib
     # Add any additional link directories here
 )
 
@@ -164,6 +176,8 @@ if(BUILD_TESTING)
         add_executable(tritonic_unit_tests 
             ${TEST_MAIN}
             ${UNIT_TEST_SOURCES}
+            src/triton/Triton.cpp
+            src/triton/TritonClientWrapper.cpp
         )
         
         target_include_directories(tritonic_unit_tests PRIVATE
@@ -171,12 +185,22 @@ if(BUILD_TESTING)
             ${PROJECT_SOURCE_DIR}/src
             ${PROJECT_SOURCE_DIR}/src/triton
             ${PROJECT_SOURCE_DIR}/tests/mocks
+            ${TRITON_CLIENT_BUILD_DIR}/include
             ${OpenCV_INCLUDE_DIRS}
+        )
+
+        target_link_directories(tritonic_unit_tests PRIVATE
+            ${TRITON_CLIENT_BUILD_DIR}/lib
         )
         
         target_link_libraries(tritonic_unit_tests PRIVATE
-            gtest gtest_main
+            gtest gtest_main gmock
+            vision-infra::vision-infra
+            grpcclient
+            httpclient
             ${OpenCV_LIBS}
+            CURL::libcurl
+            ${PROTOBUF_LIBRARIES}
         )
         
         add_test(NAME UnitTests COMMAND tritonic_unit_tests)
