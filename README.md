@@ -65,7 +65,8 @@ tritonic/
 ## Instance Segmentation
 
 - [YOLOv5](https://github.com/ultralytics/yolov5)
-- [YOLOv8/YOLO11](https://github.com/ultralytics/ultralytics)
+- [YOLOv8/YOLO11/YOLO26](https://github.com/ultralytics/ultralytics)
+- [YOLOv10](https://github.com/THU-MIG/yolov10)
 - [YOLOv12](https://github.com/sunsmarterjie/yolov12)
 - [RF-DETR](https://github.com/roboflow/rf-detr)
 
@@ -336,6 +337,8 @@ To view all available parameters, run:
 | RT-DETR Ultralytics    | `rtdetrul`             |       |
 | RF-DETR Detection | `rfdetr`  |       |
 | YOLOv5/v8/v11/v12 Segmentation | `yoloseg`       |       |
+| YOLO26 Segmentation | `yolo26seg`       |       |
+| YOLOv10 Segmentation | `yolov10seg`       |    
 | RF-DETR Segmentation | `rfdetrseg`  |       |
 | Torchvision Classifier | `torchvision-classifier` |     |
 | Tensorflow Classifier  | `tensorflow-classifier` |      |
