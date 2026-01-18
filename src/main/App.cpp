@@ -222,10 +222,15 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
                     drawLabel(image, class_names_[segmentation.class_id], segmentation.class_confidence, 
                               segmentation.bbox.x, segmentation.bbox.y - 1);
                     
-                    if (!segmentation.mask_data.empty()) {
-                        cv::Mat mask = cv::Mat(segmentation.mask_height, segmentation.mask_width, 
+                    cv::Mat mask;
+                    if (!segmentation.mask.empty()) {
+                        mask = segmentation.mask;
+                    } else if (!segmentation.mask_data.empty()) {
+                        mask = cv::Mat(segmentation.mask_height, segmentation.mask_width, 
                                              CV_8UC1, segmentation.mask_data.data());
-                        
+                    }
+
+                    if (!mask.empty()) {
                         cv::Mat colorMask = cv::Mat::zeros(image.size(), CV_8UC3);
                         cv::Scalar color = cv::Scalar(rand() & 255, rand() & 255, rand() & 255);
                         colorMask.setTo(color, mask);
