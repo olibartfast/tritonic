@@ -337,7 +337,7 @@
             "cwd": "${workspaceFolder}" 
         },    
         {
-            "name": "yolo26_seg_onnx",
+            "name": "yolo26m_seg_onnx",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/tritonic",
@@ -346,7 +346,7 @@
             "--port=8001",
             "--protocol=grpc",
             "--labelsFile=labels/coco.txt",
-            "--model=yolo26_seg_onnx",
+            "--model=yolo26m_seg_onnx",
             "--model_type=yolo26seg"
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
