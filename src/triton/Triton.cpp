@@ -1,4 +1,7 @@
 #include "Triton.hpp"
+#include <thread>
+#include <chrono>
+#include <stdexcept>
 
 static auto logger = std::dynamic_pointer_cast<vision_infra::core::Logger>(
     vision_infra::core::LoggerManager::GetLogger("triton"));
@@ -7,6 +10,146 @@ static size_t WriteCallback(char* ptr, size_t size, size_t nmemb, std::string& d
     size_t totalSize = size * nmemb;
     data.append(ptr, totalSize);
     return totalSize;
+}
+
+bool Triton::isServerLive() {
+    tc::Error err;
+    bool live = false;
+    
+    if (protocol_ == ProtocolType::HTTP) {
+        err = triton_client_.httpClient->IsServerLive(&live);
+    } else {
+        err = triton_client_.grpcClient->IsServerLive(&live);
+    }
+    
+    if (!err.IsOk()) {
+        logger->Warn("Failed to check if server is live: " + err.Message());
+        return false;
+    }
+    
+    return live;
+}
+
+bool Triton::isModelInRepository(const std::string& modelName) {
+    tc::Error err;
+    
+    if (protocol_ == ProtocolType::HTTP) {
+        std::string repository_index_str;
+        err = triton_client_.httpClient->ModelRepositoryIndex(&repository_index_str);
+        
+        if (!err.IsOk()) {
+            logger->Warn("Failed to get repository index: " + err.Message());
+            return false;
+        }
+        
+        rapidjson::Document d;
+        d.Parse(repository_index_str.c_str());
+        
+        if (d.HasParseError()) {
+            logger->Warn("Failed to parse repository index JSON");
+            return false;
+        }
+        
+        if (d.IsArray()) {
+            for (const auto& entry : d.GetArray()) {
+                if (entry.HasMember("name") && entry["name"].IsString()) {
+                    if (std::string(entry["name"].GetString()) == modelName) {
+                        return true;
+                    }
+                }
+            }
+        }
+    } else {
+        inference::RepositoryIndexResponse repository_index;
+        err = triton_client_.grpcClient->ModelRepositoryIndex(&repository_index);
+        
+        if (!err.IsOk()) {
+            logger->Warn("Failed to get repository index: " + err.Message());
+            return false;
+        }
+        
+        for (const auto& model : repository_index.models()) {
+            if (model.name() == modelName) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+bool Triton::isModelReady(const std::string& modelName, const std::string& modelVersion) {
+    tc::Error err;
+    bool ready = false;
+    
+    if (protocol_ == ProtocolType::HTTP) {
+        err = triton_client_.httpClient->IsModelReady(&ready, modelName, modelVersion);
+    } else {
+        err = triton_client_.grpcClient->IsModelReady(&ready, modelName, modelVersion);
+    }
+    
+    if (!err.IsOk()) {
+        logger->Warn("Failed to check if model is ready: " + err.Message());
+        return false;
+    }
+    
+    return ready;
+}
+
+void Triton::loadModel(const std::string& modelName) {
+    tc::Error err;
+    
+    // First check if model is already loaded
+    if (isModelReady(modelName)) {
+        logger->Info("Model '" + modelName + "' is already loaded");
+        return;
+    }
+    
+    logger->Info("Loading model '" + modelName + "'...");
+    
+    if (protocol_ == ProtocolType::HTTP) {
+        err = triton_client_.httpClient->LoadModel(modelName);
+    } else {
+        err = triton_client_.grpcClient->LoadModel(modelName);
+    }
+    
+    if (!err.IsOk()) {
+        throw std::runtime_error("Failed to load model '" + modelName + "': " + err.Message());
+    }
+    
+    // Wait for model to be ready with timeout
+    int max_retries = 30;  // 30 seconds timeout
+    int retry_count = 0;
+    
+    while (retry_count < max_retries) {
+        if (isModelReady(modelName)) {
+            logger->Info("Model '" + modelName + "' loaded successfully");
+            return;
+        }
+        
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        retry_count++;
+    }
+    
+    throw std::runtime_error("Timeout waiting for model '" + modelName + "' to be ready");
+}
+
+void Triton::unloadModel(const std::string& modelName) {
+    tc::Error err;
+    
+    logger->Info("Unloading model '" + modelName + "'...");
+    
+    if (protocol_ == ProtocolType::HTTP) {
+        err = triton_client_.httpClient->UnloadModel(modelName);
+    } else {
+        err = triton_client_.grpcClient->UnloadModel(modelName);
+    }
+    
+    if (!err.IsOk()) {
+        throw std::runtime_error("Failed to unload model '" + modelName + "': " + err.Message());
+    }
+    
+    logger->Info("Model '" + modelName + "' unloaded successfully");
 }
 
 TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& model_metadata, const inference::ModelConfigResponse& model_config) {
@@ -171,11 +314,53 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
 TritonModelInfo Triton::getModelInfo(const std::string& modelName, const std::string& url, const std::vector<std::vector<int64_t>>& input_sizes) {
     TritonModelInfo model_info;
 
+    // Try to load model if not ready (for explicit mode)
+    try {
+        loadModel(modelName);
+    } catch (const std::exception& e) {
+        logger->Warn("Failed to auto-load model: " + std::string(e.what()));
+        // Continue anyway - model might already be loaded or server not in explicit mode
+    }
+
     if (protocol_ == ProtocolType::HTTP) {
         model_info = parseModelHttp(modelName, url, input_sizes);
     } else if (protocol_ == ProtocolType::GRPC) {
-        // TODO model_info = parseModelGrpc(modelName);
-        model_info = parseModelHttp(modelName, url, input_sizes);
+        inference::ModelMetadataResponse model_metadata;
+        tc::Error err = triton_client_.grpcClient->ModelMetadata(&model_metadata, modelName, model_version_);
+        if (!err.IsOk()) {
+            throw std::runtime_error("Failed to get model metadata via GRPC: " + err.Message());
+        }
+
+        inference::ModelConfigResponse model_config;
+        err = triton_client_.grpcClient->ModelConfig(&model_config, modelName, model_version_);
+        if (!err.IsOk()) {
+            throw std::runtime_error("Failed to get model config via GRPC: " + err.Message());
+        }
+
+        model_info = parseModelGrpc(model_metadata, model_config);
+        
+        // Handle input sizes for dynamic shapes if provided
+        if (!input_sizes.empty()) {
+             // For GRPC, we need to manually update shapes if they were dynamic (-1)
+             // The parsing logic sets them, but we might need to override based on user input
+             // similar to how parseModelHttp does it.
+             // Basic implementation: check if override is needed
+             if (model_info.input_shapes.size() == input_sizes.size()) {
+                 for(size_t i=0; i<input_sizes.size(); ++i) {
+                     // Check if original had -1 or if we just want to force override
+                     // Ideally we check if dynamic. parseModelGrpc preserves -1.
+                     // Let's iterate and replace -1 with provided sizes
+                     if (model_info.input_shapes[i].size() == input_sizes[i].size()) {
+                         bool wasDynamic = false;
+                         for(auto dim : model_info.input_shapes[i]) if (dim == -1) wasDynamic = true;
+                         
+                         if(wasDynamic) {
+                             model_info.input_shapes[i] = input_sizes[i];
+                         }
+                     }
+                 }
+             }
+        }
     } else {
         throw std::runtime_error("Unsupported protocol");
     }

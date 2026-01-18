@@ -109,6 +109,13 @@ public:
         unregisterSharedMemory();
     }
 
+    // Model management methods
+    bool isServerLive() override;
+    bool isModelInRepository(const std::string& modelName) override;
+    bool isModelReady(const std::string& modelName, const std::string& modelVersion = "");
+    void loadModel(const std::string& modelName);
+    void unloadModel(const std::string& modelName);
+
     void printModelInfo(const TritonModelInfo& model_info) const override {
         auto logger = std::dynamic_pointer_cast<vision_infra::core::Logger>(
             vision_infra::core::LoggerManager::GetLogger("triton"));

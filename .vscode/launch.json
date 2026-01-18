@@ -142,6 +142,8 @@
             "program": "${workspaceFolder}/build/tritonic",
             "args": ["--source=data/images/dog.jpg", 
             "--serverAddress=localhost",
+            "--port=8001",
+            "--protocol=grpc",
             "--labelsFile=labels/coco.txt",
             "--model=yolov8x_onnx",
             "--model_type=yolo",
@@ -333,7 +335,23 @@
             ],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}" 
-        },      
+        },    
+        {
+            "name": "yolo26_seg_onnx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tritonic",
+            "args": ["--source=data/images/bus.jpg", 
+            "--serverAddress=localhost",
+            "--port=8001",
+            "--protocol=grpc",
+            "--labelsFile=labels/coco.txt",
+            "--model=yolo26_seg_onnx",
+            "--model_type=yolo26seg"
+            ],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}" 
+        },                   
         {
             "name": "raft_large_torchscript",
             "type": "cppdbg",

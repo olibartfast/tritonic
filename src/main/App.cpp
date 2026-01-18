@@ -2,6 +2,8 @@
 #include <filesystem>
 #include <random>
 #include <sstream>
+#include <thread>
+#include <chrono>
 #include "vision-core/core/task_factory.hpp"
 
 
@@ -17,6 +19,42 @@ int App::run() {
 
         // Connect to Triton
         tritonClient_->createTritonClient();
+
+        // Check if server is live with retries
+        logger_->Info("Checking if Triton server is live...");
+        int max_retries = 5;
+        int retry_count = 0;
+        bool server_live = false;
+        
+        while (retry_count < max_retries) {
+            if (tritonClient_->isServerLive()) {
+                server_live = true;
+                break;
+            }
+            logger_->Warn("Server not live, retrying in 2 seconds... (" + std::to_string(retry_count + 1) + "/" + std::to_string(max_retries) + ")");
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            retry_count++;
+        }
+        
+        if (!server_live) {
+            throw std::runtime_error("Triton server is not live after " + std::to_string(max_retries) + " attempts");
+        }
+        logger_->Info("Triton server is live.");
+
+        // Check if model is in repository
+        logger_->Info("Checking if model " + config_->GetModelName() + " is in repository...");
+        if (!tritonClient_->isModelInRepository(config_->GetModelName())) {
+             throw std::runtime_error("Model " + config_->GetModelName() + " not found in Triton repository.");
+        }
+        logger_->Info("Model found in repository.");
+
+        logger_->Info("Checking if model " + config_->GetModelName() + " is ready...");
+        if (!tritonClient_->isModelReady(config_->GetModelName())) {
+            logger_->Info("Model is not ready. Attempting to load...");
+            tritonClient_->loadModel(config_->GetModelName());
+        } else {
+            logger_->Info("Model is ready.");
+        }
 
         logger_->Info("Getting model info for: " + config_->GetModelName());
         TritonModelInfo modelInfo = tritonClient_->getModelInfo(config_->GetModelName(), config_->GetServerAddress(), config_->GetInputSizes());
