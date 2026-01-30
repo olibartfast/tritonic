@@ -35,11 +35,31 @@ int main(int argc, const char* argv[]) {
         else if (config->GetLogLevel() == "error") logger->SetLevel(vision_infra::core::LogLevel::ERROR);
         else logger->SetLevel(vision_infra::core::LogLevel::INFO);
         
-        // Configuration loaded successfully
-        
+        // Log configuration
+        logger->Info("Configuration:");
+        logger->Info("  Server Address: " + config->GetServerAddress());
+        logger->Info("  Port: " + std::to_string(config->GetPort()));
+        logger->Info("  Protocol: " + config->GetProtocol());
+        logger->Info("  Model Name: " + config->GetModelName());
+        logger->Info("  Model Version: " + config->GetModelVersion());
+        logger->Info("  Model Type: " + config->GetModelType());
+        logger->Info("  Source: " + config->GetSource());
+        logger->Info("  Labels File: " + config->GetLabelsFile());
+        logger->Info("  Verbose: " + std::string(config->GetVerbose() ? "true" : "false"));
+        logger->Info("  Show Frame: " + std::string(config->GetShowFrame() ? "true" : "false"));
+        logger->Info("  Write Frame: " + std::string(config->GetWriteFrame() ? "true" : "false"));
+
         // Create dependencies
-        std::string url = config->GetServerAddress() + ":" + std::to_string(config->GetPort());
+        int port = config->GetPort();
         ProtocolType protocol = config->GetProtocol() == "grpc" ? ProtocolType::GRPC : ProtocolType::HTTP;
+
+        // Auto-switch port if protocol is GRPC and port is default HTTP port
+        if (protocol == ProtocolType::GRPC && port == 8000) {
+            logger->Warn("Protocol is GRPC but port is 8000 (default HTTP). Switching to 8001 (default GRPC).");
+            port = 8001;
+        }
+
+        std::string url = config->GetServerAddress() + ":" + std::to_string(port);
         
         auto triton = std::make_shared<Triton>(url, protocol, config->GetModelName(), config->GetModelVersion(), config->GetVerbose());
         

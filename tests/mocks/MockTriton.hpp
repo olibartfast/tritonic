@@ -30,4 +30,10 @@ public:
     MOCK_METHOD(void, unregisterSharedMemory, (), (override));
     
     MOCK_METHOD(std::vector<Tensor>, inferWithSharedMemory, (const std::vector<std::vector<uint8_t>>& input_data), (override));
+
+    MOCK_METHOD(bool, isServerLive, (), (override));
+    MOCK_METHOD(bool, isModelInRepository, (const std::string& modelName), (override));
+    MOCK_METHOD(bool, isModelReady, (const std::string& modelName, const std::string& modelVersion), (override));
+    MOCK_METHOD(void, loadModel, (const std::string& modelName), (override));
+    MOCK_METHOD(void, unloadModel, (const std::string& modelName), (override));
 }; 
