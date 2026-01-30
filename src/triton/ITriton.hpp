@@ -67,4 +67,29 @@ public:
      * Perform inference using shared memory for inputs and outputs
      */
     virtual std::vector<Tensor> inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_data) = 0;
+
+    /**
+     * Check if the server is live
+     */
+    virtual bool isServerLive() = 0;
+
+    /**
+     * Check if a model exists in the repository
+     */
+    virtual bool isModelInRepository(const std::string& modelName) = 0;
+
+    /**
+     * Check if a model is ready
+     */
+    virtual bool isModelReady(const std::string& modelName, const std::string& modelVersion = "") = 0;
+
+    /**
+     * Load a model
+     */
+    virtual void loadModel(const std::string& modelName) = 0;
+
+    /**
+     * Unload a model
+     */
+    virtual void unloadModel(const std::string& modelName) = 0;
 }; 
