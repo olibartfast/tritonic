@@ -85,6 +85,7 @@ int App::run() {
         // Load class names
         class_names_ = task_->readLabelNames(config_->GetLabelsFile());
         logger_->Info("Loaded " + std::to_string(class_names_.size()) + " class names from " + config_->GetLabelsFile());
+        colors_ = generateRandomColors(class_names_.size());
 
         // Parse source files
         std::vector<std::string> sourceNames = split(config_->GetSource(), ',');
@@ -247,51 +248,10 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
             for (const auto& prediction : predictions) {
                 if (std::holds_alternative<vision_core::Classification>(prediction)) {
-                    const auto& classification = std::get<vision_core::Classification>(prediction);
-                    logger_->Info("Image " + sourceName + ": " + class_names_[static_cast<int>(classification.class_id)] + ": " + std::to_string(classification.class_confidence));
-                    drawLabel(image, class_names_[static_cast<int>(classification.class_id)], classification.class_confidence, 30, 30);
+                    const auto& c = std::get<vision_core::Classification>(prediction);
+                    logger_->Info("Image " + sourceName + ": " + class_names_[static_cast<int>(c.class_id)] + ": " + std::to_string(c.class_confidence));
                 }
-                else if (std::holds_alternative<vision_core::Detection>(prediction)) {
-                    const auto& detection = std::get<vision_core::Detection>(prediction);
-                    cv::rectangle(image, detection.bbox, cv::Scalar(255, 0, 0), 2);
-                    drawLabel(image, class_names_[static_cast<int>(detection.class_id)], detection.class_confidence,
-                              detection.bbox.x, detection.bbox.y - 1);
-                }
-                else if (std::holds_alternative<vision_core::InstanceSegmentation>(prediction)) {
-                    const auto& segmentation = std::get<vision_core::InstanceSegmentation>(prediction);
-
-                    cv::rectangle(image, segmentation.bbox, cv::Scalar(255, 0, 0), 2);
-                    drawLabel(image, class_names_[static_cast<int>(segmentation.class_id)], segmentation.class_confidence,
-                              segmentation.bbox.x, segmentation.bbox.y - 1);
-
-                    cv::Mat mask;
-                    if (!segmentation.mask.empty()) {
-                        mask = segmentation.mask;
-                    } else if (!segmentation.mask_data.empty()) {
-                        mask = cv::Mat(segmentation.mask_height, segmentation.mask_width,
-                                      CV_8UC1, const_cast<uint8_t*>(segmentation.mask_data.data()));
-                    }
-
-                    if (!mask.empty()) {
-                        cv::Mat colorMask = cv::Mat::zeros(image.size(), CV_8UC3);
-                        cv::Scalar color = cv::Scalar(rand() & 255, rand() & 255, rand() & 255);
-                        colorMask.setTo(color, mask);
-                        cv::addWeighted(image, 1, colorMask, 0.7, 0, image);
-                    }
-                }
-                else if (std::holds_alternative<vision_core::PoseEstimation>(prediction)) {
-                    const auto& pose = std::get<vision_core::PoseEstimation>(prediction);
-                    drawPose(image, pose);
-                }
-                else if (std::holds_alternative<vision_core::DepthEstimation>(prediction)) {
-                    const auto& depth = std::get<vision_core::DepthEstimation>(prediction);
-                    if (!depth.normalized_depth.empty()) {
-                        cv::Mat depth_8u;
-                        depth.normalized_depth.convertTo(depth_8u, CV_8UC1, 255.0);
-                        cv::applyColorMap(depth_8u, image, cv::COLORMAP_INFERNO);
-                    }
-                    logger_->Info("Depth range: " + std::to_string(depth.min_depth) + " - " + std::to_string(depth.max_depth));
-                }
+                renderPrediction(image, prediction);
             }
 
             std::string outputDir = sourceDir + "/output";
@@ -326,7 +286,6 @@ void App::processVideo(const std::string& sourceName) {
     }
 
     cv::Mat current_frame, previous_frame, visualization_frame;
-    std::vector<cv::Scalar> colors = generateRandomColors(class_names_.size());
     
     // Read first frame
     if (!cap.read(current_frame)) {
@@ -365,55 +324,8 @@ void App::processVideo(const std::string& sourceName) {
                 }
             } else {
                 current_frame.copyTo(visualization_frame);
-                for (const auto& prediction : predictions) {
-                    if (std::holds_alternative<vision_core::Detection>(prediction)) {
-                        vision_core::Detection detection = std::get<vision_core::Detection>(prediction);
-                        cv::Rect safeBbox = detection.bbox & cv::Rect(0, 0, visualization_frame.cols, visualization_frame.rows);
-
-                        if (safeBbox.width > 0 && safeBbox.height > 0) {
-                            cv::rectangle(visualization_frame, safeBbox, colors[static_cast<int>(detection.class_id)], 2);
-                            drawLabel(visualization_frame, class_names_[static_cast<int>(detection.class_id)], detection.class_confidence,
-                                     safeBbox.x, safeBbox.y - 1);
-                        }
-                    }
-                    else if (std::holds_alternative<vision_core::InstanceSegmentation>(prediction)) {
-                        vision_core::InstanceSegmentation segmentation = std::get<vision_core::InstanceSegmentation>(prediction);
-
-                        cv::Rect safeBbox = segmentation.bbox & cv::Rect(0, 0, visualization_frame.cols, visualization_frame.rows);
-
-                        if (safeBbox.width > 0 && safeBbox.height > 0) {
-                            cv::rectangle(visualization_frame, safeBbox, colors[static_cast<int>(segmentation.class_id)], 2);
-                            drawLabel(visualization_frame, class_names_[static_cast<int>(segmentation.class_id)], segmentation.class_confidence,
-                                     safeBbox.x, safeBbox.y - 1);
-
-                            if (!segmentation.mask_data.empty() && segmentation.mask_height > 0 && segmentation.mask_width > 0) {
-                                cv::Mat mask(segmentation.mask_height, segmentation.mask_width, CV_8UC1);
-                                std::memcpy(mask.data, segmentation.mask_data.data(), segmentation.mask_data.size());
-                                cv::resize(mask, mask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
-
-                                cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
-                                colorMask.setTo(colors[static_cast<int>(segmentation.class_id)], mask);
-
-                                cv::Mat roi = visualization_frame(safeBbox);
-                                if (roi.size() == colorMask.size()) {
-                                    cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
-                                }
-                            }
-                        }
-                    }
-                    else if (std::holds_alternative<vision_core::PoseEstimation>(prediction)) {
-                        const auto& pose = std::get<vision_core::PoseEstimation>(prediction);
-                        drawPose(visualization_frame, pose);
-                    }
-                    else if (std::holds_alternative<vision_core::DepthEstimation>(prediction)) {
-                        const auto& depth = std::get<vision_core::DepthEstimation>(prediction);
-                        if (!depth.normalized_depth.empty()) {
-                            cv::Mat depth_8u;
-                            depth.normalized_depth.convertTo(depth_8u, CV_8UC1, 255.0);
-                            cv::applyColorMap(depth_8u, visualization_frame, cv::COLORMAP_INFERNO);
-                        }
-                    }
-                }
+                for (const auto& prediction : predictions)
+                    renderPrediction(visualization_frame, prediction);
             }
 
             // Add FPS counter
@@ -503,6 +415,56 @@ void App::processVideoClassification(const std::string& sourceName) {
         }
         if (config_->GetWriteFrame() && outputVideo.isOpened()) {
             outputVideo.write(display_frame);
+        }
+    }
+}
+
+void App::renderPrediction(cv::Mat& frame, const vision_core::Result& prediction) {
+    if (std::holds_alternative<vision_core::Classification>(prediction)) {
+        const auto& c = std::get<vision_core::Classification>(prediction);
+        drawLabel(frame, class_names_[static_cast<int>(c.class_id)], c.class_confidence, 30, 30);
+    }
+    else if (std::holds_alternative<vision_core::Detection>(prediction)) {
+        const auto& det = std::get<vision_core::Detection>(prediction);
+        cv::Rect safeBbox = det.bbox & cv::Rect(0, 0, frame.cols, frame.rows);
+        if (safeBbox.width > 0 && safeBbox.height > 0) {
+            cv::rectangle(frame, safeBbox, colors_[static_cast<int>(det.class_id)], 2);
+            drawLabel(frame, class_names_[static_cast<int>(det.class_id)], det.class_confidence, safeBbox.x, safeBbox.y - 1);
+        }
+    }
+    else if (std::holds_alternative<vision_core::InstanceSegmentation>(prediction)) {
+        const auto& seg = std::get<vision_core::InstanceSegmentation>(prediction);
+        cv::Rect safeBbox = seg.bbox & cv::Rect(0, 0, frame.cols, frame.rows);
+        if (safeBbox.width > 0 && safeBbox.height > 0) {
+            cv::rectangle(frame, safeBbox, colors_[static_cast<int>(seg.class_id)], 2);
+            drawLabel(frame, class_names_[static_cast<int>(seg.class_id)], seg.class_confidence, safeBbox.x, safeBbox.y - 1);
+
+            cv::Mat mask;
+            if (!seg.mask.empty()) {
+                mask = seg.mask;
+            } else if (!seg.mask_data.empty()) {
+                mask = cv::Mat(seg.mask_height, seg.mask_width, CV_8UC1, const_cast<uint8_t*>(seg.mask_data.data()));
+            }
+            if (!mask.empty()) {
+                cv::Mat resized_mask;
+                cv::resize(mask, resized_mask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
+                cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
+                colorMask.setTo(colors_[static_cast<int>(seg.class_id)], resized_mask);
+                cv::Mat roi = frame(safeBbox);
+                if (roi.size() == colorMask.size())
+                    cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
+            }
+        }
+    }
+    else if (std::holds_alternative<vision_core::PoseEstimation>(prediction)) {
+        drawPose(frame, std::get<vision_core::PoseEstimation>(prediction));
+    }
+    else if (std::holds_alternative<vision_core::DepthEstimation>(prediction)) {
+        const auto& depth = std::get<vision_core::DepthEstimation>(prediction);
+        if (!depth.normalized_depth.empty()) {
+            cv::Mat depth_8u;
+            depth.normalized_depth.convertTo(depth_8u, CV_8UC1, 255.0);
+            cv::applyColorMap(depth_8u, frame, cv::COLORMAP_INFERNO);
         }
     }
 }
