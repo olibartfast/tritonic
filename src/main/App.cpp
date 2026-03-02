@@ -1,4 +1,5 @@
 #include "App.hpp"
+#include <deque>
 #include <filesystem>
 #include <random>
 #include <sstream>
@@ -62,7 +63,20 @@ int App::run() {
         // Create task instance
         logger_->Info("Creating task instance for model type: " + config_->GetModelType());
         auto visionCoreModelInfo = convertToVisionCoreModelInfo(modelInfo);
-        task_ = vision_core::TaskFactory::createTaskInstance(config_->GetModelType(), visionCoreModelInfo);
+        vision_core::TaskConfig taskConfig;
+        taskConfig.confidence_threshold = config_->GetConfidenceThreshold();
+        taskConfig.nms_threshold = config_->GetNmsThreshold();
+        task_ = vision_core::TaskFactory::createTaskInstance(config_->GetModelType(), visionCoreModelInfo, taskConfig);
+
+        // Extract frame buffer size for video classification from 5D input shape [B, T, C, H, W]
+        if (task_->getTaskType() == vision_core::TaskType::VideoClassification &&
+            !modelInfo.input_shapes.empty()) {
+            const auto& shape = modelInfo.input_shapes[0];
+            if (shape.size() == 5) {
+                num_frames_ = static_cast<int>(shape[1]);
+            }
+            logger_->Info("Video classification frame buffer size: " + std::to_string(num_frames_));
+        }
 
         if (!task_) {
             throw std::runtime_error("Failed to create task instance");
@@ -105,7 +119,11 @@ int App::run() {
         if (!video_list.empty()) {
             logger_->Info("Processing videos");
             for (const auto& sourceName : video_list) {
-                processVideo(sourceName);
+                if (task_->getTaskType() == vision_core::TaskType::VideoClassification) {
+                    processVideoClassification(sourceName);
+                } else {
+                    processVideo(sourceName);
+                }
             }
         }
 
@@ -149,8 +167,7 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
         logger_->Info("Processing optical flow for image pairs");
         for(size_t i = 0; i < sourceNames.size() - 1; i++) {
             std::vector<std::string> flowInputs = {sourceNames[i], sourceNames[i+1]};
-            
-            // Load images
+
             std::vector<cv::Mat> images;
             for (const auto& name : flowInputs) {
                 cv::Mat img = cv::imread(name);
@@ -160,7 +177,7 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
                 }
                 images.push_back(img);
             }
-            
+
             if (images.size() != 2) continue;
 
             auto start = std::chrono::steady_clock::now();
@@ -168,8 +185,7 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             auto end = std::chrono::steady_clock::now();
             auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
             logger_->Info("Infer time for " + std::to_string(images.size()) + " images: " + std::to_string(diff) + " ms");
-            
-            // Visualization for optical flow
+
             cv::Mat& image = images[0];
             for (const auto& prediction : predictions) {
                 if (std::holds_alternative<vision_core::OpticalFlow>(prediction)) {
@@ -177,14 +193,41 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
                     flow.flow.copyTo(image);
                 }
             }
-            
-            // Save result
+
             std::string sourceDir = flowInputs[0].substr(0, flowInputs[0].find_last_of("/\\"));
             std::string outputDir = sourceDir + "/output";
             std::filesystem::create_directories(outputDir);
             std::string processedFrameFilename = outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
             logger_->Info("Saving frame to: " + processedFrameFilename);
             cv::imwrite(processedFrameFilename, image);
+        }
+    } else if (task_->getTaskType() == vision_core::TaskType::VideoClassification) {
+        logger_->Info("Processing video classification for image set (" + std::to_string(sourceNames.size()) + " frames)");
+        std::vector<cv::Mat> frames;
+        for (const auto& name : sourceNames) {
+            cv::Mat img = cv::imread(name);
+            if (img.empty()) {
+                logger_->Warn("Could not open image: " + name);
+                continue;
+            }
+            frames.push_back(img);
+        }
+        if (frames.empty()) return;
+
+        auto start = std::chrono::steady_clock::now();
+        std::vector<vision_core::Result> predictions = processSource(frames);
+        auto end = std::chrono::steady_clock::now();
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        logger_->Info("Infer time for " + std::to_string(frames.size()) + " frames: " + std::to_string(diff) + " ms");
+
+        for (const auto& prediction : predictions) {
+            if (std::holds_alternative<vision_core::VideoClassification>(prediction)) {
+                const auto& vc = std::get<vision_core::VideoClassification>(prediction);
+                std::string label = vc.action_label.empty()
+                    ? (class_names_.empty() ? "Unknown" : class_names_[static_cast<int>(vc.class_id)])
+                    : vc.action_label;
+                logger_->Info("Action: " + label + " (" + std::to_string(vc.class_confidence).substr(0, 4) + ")");
+            }
         }
     } else {
         logger_->Info("Processing individual images");
@@ -194,53 +237,63 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
                 logger_->Error("Could not open or read the image: " + sourceName);
                 continue;
             }
-            
+
             auto start = std::chrono::steady_clock::now();
             std::vector<vision_core::Result> predictions = processSource({image});
             auto end = std::chrono::steady_clock::now();
             auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
             logger_->Info("Infer time for 1 image: " + std::to_string(diff) + " ms");
-            
-            // Visualization
+
             std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
             for (const auto& prediction : predictions) {
                 if (std::holds_alternative<vision_core::Classification>(prediction)) {
-                    vision_core::Classification classification = std::get<vision_core::Classification>(prediction);
-                    logger_->Info("Image " + sourceName + ": " + class_names_[classification.class_id] + ": " + std::to_string(classification.class_confidence));
-                    drawLabel(image, class_names_[classification.class_id], classification.class_confidence, 30, 30);
-                } 
+                    const auto& classification = std::get<vision_core::Classification>(prediction);
+                    logger_->Info("Image " + sourceName + ": " + class_names_[static_cast<int>(classification.class_id)] + ": " + std::to_string(classification.class_confidence));
+                    drawLabel(image, class_names_[static_cast<int>(classification.class_id)], classification.class_confidence, 30, 30);
+                }
                 else if (std::holds_alternative<vision_core::Detection>(prediction)) {
-                    vision_core::Detection detection = std::get<vision_core::Detection>(prediction);
+                    const auto& detection = std::get<vision_core::Detection>(prediction);
                     cv::rectangle(image, detection.bbox, cv::Scalar(255, 0, 0), 2);
-                    drawLabel(image, class_names_[detection.class_id], detection.class_confidence, 
+                    drawLabel(image, class_names_[static_cast<int>(detection.class_id)], detection.class_confidence,
                               detection.bbox.x, detection.bbox.y - 1);
                 }
                 else if (std::holds_alternative<vision_core::InstanceSegmentation>(prediction)) {
-                    vision_core::InstanceSegmentation segmentation = std::get<vision_core::InstanceSegmentation>(prediction);
-                    
+                    const auto& segmentation = std::get<vision_core::InstanceSegmentation>(prediction);
+
                     cv::rectangle(image, segmentation.bbox, cv::Scalar(255, 0, 0), 2);
-                    drawLabel(image, class_names_[segmentation.class_id], segmentation.class_confidence, 
+                    drawLabel(image, class_names_[static_cast<int>(segmentation.class_id)], segmentation.class_confidence,
                               segmentation.bbox.x, segmentation.bbox.y - 1);
-                    
+
                     cv::Mat mask;
                     if (!segmentation.mask.empty()) {
                         mask = segmentation.mask;
                     } else if (!segmentation.mask_data.empty()) {
-                        mask = cv::Mat(segmentation.mask_height, segmentation.mask_width, 
-                                             CV_8UC1, segmentation.mask_data.data());
+                        mask = cv::Mat(segmentation.mask_height, segmentation.mask_width,
+                                      CV_8UC1, const_cast<uint8_t*>(segmentation.mask_data.data()));
                     }
 
                     if (!mask.empty()) {
                         cv::Mat colorMask = cv::Mat::zeros(image.size(), CV_8UC3);
                         cv::Scalar color = cv::Scalar(rand() & 255, rand() & 255, rand() & 255);
                         colorMask.setTo(color, mask);
-                        
                         cv::addWeighted(image, 1, colorMask, 0.7, 0, image);
                     }
                 }
+                else if (std::holds_alternative<vision_core::PoseEstimation>(prediction)) {
+                    const auto& pose = std::get<vision_core::PoseEstimation>(prediction);
+                    drawPose(image, pose);
+                }
+                else if (std::holds_alternative<vision_core::DepthEstimation>(prediction)) {
+                    const auto& depth = std::get<vision_core::DepthEstimation>(prediction);
+                    if (!depth.normalized_depth.empty()) {
+                        cv::Mat depth_8u;
+                        depth.normalized_depth.convertTo(depth_8u, CV_8UC1, 255.0);
+                        cv::applyColorMap(depth_8u, image, cv::COLORMAP_INFERNO);
+                    }
+                    logger_->Info("Depth range: " + std::to_string(depth.min_depth) + " - " + std::to_string(depth.max_depth));
+                }
             }
-            
-            // Save result
+
             std::string outputDir = sourceDir + "/output";
             std::filesystem::create_directories(outputDir);
             std::string processedFrameFilename = outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
@@ -315,39 +368,49 @@ void App::processVideo(const std::string& sourceName) {
                 for (const auto& prediction : predictions) {
                     if (std::holds_alternative<vision_core::Detection>(prediction)) {
                         vision_core::Detection detection = std::get<vision_core::Detection>(prediction);
-                        // Ensure bounding box is within frame boundaries
                         cv::Rect safeBbox = detection.bbox & cv::Rect(0, 0, visualization_frame.cols, visualization_frame.rows);
-                        
+
                         if (safeBbox.width > 0 && safeBbox.height > 0) {
-                            cv::rectangle(visualization_frame, safeBbox, colors[detection.class_id], 2);
-                            drawLabel(visualization_frame, class_names_[detection.class_id], detection.class_confidence, 
+                            cv::rectangle(visualization_frame, safeBbox, colors[static_cast<int>(detection.class_id)], 2);
+                            drawLabel(visualization_frame, class_names_[static_cast<int>(detection.class_id)], detection.class_confidence,
                                      safeBbox.x, safeBbox.y - 1);
                         }
                     }
                     else if (std::holds_alternative<vision_core::InstanceSegmentation>(prediction)) {
                         vision_core::InstanceSegmentation segmentation = std::get<vision_core::InstanceSegmentation>(prediction);
-                        
+
                         cv::Rect safeBbox = segmentation.bbox & cv::Rect(0, 0, visualization_frame.cols, visualization_frame.rows);
-                        
+
                         if (safeBbox.width > 0 && safeBbox.height > 0) {
-                            cv::rectangle(visualization_frame, safeBbox, colors[segmentation.class_id], 2);
-                            drawLabel(visualization_frame, class_names_[segmentation.class_id], segmentation.class_confidence, 
+                            cv::rectangle(visualization_frame, safeBbox, colors[static_cast<int>(segmentation.class_id)], 2);
+                            drawLabel(visualization_frame, class_names_[static_cast<int>(segmentation.class_id)], segmentation.class_confidence,
                                      safeBbox.x, safeBbox.y - 1);
-                            
+
                             if (!segmentation.mask_data.empty() && segmentation.mask_height > 0 && segmentation.mask_width > 0) {
                                 cv::Mat mask(segmentation.mask_height, segmentation.mask_width, CV_8UC1);
                                 std::memcpy(mask.data, segmentation.mask_data.data(), segmentation.mask_data.size());
                                 cv::resize(mask, mask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
-                                
+
                                 cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
-                                cv::Scalar color = colors[segmentation.class_id];
-                                colorMask.setTo(color, mask);
-                                
+                                colorMask.setTo(colors[static_cast<int>(segmentation.class_id)], mask);
+
                                 cv::Mat roi = visualization_frame(safeBbox);
                                 if (roi.size() == colorMask.size()) {
                                     cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
                                 }
                             }
+                        }
+                    }
+                    else if (std::holds_alternative<vision_core::PoseEstimation>(prediction)) {
+                        const auto& pose = std::get<vision_core::PoseEstimation>(prediction);
+                        drawPose(visualization_frame, pose);
+                    }
+                    else if (std::holds_alternative<vision_core::DepthEstimation>(prediction)) {
+                        const auto& depth = std::get<vision_core::DepthEstimation>(prediction);
+                        if (!depth.normalized_depth.empty()) {
+                            cv::Mat depth_8u;
+                            depth.normalized_depth.convertTo(depth_8u, CV_8UC1, 255.0);
+                            cv::applyColorMap(depth_8u, visualization_frame, cv::COLORMAP_INFERNO);
                         }
                     }
                 }
@@ -374,6 +437,103 @@ void App::processVideo(const std::string& sourceName) {
         // Read next frame
         if (!cap.read(current_frame)) {
             break;
+        }
+    }
+}
+
+void App::processVideoClassification(const std::string& sourceName) {
+    std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
+    cv::VideoCapture cap(sourceName);
+    if (!cap.isOpened()) {
+        logger_->Error("Could not open the video: " + sourceName);
+        throw std::runtime_error("Could not open the video: " + sourceName);
+    }
+
+    cv::VideoWriter outputVideo;
+    if (config_->GetWriteFrame()) {
+        cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH), (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+        int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
+        std::string outputDir = sourceDir + "/output";
+        std::filesystem::create_directories(outputDir);
+        outputVideo.open(outputDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
+        if (!outputVideo.isOpened()) {
+            logger_->Warn("Could not open output video for write: " + sourceName);
+        }
+    }
+
+    std::deque<cv::Mat> frame_buffer;
+    cv::Mat frame;
+    std::string last_label;
+    float last_confidence = 0.0f;
+
+    while (cap.read(frame)) {
+        frame_buffer.push_back(frame.clone());
+        if ((int)frame_buffer.size() > num_frames_) {
+            frame_buffer.pop_front();
+        }
+
+        cv::Mat display_frame = frame.clone();
+
+        if ((int)frame_buffer.size() == num_frames_) {
+            auto start = std::chrono::steady_clock::now();
+            std::vector<cv::Mat> frames(frame_buffer.begin(), frame_buffer.end());
+            std::vector<vision_core::Result> predictions = processSource(frames);
+            auto end = std::chrono::steady_clock::now();
+            auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+            logger_->Info("Infer time: " + std::to_string(diff) + " ms");
+
+            for (const auto& prediction : predictions) {
+                if (std::holds_alternative<vision_core::VideoClassification>(prediction)) {
+                    const auto& vc = std::get<vision_core::VideoClassification>(prediction);
+                    last_label = vc.action_label.empty()
+                        ? (class_names_.empty() ? "Unknown" : class_names_[static_cast<int>(vc.class_id)])
+                        : vc.action_label;
+                    last_confidence = vc.class_confidence;
+                }
+            }
+        }
+
+        if (!last_label.empty()) {
+            drawLabel(display_frame, "Action: " + last_label, last_confidence, 10, 60);
+        }
+
+        if (config_->GetShowFrame()) {
+            cv::imshow("video feed", display_frame);
+            if (cv::waitKey(1) == 27) break;
+        }
+        if (config_->GetWriteFrame() && outputVideo.isOpened()) {
+            outputVideo.write(display_frame);
+        }
+    }
+}
+
+void App::drawPose(cv::Mat& image, const vision_core::PoseEstimation& pose, float confidence_threshold) {
+    // COCO 17-keypoint skeleton connections
+    static const std::vector<std::pair<int,int>> kSkeleton = {
+        {0,1},{0,2},{1,3},{2,4},          // head
+        {5,6},{5,7},{7,9},{6,8},{8,10},   // arms
+        {5,11},{6,12},{11,12},            // torso
+        {11,13},{13,15},{12,14},{14,16}   // legs
+    };
+
+    for (const auto& [a, b] : kSkeleton) {
+        if (a < (int)pose.keypoints.size() && b < (int)pose.keypoints.size()) {
+            const auto& kpA = pose.keypoints[a];
+            const auto& kpB = pose.keypoints[b];
+            if (kpA.confidence >= confidence_threshold && kpB.confidence >= confidence_threshold) {
+                cv::line(image,
+                    cv::Point(static_cast<int>(kpA.x), static_cast<int>(kpA.y)),
+                    cv::Point(static_cast<int>(kpB.x), static_cast<int>(kpB.y)),
+                    cv::Scalar(0, 255, 0), 2);
+            }
+        }
+    }
+
+    for (const auto& kp : pose.keypoints) {
+        if (kp.confidence >= confidence_threshold) {
+            cv::circle(image,
+                cv::Point(static_cast<int>(kp.x), static_cast<int>(kp.y)),
+                4, cv::Scalar(0, 0, 255), cv::FILLED);
         }
     }
 }
