@@ -3,8 +3,8 @@
 #include <chrono>
 #include <stdexcept>
 
-static auto logger = std::dynamic_pointer_cast<vision_infra::core::Logger>(
-    vision_infra::core::LoggerManager::GetLogger("triton"));
+static auto logger = std::dynamic_pointer_cast<Logger>(
+    LoggerManager::GetLogger("triton"));
 
 static size_t WriteCallback(char* ptr, size_t size, size_t nmemb, std::string& data) {
     size_t totalSize = size * nmemb;
