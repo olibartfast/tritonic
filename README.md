@@ -40,7 +40,6 @@ tritonic/
 
 **CMake Fetched Dependencies:**
 - [vision-core](https://github.com/olibartfast/vision-core) - Model pre/post processing and task management
-- [vision-infra](https://github.com/olibartfast/vision-infra) - Core infrastructure components (logging, configuration, filesystem)
 
 ## Tested Models
 
@@ -192,13 +191,11 @@ cmake --build .
 
 ## Architecture
 
-TritonIC uses a modular architecture with two key libraries:
+TritonIC uses a modular architecture:
 
-- **[vision-core](https://github.com/olibartfast/vision-core)**: Handles all model-specific preprocessing and postprocessing logic, task management, and computer vision algorithms. This library provides a clean abstraction layer for different model types and allows the vision processing logic to be reused across different inference backends.
+- **[vision-core](https://github.com/olibartfast/vision-core)**: Handles all model-specific preprocessing and postprocessing logic, task management, and computer vision algorithms. Automatically fetched as a CMake dependency via `FetchContent`.
 
-- **[vision-infra](https://github.com/olibartfast/vision-infra)**: Provides core infrastructure components including logging, configuration management, and filesystem utilities. This library ensures consistent behavior and reduces code duplication across vision-related projects.
-
-Both libraries are automatically fetched as CMake dependencies via `FetchContent`, keeping the Triton client code focused on inference orchestration.
+- **Local infrastructure** (`include/Logger.hpp`, `include/Config.hpp`, `include/ConfigManager.hpp`): Provides logging (`Logger`, `LoggerManager`, `LogLevel`) and CLI configuration parsing (`InferenceConfig`, `ConfigManager`) as plain types with no external dependency.
 
 ## Notes
 
