@@ -9,8 +9,8 @@
 
 
 App::App(std::shared_ptr<ITriton> triton, 
-         std::shared_ptr<vision_infra::config::InferenceConfig> config,
-         std::shared_ptr<vision_infra::core::Logger> logger)
+         std::shared_ptr<InferenceConfig> config,
+         std::shared_ptr<Logger> logger)
     : tritonClient_(triton), config_(config), logger_(logger) {}
 
 int App::run() {

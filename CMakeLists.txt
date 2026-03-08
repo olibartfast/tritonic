@@ -47,27 +47,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(vision-core)
 
-# Set vision-infra repository URL with token support
-if(DEFINED ENV{GITHUB_TOKEN})
-  set(VISION_INFRA_REPO "https://$ENV{GITHUB_TOKEN}@github.com/olibartfast/vision-infra.git")
-else()
-  set(VISION_INFRA_REPO "https://github.com/olibartfast/vision-infra.git")
-endif()
-
-FetchContent_Declare(
-  vision-infra
-  GIT_REPOSITORY ${VISION_INFRA_REPO}
-  GIT_TAG master
-)
-
-# Disable warnings as errors for vision-infra
-set(ENABLE_WARNINGS_SAVED ${ENABLE_WARNINGS})
-set(ENABLE_WARNINGS OFF CACHE BOOL "Disable warnings for vision-infra" FORCE)
-FetchContent_MakeAvailable(vision-infra)
-if(DEFINED ENABLE_WARNINGS_SAVED)
-  set(ENABLE_WARNINGS ${ENABLE_WARNINGS_SAVED} CACHE BOOL "Restore warnings setting" FORCE)
-endif()
-
 
 option(WITH_SHOW_FRAME "Option description" OFF)
 option(WITH_WRITE_FRAME "Option description" ON)
@@ -104,13 +83,17 @@ set(TRITON_SOURCES
     ${PROJECT_SOURCE_DIR}/src/triton/Triton.cpp
 )
 
-# Utils removed - using vision-infra utilities instead
+set(INFRA_SOURCES
+    ${PROJECT_SOURCE_DIR}/src/main/Logger.cpp
+    ${PROJECT_SOURCE_DIR}/src/main/ConfigManager.cpp
+)
 
 
 # Add an executable target
 add_executable(${PROJECT_NAME}
     ${SOURCES}
     ${TRITON_SOURCES}
+    ${INFRA_SOURCES}
 )
 
 # Set include directories for the target
@@ -122,7 +105,7 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/utils
     ${PROJECT_SOURCE_DIR}/src/triton
-    # vision-core and vision-infra includes are provided automatically through target_link_libraries
+    # vision-core includes are provided automatically through target_link_libraries
 )
 
 # Set link directories for the target
@@ -136,7 +119,6 @@ target_link_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
     vision-core::vision-core
-    vision-infra::vision-infra
     grpcclient
     httpclient
     ${OpenCV_LIBS}
@@ -172,10 +154,11 @@ if(BUILD_TESTING)
     
     # Create unit test executable if unit tests exist
     if(UNIT_TEST_SOURCES)
-        add_executable(tritonic_unit_tests 
+        add_executable(tritonic_unit_tests
             ${TEST_MAIN}
             ${UNIT_TEST_SOURCES}
             src/triton/Triton.cpp
+            ${INFRA_SOURCES}
         )
         
         target_include_directories(tritonic_unit_tests PRIVATE
@@ -193,7 +176,6 @@ if(BUILD_TESTING)
         
         target_link_libraries(tritonic_unit_tests PRIVATE
             gtest gtest_main gmock
-            vision-infra::vision-infra
             grpcclient
             httpclient
             ${OpenCV_LIBS}
@@ -213,9 +195,9 @@ if(BUILD_TESTING)
         add_executable(tritonic_integration_tests
             ${TEST_MAIN}
             ${INTEGRATION_TEST_SOURCES}
-            # Integration tests can include project sources for full testing
             src/triton/Triton.cpp
             src/main/App.cpp
+            ${INFRA_SOURCES}
         )
         
         target_include_directories(tritonic_integration_tests PRIVATE
@@ -229,7 +211,6 @@ if(BUILD_TESTING)
         target_link_libraries(tritonic_integration_tests PRIVATE
             gtest gtest_main gmock
             vision-core::vision-core
-            vision-infra::vision-infra
             grpcclient httpclient
             ${OpenCV_LIBS}
             CURL::libcurl
