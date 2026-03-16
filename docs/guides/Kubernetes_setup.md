@@ -2,6 +2,24 @@
 
 This guide covers installing Kubernetes and deploying NVIDIA Triton Inference Server for the TritonIC project.
 
+## Automated Setup and Health Check (Recommended)
+
+Use the modular deployment/check scripts:
+
+```bash
+./k8s/check_and_deploy_triton.sh
+```
+
+The script will:
+1. Install `kubectl` if it is missing.
+2. Check that the cluster is reachable and has Ready nodes.
+3. Check NVIDIA GPU availability in the cluster.
+4. Check if Triton is already deployed.
+5. Deploy Triton if missing (GPU deployment when GPU is available, otherwise CPU deployment).
+
+Module documentation:
+- `k8s/scripts/README.md`
+
 ## Prerequisites
 
 - Ubuntu/Debian Linux system
@@ -11,7 +29,7 @@ This guide covers installing Kubernetes and deploying NVIDIA Triton Inference Se
 
 ## Kubernetes Installation
 
-### 1. Install kubectl
+### 1. Install kubectl (Manual Alternative)
 
 ```bash
 # Download kubectl
@@ -96,7 +114,7 @@ sudo mkdir -p /tmp/triton-models
 # Update the path in k8s/persistent-volume.yaml if different
 ```
 
-### 2. Deploy to Kubernetes
+### 2. Deploy to Kubernetes (Manual Alternative)
 
 Apply the Kubernetes manifests:
 

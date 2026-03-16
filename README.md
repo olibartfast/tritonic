@@ -18,6 +18,7 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 - [Notes](#notes)
 - [Deploying Models](#deploying-models)
 - [Running Inference](#running-inference)
+- [Kubernetes Deployment](#kubernetes-deployment)
 - [Docker Support](#docker-support)
 - [Demo](#demo)
 - [References](#references)
@@ -321,6 +322,24 @@ To view all available parameters, run:
 ```bash
 ./tritonic --help
 ```
+
+## Kubernetes Deployment
+
+For Kubernetes setup and deployment details, see:
+- [Kubernetes Deployment Guide](docs/guides/Kubernetes_setup.md)
+- [K8s Scripts Usage](k8s/scripts/README.md)
+
+Quick start:
+```bash
+./k8s/check_and_deploy_triton.sh
+```
+
+This script performs:
+1. `kubectl` installation check (and install if missing)
+2. Kubernetes cluster liveness check
+3. NVIDIA GPU availability check inside cluster
+4. Triton deployment status check
+5. Triton deploy (GPU or CPU manifest) if not installed
 
 #### Model Type Tag Parameters
 | Model                  | Model Type Parameter   | Notes |
