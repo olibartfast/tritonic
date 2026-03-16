@@ -1,7 +1,8 @@
 #pragma once
 #include "TritonModelInfo.hpp"
 #include "ITriton.hpp"
-#include <vision-infra/vision-infra.hpp>
+#include "Logger.hpp"
+#include "Config.hpp"
 #include <opencv2/opencv.hpp>
 #include <curl/curl.h>
 #include <rapidjson/document.h>
@@ -117,8 +118,8 @@ public:
     void unloadModel(const std::string& modelName);
 
     void printModelInfo(const TritonModelInfo& model_info) const override {
-        auto logger = std::dynamic_pointer_cast<vision_infra::core::Logger>(
-            vision_infra::core::LoggerManager::GetLogger("triton"));
+        auto logger = std::dynamic_pointer_cast<Logger>(
+            LoggerManager::GetLogger("triton"));
         logger->Info("Model Information:");
         logger->Info("  Inputs:");
         for (size_t i = 0; i < model_info.input_names.size(); ++i) {
