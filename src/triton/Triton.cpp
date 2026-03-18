@@ -1,10 +1,9 @@
 #include "Triton.hpp"
-#include <thread>
 #include <chrono>
 #include <stdexcept>
+#include <thread>
 
-static auto logger = std::dynamic_pointer_cast<Logger>(
-    LoggerManager::GetLogger("triton"));
+static auto logger = std::dynamic_pointer_cast<Logger>(LoggerManager::GetLogger("triton"));
 
 static size_t WriteCallback(char* ptr, size_t size, size_t nmemb, std::string& data) {
     size_t totalSize = size * nmemb;
@@ -15,41 +14,41 @@ static size_t WriteCallback(char* ptr, size_t size, size_t nmemb, std::string& d
 bool Triton::isServerLive() {
     tc::Error err;
     bool live = false;
-    
+
     if (protocol_ == ProtocolType::HTTP) {
         err = triton_client_.httpClient->IsServerLive(&live);
     } else {
         err = triton_client_.grpcClient->IsServerLive(&live);
     }
-    
+
     if (!err.IsOk()) {
         logger->Warn("Failed to check if server is live: " + err.Message());
         return false;
     }
-    
+
     return live;
 }
 
 bool Triton::isModelInRepository(const std::string& modelName) {
     tc::Error err;
-    
+
     if (protocol_ == ProtocolType::HTTP) {
         std::string repository_index_str;
         err = triton_client_.httpClient->ModelRepositoryIndex(&repository_index_str);
-        
+
         if (!err.IsOk()) {
             logger->Warn("Failed to get repository index: " + err.Message());
             return false;
         }
-        
+
         rapidjson::Document d;
         d.Parse(repository_index_str.c_str());
-        
+
         if (d.HasParseError()) {
             logger->Warn("Failed to parse repository index JSON");
             return false;
         }
-        
+
         if (d.IsArray()) {
             for (const auto& entry : d.GetArray()) {
                 if (entry.HasMember("name") && entry["name"].IsString()) {
@@ -62,97 +61,98 @@ bool Triton::isModelInRepository(const std::string& modelName) {
     } else {
         inference::RepositoryIndexResponse repository_index;
         err = triton_client_.grpcClient->ModelRepositoryIndex(&repository_index);
-        
+
         if (!err.IsOk()) {
             logger->Warn("Failed to get repository index: " + err.Message());
             return false;
         }
-        
+
         for (const auto& model : repository_index.models()) {
             if (model.name() == modelName) {
                 return true;
             }
         }
     }
-    
+
     return false;
 }
 
 bool Triton::isModelReady(const std::string& modelName, const std::string& modelVersion) {
     tc::Error err;
     bool ready = false;
-    
+
     if (protocol_ == ProtocolType::HTTP) {
         err = triton_client_.httpClient->IsModelReady(&ready, modelName, modelVersion);
     } else {
         err = triton_client_.grpcClient->IsModelReady(&ready, modelName, modelVersion);
     }
-    
+
     if (!err.IsOk()) {
         logger->Warn("Failed to check if model is ready: " + err.Message());
         return false;
     }
-    
+
     return ready;
 }
 
 void Triton::loadModel(const std::string& modelName) {
     tc::Error err;
-    
+
     // First check if model is already loaded
     if (isModelReady(modelName)) {
         logger->Info("Model '" + modelName + "' is already loaded");
         return;
     }
-    
+
     logger->Info("Loading model '" + modelName + "'...");
-    
+
     if (protocol_ == ProtocolType::HTTP) {
         err = triton_client_.httpClient->LoadModel(modelName);
     } else {
         err = triton_client_.grpcClient->LoadModel(modelName);
     }
-    
+
     if (!err.IsOk()) {
         throw std::runtime_error("Failed to load model '" + modelName + "': " + err.Message());
     }
-    
+
     // Wait for model to be ready with timeout
     int max_retries = 30;  // 30 seconds timeout
     int retry_count = 0;
-    
+
     while (retry_count < max_retries) {
         if (isModelReady(modelName)) {
             logger->Info("Model '" + modelName + "' loaded successfully");
             return;
         }
-        
+
         std::this_thread::sleep_for(std::chrono::seconds(1));
         retry_count++;
     }
-    
+
     throw std::runtime_error("Timeout waiting for model '" + modelName + "' to be ready");
 }
 
 void Triton::unloadModel(const std::string& modelName) {
     tc::Error err;
-    
+
     logger->Info("Unloading model '" + modelName + "'...");
-    
+
     if (protocol_ == ProtocolType::HTTP) {
         err = triton_client_.httpClient->UnloadModel(modelName);
     } else {
         err = triton_client_.grpcClient->UnloadModel(modelName);
     }
-    
+
     if (!err.IsOk()) {
         throw std::runtime_error("Failed to unload model '" + modelName + "': " + err.Message());
     }
-    
+
     logger->Info("Model '" + modelName + "' unloaded successfully");
 }
 
-TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& model_metadata, const inference::ModelConfigResponse& model_config) {
+TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& model_metadata,
+                                       const inference::ModelConfigResponse& model_config) {
     TritonModelInfo info;
     // Platform and max batch size
     std::string platform = model_metadata.platform();
@@ -167,9 +167,15 @@ TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& m
         if (inputIndex < model_config.config().input_size()) {
             auto format_enum = model_config.config().input(inputIndex).format();
             switch (format_enum) {
-                case inference::ModelInput::FORMAT_NCHW: format = "FORMAT_NCHW"; break;
-                case inference::ModelInput::FORMAT_NHWC: format = "FORMAT_NHWC"; break;
-                default: format = "FORMAT_NONE"; break;
+                case inference::ModelInput::FORMAT_NCHW:
+                    format = "FORMAT_NCHW";
+                    break;
+                case inference::ModelInput::FORMAT_NHWC:
+                    format = "FORMAT_NHWC";
+                    break;
+                default:
+                    format = "FORMAT_NONE";
+                    break;
             }
         }
         if (format == "FORMAT_NONE") {
@@ -181,25 +187,27 @@ TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& m
         std::vector<int64_t> shape;
         bool hasDynamicDim = false;
         for (const auto& dim : input.shape()) {
-            if (dim == -1) hasDynamicDim = true;
+            if (dim == -1)
+                hasDynamicDim = true;
             shape.push_back(dim);
         }
         // No dynamic shape handling here (input_sizes not passed in this signature)
         if (info.max_batch_size_ > 0 && shape.size() < 4) {
-            shape.insert(shape.begin(), 1); // Insert batch size
+            shape.insert(shape.begin(), 1);  // Insert batch size
         }
         info.input_shapes.push_back(shape);
 
         // Data type
         std::string datatype = input.datatype();
-        if (datatype.rfind("TYPE_", 0) == 0) datatype = datatype.substr(5);
+        if (datatype.rfind("TYPE_", 0) == 0)
+            datatype = datatype.substr(5);
         info.input_datatypes.push_back(datatype);
         if (datatype == "FP32") {
             info.input_types.push_back(CV_32F);
         } else if (datatype == "INT32") {
             info.input_types.push_back(CV_32S);
         } else if (datatype == "INT64") {
-            info.input_types.push_back(CV_32S); // Map INT64 to CV_32S
+            info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
         } else {
             throw std::runtime_error("Unsupported data type: " + datatype);
         }
@@ -213,7 +221,8 @@ TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& m
     return info;
 }
 
-TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::string& url, const std::vector<std::vector<int64_t>>& input_sizes) {
+TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::string& url,
+                                       const std::vector<std::vector<int64_t>>& input_sizes) {
     TritonModelInfo info;
 
     CURL* curl = curl_easy_init();
@@ -233,7 +242,8 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK) {
-        throw std::runtime_error("Failed to perform request: " + std::string(curl_easy_strerror(res)));
+        throw std::runtime_error("Failed to perform request: " +
+                                 std::string(curl_easy_strerror(res)));
     }
 
     if (responseData.find("Request for unknown model") != std::string::npos) {
@@ -243,17 +253,19 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
     rapidjson::Document responseJson;
     responseJson.Parse(responseData.c_str());
 
-    std::string platform = responseJson.HasMember("platform") && responseJson["platform"].IsString() 
-                           ? responseJson["platform"].GetString() : "";
+    std::string platform = responseJson.HasMember("platform") && responseJson["platform"].IsString()
+                               ? responseJson["platform"].GetString()
+                               : "";
 
     info.max_batch_size_ = responseJson["max_batch_size"].GetInt();
 
     const auto& inputs = responseJson["input"].GetArray();
     size_t inputIndex = 0;  // Keep track of index for error messages and input_sizes access
     for (const auto& input : inputs) {
-        logger->Info("Input " + std::to_string(inputIndex) + ": " + std::string(input["name"].GetString()));
+        logger->Info("Input " + std::to_string(inputIndex) + ": " +
+                     std::string(input["name"].GetString()));
         info.input_names.push_back(input["name"].GetString());
-        
+
         std::string format = input["format"].GetString();
         if (format == "FORMAT_NONE") {
             format = (platform == "tensorflow_savedmodel") ? "FORMAT_NHWC" : "FORMAT_NCHW";
@@ -273,12 +285,15 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
 
         if (hasDynamicDim) {
             if (input_sizes.empty() || inputIndex >= input_sizes.size()) {
-                throw std::runtime_error("Dynamic input dimension detected for input " + std::to_string(inputIndex) + 
-                                        ", but no input sizes provided. Please specify input sizes.");
+                throw std::runtime_error(
+                    "Dynamic input dimension detected for input " + std::to_string(inputIndex) +
+                    ", but no input sizes provided. Please specify input sizes.");
             }
             shape = input_sizes[inputIndex];
         } else if (!input_sizes.empty()) {
-            logger->Warn("Input sizes provided, but model does not have dynamic shapes. Ignoring provided input sizes.");
+            logger->Warn(
+                "Input sizes provided, but model does not have dynamic shapes. Ignoring provided "
+                "input sizes.");
         }
 
         if (info.max_batch_size_ > 0 && shape.size() < 4) {
@@ -288,7 +303,7 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
         info.input_shapes.push_back(shape);
 
         std::string datatype = input["data_type"].GetString();
-        datatype.erase(0, 5); // Remove the "TYPE_" prefix
+        datatype.erase(0, 5);  // Remove the "TYPE_" prefix
         info.input_datatypes.push_back(datatype);
         if (datatype == "FP32") {
             info.input_types.push_back(CV_32F);
@@ -296,11 +311,12 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
             info.input_types.push_back(CV_32S);
         } else if (datatype == "INT64") {
             info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
-            logger->Warn("Warning: INT64 type detected for input '" + info.input_names.back() + "'. Will be mapped to CV_32S.");
+            logger->Warn("Warning: INT64 type detected for input '" + info.input_names.back() +
+                         "'. Will be mapped to CV_32S.");
         } else {
             throw std::runtime_error("Unsupported data type: " + datatype);
         }
-        
+
         ++inputIndex;
     }
 
@@ -311,7 +327,8 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
     return info;
 }
 
-TritonModelInfo Triton::getModelInfo(const std::string& modelName, const std::string& url, const std::vector<std::vector<int64_t>>& input_sizes) {
+TritonModelInfo Triton::getModelInfo(const std::string& modelName, const std::string& url,
+                                     const std::vector<std::vector<int64_t>>& input_sizes) {
     TritonModelInfo model_info;
 
     // Try to load model if not ready (for explicit mode)
@@ -326,7 +343,8 @@ TritonModelInfo Triton::getModelInfo(const std::string& modelName, const std::st
         model_info = parseModelHttp(modelName, url, input_sizes);
     } else if (protocol_ == ProtocolType::GRPC) {
         inference::ModelMetadataResponse model_metadata;
-        tc::Error err = triton_client_.grpcClient->ModelMetadata(&model_metadata, modelName, model_version_);
+        tc::Error err =
+            triton_client_.grpcClient->ModelMetadata(&model_metadata, modelName, model_version_);
         if (!err.IsOk()) {
             throw std::runtime_error("Failed to get model metadata via GRPC: " + err.Message());
         }
@@ -338,28 +356,30 @@ TritonModelInfo Triton::getModelInfo(const std::string& modelName, const std::st
         }
 
         model_info = parseModelGrpc(model_metadata, model_config);
-        
+
         // Handle input sizes for dynamic shapes if provided
         if (!input_sizes.empty()) {
-             // For GRPC, we need to manually update shapes if they were dynamic (-1)
-             // The parsing logic sets them, but we might need to override based on user input
-             // similar to how parseModelHttp does it.
-             // Basic implementation: check if override is needed
-             if (model_info.input_shapes.size() == input_sizes.size()) {
-                 for(size_t i=0; i<input_sizes.size(); ++i) {
-                     // Check if original had -1 or if we just want to force override
-                     // Ideally we check if dynamic. parseModelGrpc preserves -1.
-                     // Let's iterate and replace -1 with provided sizes
-                     if (model_info.input_shapes[i].size() == input_sizes[i].size()) {
-                         bool wasDynamic = false;
-                         for(auto dim : model_info.input_shapes[i]) if (dim == -1) wasDynamic = true;
-                         
-                         if(wasDynamic) {
-                             model_info.input_shapes[i] = input_sizes[i];
-                         }
-                     }
-                 }
-             }
+            // For GRPC, we need to manually update shapes if they were dynamic (-1)
+            // The parsing logic sets them, but we might need to override based on user input
+            // similar to how parseModelHttp does it.
+            // Basic implementation: check if override is needed
+            if (model_info.input_shapes.size() == input_sizes.size()) {
+                for (size_t i = 0; i < input_sizes.size(); ++i) {
+                    // Check if original had -1 or if we just want to force override
+                    // Ideally we check if dynamic. parseModelGrpc preserves -1.
+                    // Let's iterate and replace -1 with provided sizes
+                    if (model_info.input_shapes[i].size() == input_sizes[i].size()) {
+                        bool wasDynamic = false;
+                        for (auto dim : model_info.input_shapes[i])
+                            if (dim == -1)
+                                wasDynamic = true;
+
+                        if (wasDynamic) {
+                            model_info.input_shapes[i] = input_sizes[i];
+                        }
+                    }
+                }
+            }
         }
     } else {
         throw std::runtime_error("Unsupported protocol");
@@ -367,7 +387,7 @@ TritonModelInfo Triton::getModelInfo(const std::string& modelName, const std::st
 
     updateInputTypes();
     printModelInfo(model_info);
-    this->model_info_ = model_info; 
+    this->model_info_ = model_info;
     return model_info;
 }
 
@@ -375,9 +395,9 @@ void Triton::updateInputTypes() {
     for (size_t i = 0; i < model_info_.input_shapes.size(); ++i) {
         const auto& shape = model_info_.input_shapes[i];
         const auto& format = model_info_.input_formats[i];
-        
+
         int inputType;
-        
+
         if (format == "FORMAT_NCHW" || format == "FORMAT_NHWC") {
             if (shape.size() == 4) {
                 int channels = (format == "FORMAT_NCHW") ? shape[1] : shape[3];
@@ -396,18 +416,21 @@ void Triton::updateInputTypes() {
         } else {
             inputType = CV_32F;
         }
-        
+
         model_info_.input_types[i] = inputType;
     }
 }
 void Triton::setInputShapes(const std::vector<std::vector<int64_t>>& shapes) {
     if (shapes.size() != model_info_.input_shapes.size()) {
-        throw std::runtime_error("Number of provided input shapes does not match model's input count");
+        throw std::runtime_error(
+            "Number of provided input shapes does not match model's input count");
     }
 
     for (size_t i = 0; i < shapes.size(); ++i) {
         if (shapes[i].size() != model_info_.input_shapes[i].size()) {
-            throw std::runtime_error("Provided input shape does not match model's input dimension for input " + std::to_string(i));
+            throw std::runtime_error(
+                "Provided input shape does not match model's input dimension for input " +
+                std::to_string(i));
         }
 
         const std::string& format = model_info_.input_formats[i];
@@ -415,13 +438,15 @@ void Triton::setInputShapes(const std::vector<std::vector<int64_t>>& shapes) {
             if (shapes[i].size() == 4) {
                 int channels = (format == "FORMAT_NCHW") ? shapes[i][1] : shapes[i][3];
                 if (channels != 1 && channels != 3) {
-                    throw std::runtime_error("Invalid number of channels for " + format + " format in input " + std::to_string(i));
+                    throw std::runtime_error("Invalid number of channels for " + format +
+                                             " format in input " + std::to_string(i));
                 }
             } else if (shapes[i].size() != 2) {
                 throw std::runtime_error("Invalid shape for image input " + std::to_string(i));
             }
         } else if (format != "FORMAT_NONE") {
-            throw std::runtime_error("Unsupported input format: " + format + " for input " + std::to_string(i));
+            throw std::runtime_error("Unsupported input format: " + format + " for input " +
+                                     std::to_string(i));
         }
 
         model_info_.input_shapes[i] = shapes[i];
@@ -450,13 +475,11 @@ void Triton::createTritonClient() {
     }
 }
 
-std::vector<Tensor> Triton::getInferResults(
-    tc::InferResult* result,
-    const size_t batch_size,
-    const std::vector<std::string>& output_names)
-{
+std::vector<Tensor> Triton::getInferResults(tc::InferResult* result, const size_t batch_size,
+                                            const std::vector<std::string>& output_names) {
     if (!result->RequestStatus().IsOk()) {
-        throw std::runtime_error("Inference failed with error: " + result->RequestStatus().Message());
+        throw std::runtime_error("Inference failed with error: " +
+                                 result->RequestStatus().Message());
     }
 
     std::vector<Tensor> tensors;
@@ -472,13 +495,15 @@ std::vector<Tensor> Triton::getInferResults(
 
         tc::Error err = result->Shape(outputName, &infer_shape);
         if (!err.IsOk()) {
-            throw std::runtime_error("Unable to get shape for " + outputName + ": " + err.Message());
+            throw std::runtime_error("Unable to get shape for " + outputName + ": " +
+                                     err.Message());
         }
 
         std::string output_datatype;
         err = result->Datatype(outputName, &output_datatype);
         if (!err.IsOk()) {
-            throw std::runtime_error("Unable to get datatype for " + outputName + ": " + err.Message());
+            throw std::runtime_error("Unable to get datatype for " + outputName + ": " +
+                                     err.Message());
         }
 
         if (output_datatype == "FP32") {
@@ -516,7 +541,7 @@ std::vector<Tensor> Triton::infer(const std::vector<std::vector<uint8_t>>& input
     tc::Error err;
     std::vector<std::unique_ptr<tc::InferInput>> inputs;
     std::vector<std::unique_ptr<tc::InferRequestedOutput>> outputs;
-    
+
     // Create outputs with smart pointers
     for (const auto& output_name : model_info_.output_names) {
         tc::InferRequestedOutput* output;
@@ -526,28 +551,30 @@ std::vector<Tensor> Triton::infer(const std::vector<std::vector<uint8_t>>& input
         }
         outputs.emplace_back(output);
     }
-    
+
     // Create vector of raw pointers for the API call
     std::vector<const tc::InferRequestedOutput*> output_ptrs;
     output_ptrs.reserve(outputs.size());
     for (const auto& output : outputs) {
         output_ptrs.push_back(output.get());
     }
-    
+
     tc::InferOptions options(model_name_);
     options.model_version_ = model_version_;
 
     if (input_data.size() != model_info_.input_names.size()) {
-        throw std::runtime_error("Mismatch in number of inputs. Expected " + std::to_string(model_info_.input_names.size()) + 
-                                 ", but got " + std::to_string(input_data.size()));
+        throw std::runtime_error("Mismatch in number of inputs. Expected " +
+                                 std::to_string(model_info_.input_names.size()) + ", but got " +
+                                 std::to_string(input_data.size()));
     }
 
-    for (size_t i = 0; i < model_info_.input_names.size(); ++i) 
-    {
+    for (size_t i = 0; i < model_info_.input_names.size(); ++i) {
         tc::InferInput* input;
-        err = tc::InferInput::Create(&input, model_info_.input_names[i], model_info_.input_shapes[i], model_info_.input_datatypes[i]);
+        err = tc::InferInput::Create(&input, model_info_.input_names[i],
+                                     model_info_.input_shapes[i], model_info_.input_datatypes[i]);
         if (!err.IsOk()) {
-            throw std::runtime_error("Unable to create input " + model_info_.input_names[i] + ": " + err.Message());
+            throw std::runtime_error("Unable to create input " + model_info_.input_names[i] + ": " +
+                                     err.Message());
         }
         inputs.emplace_back(input);
 
@@ -558,10 +585,12 @@ std::vector<Tensor> Triton::infer(const std::vector<std::vector<uint8_t>>& input
 
         err = input->AppendRaw(input_data[i]);
         if (!err.IsOk()) {
-            throw std::runtime_error("Failed setting input " + model_info_.input_names[i] + ": " + err.Message());
+            throw std::runtime_error("Failed setting input " + model_info_.input_names[i] + ": " +
+                                     err.Message());
         }
 
-        logger->Debug("Input " + model_info_.input_names[i] + " set with " + std::to_string(input_data[i].size()) + " bytes of data");
+        logger->Debug("Input " + model_info_.input_names[i] + " set with " +
+                      std::to_string(input_data[i].size()) + " bytes of data");
     }
 
     // Create vector of raw pointers for the API call
@@ -589,7 +618,8 @@ std::vector<Tensor> Triton::infer(const std::vector<std::vector<uint8_t>>& input
     return tensors;
 }
 
-std::unique_ptr<SharedMemoryRegion> Triton::createSharedMemoryRegion(const std::string& name, size_t size) {
+std::unique_ptr<SharedMemoryRegion> Triton::createSharedMemoryRegion(const std::string& name,
+                                                                     size_t size) {
     if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
         return createSystemSharedMemoryRegion(name, size);
     } else {
@@ -597,26 +627,28 @@ std::unique_ptr<SharedMemoryRegion> Triton::createSharedMemoryRegion(const std::
     }
 }
 
-std::unique_ptr<SharedMemoryRegion> Triton::createSystemSharedMemoryRegion(const std::string& name, size_t size) {
+std::unique_ptr<SharedMemoryRegion> Triton::createSystemSharedMemoryRegion(const std::string& name,
+                                                                           size_t size) {
     auto region = std::make_unique<SharedMemoryRegion>();
     region->name = name;
     region->key = "/" + name + "_" + std::to_string(getpid());
     region->size = size;
     region->type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
-    
+
     // Create shared memory region
     region->fd = shm_open(region->key.c_str(), O_CREAT | O_RDWR, 0666);
     if (region->fd == -1) {
         throw std::runtime_error("Failed to create system shared memory region: " + region->name);
     }
-    
+
     // Set the size of the shared memory region
     if (ftruncate(region->fd, size) == -1) {
         close(region->fd);
         shm_unlink(region->key.c_str());
-        throw std::runtime_error("Failed to set size of system shared memory region: " + region->name);
+        throw std::runtime_error("Failed to set size of system shared memory region: " +
+                                 region->name);
     }
-    
+
     // Map the shared memory region
     region->ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, region->fd, 0);
     if (region->ptr == MAP_FAILED) {
@@ -624,13 +656,15 @@ std::unique_ptr<SharedMemoryRegion> Triton::createSystemSharedMemoryRegion(const
         shm_unlink(region->key.c_str());
         throw std::runtime_error("Failed to map system shared memory region: " + region->name);
     }
-    
-    logger->Info("Created system shared memory region '" + region->name + "' with key '" + region->key + "' and size " + std::to_string(region->size) + " bytes");
-    
+
+    logger->Info("Created system shared memory region '" + region->name + "' with key '" +
+                 region->key + "' and size " + std::to_string(region->size) + " bytes");
+
     return region;
 }
 
-std::unique_ptr<SharedMemoryRegion> Triton::createCudaSharedMemoryRegion(const std::string& name, size_t size) {
+std::unique_ptr<SharedMemoryRegion> Triton::createCudaSharedMemoryRegion(const std::string& name,
+                                                                         size_t size) {
 #ifdef TRITONIC_ENABLE_CUDA
     auto region = std::make_unique<SharedMemoryRegion>();
     region->name = name;
@@ -638,27 +672,30 @@ std::unique_ptr<SharedMemoryRegion> Triton::createCudaSharedMemoryRegion(const s
     region->size = size;
     region->type = SharedMemoryType::CUDA_SHARED_MEMORY;
     region->device_id = cuda_device_id_;
-    
+
     // Set CUDA device
     cudaError_t cuda_err = cudaSetDevice(cuda_device_id_);
     if (cuda_err != cudaSuccess) {
-        throw std::runtime_error("Failed to set CUDA device " + std::to_string(cuda_device_id_) + 
-                                ": " + cudaGetErrorString(cuda_err));
+        throw std::runtime_error("Failed to set CUDA device " + std::to_string(cuda_device_id_) +
+                                 ": " + cudaGetErrorString(cuda_err));
     }
-    
+
     // Allocate CUDA memory
     cuda_err = cudaMalloc(&region->ptr, size);
     if (cuda_err != cudaSuccess) {
-        throw std::runtime_error("Failed to allocate CUDA memory for region '" + region->name + 
-                                "': " + cudaGetErrorString(cuda_err));
+        throw std::runtime_error("Failed to allocate CUDA memory for region '" + region->name +
+                                 "': " + cudaGetErrorString(cuda_err));
     }
-    
-    logger->Info("Created CUDA shared memory region '" + region->name + "' on device " + std::to_string(cuda_device_id_) + " with size " + std::to_string(region->size) + " bytes");
-    
+
+    logger->Info("Created CUDA shared memory region '" + region->name + "' on device " +
+                 std::to_string(cuda_device_id_) + " with size " + std::to_string(region->size) +
+                 " bytes");
+
     return region;
 #else
-    throw std::runtime_error("CUDA shared memory requested but CUDA support not enabled. "
-                           "Please compile with TRITONIC_ENABLE_CUDA=ON");
+    throw std::runtime_error(
+        "CUDA shared memory requested but CUDA support not enabled. "
+        "Please compile with TRITONIC_ENABLE_CUDA=ON");
 #endif
 }
 
@@ -667,7 +704,7 @@ size_t Triton::calculateTensorSize(const std::vector<int64_t>& shape, const std:
     for (int64_t dim : shape) {
         element_count *= dim;
     }
-    
+
     size_t element_size;
     if (datatype == "FP32") {
         element_size = sizeof(float);
@@ -680,26 +717,26 @@ size_t Triton::calculateTensorSize(const std::vector<int64_t>& shape, const std:
     } else {
         throw std::runtime_error("Unsupported datatype for shared memory: " + datatype);
     }
-    
+
     return element_count * element_size;
 }
 
 void Triton::registerInputSharedMemory() {
     tc::Error err;
-    
+
     // Clear existing input shared memory regions
     input_shm_regions_.clear();
-    
+
     for (size_t i = 0; i < model_info_.input_names.size(); ++i) {
         const std::string& input_name = model_info_.input_names[i];
         const std::vector<int64_t>& shape = model_info_.input_shapes[i];
         const std::string& datatype = model_info_.input_datatypes[i];
-        
+
         size_t tensor_size = calculateTensorSize(shape, datatype);
         std::string shm_name = "input_" + input_name + "_shm";
-        
+
         auto region = createSharedMemoryRegion(shm_name, tensor_size);
-        
+
         // Register with Triton server based on memory type
         if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
             if (protocol_ == ProtocolType::HTTP) {
@@ -713,42 +750,46 @@ void Triton::registerInputSharedMemory() {
 #ifdef TRITONIC_ENABLE_CUDA
             if (protocol_ == ProtocolType::HTTP) {
                 err = triton_client_.httpClient->RegisterCudaSharedMemory(
-                    region->name, reinterpret_cast<CUdeviceptr>(region->ptr), 
-                    region->device_id, tensor_size);
+                    region->name, reinterpret_cast<CUdeviceptr>(region->ptr), region->device_id,
+                    tensor_size);
             } else {
                 err = triton_client_.grpcClient->RegisterCudaSharedMemory(
-                    region->name, reinterpret_cast<CUdeviceptr>(region->ptr), 
-                    region->device_id, tensor_size);
+                    region->name, reinterpret_cast<CUdeviceptr>(region->ptr), region->device_id,
+                    tensor_size);
             }
 #endif
         }
-        
+
         if (!err.IsOk()) {
-            throw std::runtime_error("Failed to register input shared memory '" + 
-                                   region->name + "': " + err.Message());
+            throw std::runtime_error("Failed to register input shared memory '" + region->name +
+                                     "': " + err.Message());
         }
-        
-        logger->Info("Registered " + std::string(shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY ? "system" : "CUDA") + " input shared memory '" + region->name + "' for input '" + input_name + "'");
+
+        logger->Info("Registered " +
+                     std::string(shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY
+                                     ? "system"
+                                     : "CUDA") +
+                     " input shared memory '" + region->name + "' for input '" + input_name + "'");
         input_shm_regions_.push_back(std::move(region));
     }
 }
 
 void Triton::registerOutputSharedMemory() {
     tc::Error err;
-    
+
     // Clear existing output shared memory regions
     output_shm_regions_.clear();
-    
+
     for (size_t i = 0; i < model_info_.output_names.size(); ++i) {
         const std::string& output_name = model_info_.output_names[i];
-        
+
         // For output tensors, we need to estimate the size or get it from model metadata
         // For now, we'll use a default size and resize if needed
-        size_t estimated_size = 1024 * 1024; // 1MB default
+        size_t estimated_size = 1024 * 1024;  // 1MB default
         std::string shm_name = "output_" + output_name + "_shm";
-        
+
         auto region = createSharedMemoryRegion(shm_name, estimated_size);
-        
+
         // Register with Triton server based on memory type
         if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
             if (protocol_ == ProtocolType::HTTP) {
@@ -762,29 +803,33 @@ void Triton::registerOutputSharedMemory() {
 #ifdef TRITONIC_ENABLE_CUDA
             if (protocol_ == ProtocolType::HTTP) {
                 err = triton_client_.httpClient->RegisterCudaSharedMemory(
-                    region->name, reinterpret_cast<CUdeviceptr>(region->ptr), 
-                    region->device_id, estimated_size);
+                    region->name, reinterpret_cast<CUdeviceptr>(region->ptr), region->device_id,
+                    estimated_size);
             } else {
                 err = triton_client_.grpcClient->RegisterCudaSharedMemory(
-                    region->name, reinterpret_cast<CUdeviceptr>(region->ptr), 
-                    region->device_id, estimated_size);
+                    region->name, reinterpret_cast<CUdeviceptr>(region->ptr), region->device_id,
+                    estimated_size);
             }
 #endif
         }
-        
+
         if (!err.IsOk()) {
-            throw std::runtime_error("Failed to register output shared memory '" + 
-                                   region->name + "': " + err.Message());
+            throw std::runtime_error("Failed to register output shared memory '" + region->name +
+                                     "': " + err.Message());
         }
-        
-        logger->Info("Registered " + std::string(shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY ? "system" : "CUDA") + " output shared memory '" + region->name + "' for output '" + output_name + "'");
+
+        logger->Info(
+            "Registered " +
+            std::string(shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY ? "system"
+                                                                                      : "CUDA") +
+            " output shared memory '" + region->name + "' for output '" + output_name + "'");
         output_shm_regions_.push_back(std::move(region));
     }
 }
 
 void Triton::unregisterSharedMemory() {
     tc::Error err;
-    
+
     // Unregister input shared memory regions
     for (const auto& region : input_shm_regions_) {
         if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
@@ -802,14 +847,15 @@ void Triton::unregisterSharedMemory() {
             }
 #endif
         }
-        
+
         if (!err.IsOk()) {
-            logger->Warn("Failed to unregister input shared memory '" + region->name + "': " + err.Message());
+            logger->Warn("Failed to unregister input shared memory '" + region->name +
+                         "': " + err.Message());
         } else {
             logger->Info("Unregistered input shared memory '" + region->name + "'");
         }
     }
-    
+
     // Unregister output shared memory regions
     for (const auto& region : output_shm_regions_) {
         if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
@@ -827,120 +873,126 @@ void Triton::unregisterSharedMemory() {
             }
 #endif
         }
-        
+
         if (!err.IsOk()) {
-            logger->Warn("Failed to unregister output shared memory '" + region->name + "': " + err.Message());
+            logger->Warn("Failed to unregister output shared memory '" + region->name +
+                         "': " + err.Message());
         } else {
             logger->Info("Unregistered output shared memory '" + region->name + "'");
         }
     }
-    
+
     input_shm_regions_.clear();
     output_shm_regions_.clear();
 }
 
-std::vector<Tensor> Triton::inferWithSharedMemory(const std::vector<std::vector<uint8_t>>& input_data) {
+std::vector<Tensor> Triton::inferWithSharedMemory(
+    const std::vector<std::vector<uint8_t>>& input_data) {
     tc::Error err;
     std::vector<std::unique_ptr<tc::InferInput>> inputs;
     std::vector<std::unique_ptr<tc::InferRequestedOutput>> outputs;
-    
+
     if (input_shm_regions_.empty()) {
-        throw std::runtime_error("Input shared memory regions not registered. Call registerInputSharedMemory() first.");
+        throw std::runtime_error(
+            "Input shared memory regions not registered. Call registerInputSharedMemory() first.");
     }
-    
+
     if (input_data.size() != model_info_.input_names.size()) {
-        throw std::runtime_error("Mismatch in number of inputs. Expected " + 
-                                std::to_string(model_info_.input_names.size()) + 
-                                ", but got " + std::to_string(input_data.size()));
+        throw std::runtime_error("Mismatch in number of inputs. Expected " +
+                                 std::to_string(model_info_.input_names.size()) + ", but got " +
+                                 std::to_string(input_data.size()));
     }
-    
+
     // Copy input data to shared memory and create InferInput objects
     for (size_t i = 0; i < model_info_.input_names.size(); ++i) {
         const std::string& input_name = model_info_.input_names[i];
         const auto& region = input_shm_regions_[i];
-        
+
         if (input_data[i].size() > region->size) {
-            throw std::runtime_error("Input data size (" + std::to_string(input_data[i].size()) + 
-                                    ") exceeds shared memory region size (" + 
-                                    std::to_string(region->size) + ") for input " + input_name);
+            throw std::runtime_error("Input data size (" + std::to_string(input_data[i].size()) +
+                                     ") exceeds shared memory region size (" +
+                                     std::to_string(region->size) + ") for input " + input_name);
         }
-        
+
         // Copy input data to shared memory
         if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
             std::memcpy(region->ptr, input_data[i].data(), input_data[i].size());
         } else {
 #ifdef TRITONIC_ENABLE_CUDA
-            cudaError_t cuda_err = cudaMemcpy(region->ptr, input_data[i].data(), 
-                                            input_data[i].size(), cudaMemcpyHostToDevice);
+            cudaError_t cuda_err = cudaMemcpy(region->ptr, input_data[i].data(),
+                                              input_data[i].size(), cudaMemcpyHostToDevice);
             if (cuda_err != cudaSuccess) {
-                throw std::runtime_error("Failed to copy data to CUDA shared memory for input " + 
-                                       input_name + ": " + cudaGetErrorString(cuda_err));
+                throw std::runtime_error("Failed to copy data to CUDA shared memory for input " +
+                                         input_name + ": " + cudaGetErrorString(cuda_err));
             }
 #endif
         }
-        
+
         // Create InferInput with shared memory
         tc::InferInput* input;
-        err = tc::InferInput::Create(&input, input_name, model_info_.input_shapes[i], 
-                                   model_info_.input_datatypes[i]);
+        err = tc::InferInput::Create(&input, input_name, model_info_.input_shapes[i],
+                                     model_info_.input_datatypes[i]);
         if (!err.IsOk()) {
             throw std::runtime_error("Unable to create input " + input_name + ": " + err.Message());
         }
-        
+
         // Set shared memory for input
         err = input->SetSharedMemory(region->name, input_data[i].size());
         if (!err.IsOk()) {
             delete input;
-            throw std::runtime_error("Failed to set shared memory for input " + input_name + 
-                                   ": " + err.Message());
+            throw std::runtime_error("Failed to set shared memory for input " + input_name + ": " +
+                                     err.Message());
         }
-        
+
         inputs.emplace_back(input);
-        logger->Info("Input '" + input_name + "' set with shared memory region '" + region->name + "'");
+        logger->Info("Input '" + input_name + "' set with shared memory region '" + region->name +
+                     "'");
     }
-    
+
     // Create outputs with shared memory (if available)
     for (size_t i = 0; i < model_info_.output_names.size(); ++i) {
         const std::string& output_name = model_info_.output_names[i];
-        
+
         tc::InferRequestedOutput* output;
         err = tc::InferRequestedOutput::Create(&output, output_name);
         if (!err.IsOk()) {
-            throw std::runtime_error("Unable to create output " + output_name + ": " + err.Message());
+            throw std::runtime_error("Unable to create output " + output_name + ": " +
+                                     err.Message());
         }
-        
+
         // Set shared memory for output if available
         if (i < output_shm_regions_.size()) {
             const auto& region = output_shm_regions_[i];
             err = output->SetSharedMemory(region->name, region->size);
             if (!err.IsOk()) {
                 delete output;
-                throw std::runtime_error("Failed to set shared memory for output " + output_name + 
-                                       ": " + err.Message());
+                throw std::runtime_error("Failed to set shared memory for output " + output_name +
+                                         ": " + err.Message());
             }
-            logger->Info("Output '" + output_name + "' set with shared memory region '" + region->name + "'");
+            logger->Info("Output '" + output_name + "' set with shared memory region '" +
+                         region->name + "'");
         }
-        
+
         outputs.emplace_back(output);
     }
-    
+
     // Create vector of raw pointers for the API call
     std::vector<tc::InferInput*> input_ptrs;
     std::vector<const tc::InferRequestedOutput*> output_ptrs;
-    
+
     input_ptrs.reserve(inputs.size());
     for (const auto& input : inputs) {
         input_ptrs.push_back(input.get());
     }
-    
+
     output_ptrs.reserve(outputs.size());
     for (const auto& output : outputs) {
         output_ptrs.push_back(output.get());
     }
-    
+
     tc::InferOptions options(model_name_);
     options.model_version_ = model_version_;
-    
+
     // Perform inference
     tc::InferResult* result;
     std::unique_ptr<tc::InferResult> result_ptr;
@@ -949,16 +1001,15 @@ std::vector<Tensor> Triton::inferWithSharedMemory(const std::vector<std::vector<
     } else {
         err = triton_client_.grpcClient->Infer(&result, options, input_ptrs, output_ptrs);
     }
-    
+
     if (!err.IsOk()) {
-        throw std::runtime_error("Failed sending synchronous infer request with shared memory: " + 
-                                err.Message());
+        throw std::runtime_error("Failed sending synchronous infer request with shared memory: " +
+                                 err.Message());
     }
-    
-    auto tensors = getInferResults(result, model_info_.batch_size_, 
-                                  model_info_.output_names);
+
+    auto tensors = getInferResults(result, model_info_.batch_size_, model_info_.output_names);
     result_ptr.reset(result);
-    
+
     logger->Info("Inference with shared memory completed successfully");
     return tensors;
 }
@@ -966,11 +1017,12 @@ std::vector<Tensor> Triton::inferWithSharedMemory(const std::vector<std::vector<
 void Triton::setSharedMemoryType(SharedMemoryType type, int cuda_device) {
     shared_memory_type_ = type;
     cuda_device_id_ = cuda_device;
-    
+
     // Unregister any existing shared memory regions
     unregisterSharedMemory();
-    
-    logger->Info("Shared memory type set to " + std::string(type == SharedMemoryType::SYSTEM_SHARED_MEMORY ? "System" : "CUDA"));
+
+    logger->Info("Shared memory type set to " +
+                 std::string(type == SharedMemoryType::SYSTEM_SHARED_MEMORY ? "System" : "CUDA"));
     if (type == SharedMemoryType::CUDA_SHARED_MEMORY) {
         logger->Info("CUDA device ID: " + std::to_string(cuda_device));
     }

@@ -1,15 +1,13 @@
 #include "App.hpp"
+#include <chrono>
 #include <deque>
 #include <filesystem>
 #include <random>
 #include <sstream>
 #include <thread>
-#include <chrono>
 #include "vision-core/core/task_factory.hpp"
 
-
-App::App(std::shared_ptr<ITriton> triton, 
-         std::shared_ptr<InferenceConfig> config,
+App::App(std::shared_ptr<ITriton> triton, std::shared_ptr<InferenceConfig> config,
          std::shared_ptr<Logger> logger)
     : tritonClient_(triton), config_(config), logger_(logger) {}
 
@@ -26,26 +24,30 @@ int App::run() {
         int max_retries = 5;
         int retry_count = 0;
         bool server_live = false;
-        
+
         while (retry_count < max_retries) {
             if (tritonClient_->isServerLive()) {
                 server_live = true;
                 break;
             }
-            logger_->Warn("Server not live, retrying in 2 seconds... (" + std::to_string(retry_count + 1) + "/" + std::to_string(max_retries) + ")");
+            logger_->Warn("Server not live, retrying in 2 seconds... (" +
+                          std::to_string(retry_count + 1) + "/" + std::to_string(max_retries) +
+                          ")");
             std::this_thread::sleep_for(std::chrono::seconds(2));
             retry_count++;
         }
-        
+
         if (!server_live) {
-            throw std::runtime_error("Triton server is not live after " + std::to_string(max_retries) + " attempts");
+            throw std::runtime_error("Triton server is not live after " +
+                                     std::to_string(max_retries) + " attempts");
         }
         logger_->Info("Triton server is live.");
 
         // Check if model is in repository
         logger_->Info("Checking if model " + config_->GetModelName() + " is in repository...");
         if (!tritonClient_->isModelInRepository(config_->GetModelName())) {
-             throw std::runtime_error("Model " + config_->GetModelName() + " not found in Triton repository.");
+            throw std::runtime_error("Model " + config_->GetModelName() +
+                                     " not found in Triton repository.");
         }
         logger_->Info("Model found in repository.");
 
@@ -58,7 +60,8 @@ int App::run() {
         }
 
         logger_->Info("Getting model info for: " + config_->GetModelName());
-        TritonModelInfo modelInfo = tritonClient_->getModelInfo(config_->GetModelName(), config_->GetServerAddress(), config_->GetInputSizes());
+        TritonModelInfo modelInfo = tritonClient_->getModelInfo(
+            config_->GetModelName(), config_->GetServerAddress(), config_->GetInputSizes());
 
         // Create task instance
         logger_->Info("Creating task instance for model type: " + config_->GetModelType());
@@ -66,7 +69,12 @@ int App::run() {
         vision_core::TaskConfig taskConfig;
         taskConfig.confidence_threshold = config_->GetConfidenceThreshold();
         taskConfig.nms_threshold = config_->GetNmsThreshold();
-        task_ = vision_core::TaskFactory::createTaskInstance(config_->GetModelType(), visionCoreModelInfo, taskConfig);
+        task_ = vision_core::TaskFactory::createTaskInstance(config_->GetModelType(),
+                                                             visionCoreModelInfo, taskConfig);
+
+        if (!task_) {
+            throw std::runtime_error("Failed to create task instance");
+        }
 
         // Extract frame buffer size for video classification from 5D input shape [B, T, C, H, W]
         if (task_->getTaskType() == vision_core::TaskType::VideoClassification &&
@@ -78,18 +86,15 @@ int App::run() {
             logger_->Info("Video classification frame buffer size: " + std::to_string(num_frames_));
         }
 
-        if (!task_) {
-            throw std::runtime_error("Failed to create task instance");
-        }
-
         // Load class names
         class_names_ = task_->readLabelNames(config_->GetLabelsFile());
-        logger_->Info("Loaded " + std::to_string(class_names_.size()) + " class names from " + config_->GetLabelsFile());
+        logger_->Info("Loaded " + std::to_string(class_names_.size()) + " class names from " +
+                      config_->GetLabelsFile());
         colors_ = generateRandomColors(class_names_.size());
 
         // Parse source files
         std::vector<std::string> sourceNames = split(config_->GetSource(), ',');
-        
+
         // Categorize source files
         std::vector<std::string> image_list;
         std::vector<std::string> video_list;
@@ -108,14 +113,15 @@ int App::run() {
         if (image_list.empty() && video_list.empty()) {
             throw std::runtime_error("No valid image or video files provided");
         }
-        
-        logger_->Info("Processing " + std::to_string(image_list.size()) + " images and " + std::to_string(video_list.size()) + " videos");
-        
+
+        logger_->Info("Processing " + std::to_string(image_list.size()) + " images and " +
+                      std::to_string(video_list.size()) + " videos");
+
         // Process images
         if (!image_list.empty()) {
             processImages(image_list);
         }
-        
+
         // Process videos
         if (!video_list.empty()) {
             logger_->Info("Processing videos");
@@ -166,8 +172,8 @@ std::vector<vision_core::Result> App::processSource(const std::vector<cv::Mat>& 
 void App::processImages(const std::vector<std::string>& sourceNames) {
     if (task_->getTaskType() == vision_core::TaskType::OpticalFlow) {
         logger_->Info("Processing optical flow for image pairs");
-        for(size_t i = 0; i < sourceNames.size() - 1; i++) {
-            std::vector<std::string> flowInputs = {sourceNames[i], sourceNames[i+1]};
+        for (size_t i = 0; i < sourceNames.size() - 1; i++) {
+            std::vector<std::string> flowInputs = {sourceNames[i], sourceNames[i + 1]};
 
             std::vector<cv::Mat> images;
             for (const auto& name : flowInputs) {
@@ -179,13 +185,15 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
                 images.push_back(img);
             }
 
-            if (images.size() != 2) continue;
+            if (images.size() != 2)
+                continue;
 
             auto start = std::chrono::steady_clock::now();
             std::vector<vision_core::Result> predictions = processSource(images);
             auto end = std::chrono::steady_clock::now();
             auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-            logger_->Info("Infer time for " + std::to_string(images.size()) + " images: " + std::to_string(diff) + " ms");
+            logger_->Info("Infer time for " + std::to_string(images.size()) +
+                          " images: " + std::to_string(diff) + " ms");
 
             cv::Mat& image = images[0];
             for (const auto& prediction : predictions) {
@@ -198,12 +206,14 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             std::string sourceDir = flowInputs[0].substr(0, flowInputs[0].find_last_of("/\\"));
             std::string outputDir = sourceDir + "/output";
             std::filesystem::create_directories(outputDir);
-            std::string processedFrameFilename = outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
+            std::string processedFrameFilename =
+                outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
             logger_->Info("Saving frame to: " + processedFrameFilename);
             cv::imwrite(processedFrameFilename, image);
         }
     } else if (task_->getTaskType() == vision_core::TaskType::VideoClassification) {
-        logger_->Info("Processing video classification for image set (" + std::to_string(sourceNames.size()) + " frames)");
+        logger_->Info("Processing video classification for image set (" +
+                      std::to_string(sourceNames.size()) + " frames)");
         std::vector<cv::Mat> frames;
         for (const auto& name : sourceNames) {
             cv::Mat img = cv::imread(name);
@@ -213,21 +223,26 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             }
             frames.push_back(img);
         }
-        if (frames.empty()) return;
+        if (frames.empty())
+            return;
 
         auto start = std::chrono::steady_clock::now();
         std::vector<vision_core::Result> predictions = processSource(frames);
         auto end = std::chrono::steady_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        logger_->Info("Infer time for " + std::to_string(frames.size()) + " frames: " + std::to_string(diff) + " ms");
+        logger_->Info("Infer time for " + std::to_string(frames.size()) +
+                      " frames: " + std::to_string(diff) + " ms");
 
         for (const auto& prediction : predictions) {
             if (std::holds_alternative<vision_core::VideoClassification>(prediction)) {
                 const auto& vc = std::get<vision_core::VideoClassification>(prediction);
-                std::string label = vc.action_label.empty()
-                    ? (class_names_.empty() ? "Unknown" : class_names_[static_cast<int>(vc.class_id)])
-                    : vc.action_label;
-                logger_->Info("Action: " + label + " (" + std::to_string(vc.class_confidence).substr(0, 4) + ")");
+                std::string label =
+                    vc.action_label.empty()
+                        ? (class_names_.empty() ? "Unknown"
+                                                : class_names_[static_cast<int>(vc.class_id)])
+                        : vc.action_label;
+                logger_->Info("Action: " + label + " (" +
+                              std::to_string(vc.class_confidence).substr(0, 4) + ")");
             }
         }
     } else {
@@ -249,14 +264,17 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             for (const auto& prediction : predictions) {
                 if (std::holds_alternative<vision_core::Classification>(prediction)) {
                     const auto& c = std::get<vision_core::Classification>(prediction);
-                    logger_->Info("Image " + sourceName + ": " + class_names_[static_cast<int>(c.class_id)] + ": " + std::to_string(c.class_confidence));
+                    logger_->Info("Image " + sourceName + ": " +
+                                  class_names_[static_cast<int>(c.class_id)] + ": " +
+                                  std::to_string(c.class_confidence));
                 }
                 renderPrediction(image, prediction);
             }
 
             std::string outputDir = sourceDir + "/output";
             std::filesystem::create_directories(outputDir);
-            std::string processedFrameFilename = outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
+            std::string processedFrameFilename =
+                outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
             logger_->Info("Saving frame to: " + processedFrameFilename);
             cv::imwrite(processedFrameFilename, image);
         }
@@ -273,7 +291,8 @@ void App::processVideo(const std::string& sourceName) {
 
     cv::VideoWriter outputVideo;
     if (config_->GetWriteFrame()) {
-        cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH), (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+        cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH),
+                              (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
         int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
         std::string outputDir = sourceDir + "/output";
         std::filesystem::create_directories(outputDir);
@@ -286,7 +305,7 @@ void App::processVideo(const std::string& sourceName) {
     }
 
     cv::Mat current_frame, previous_frame, visualization_frame;
-    
+
     // Read first frame
     if (!cap.read(current_frame)) {
         logger_->Error("Failed to read first frame");
@@ -318,7 +337,8 @@ void App::processVideo(const std::string& sourceName) {
                 visualization_frame = cv::Mat::zeros(current_frame.size(), current_frame.type());
                 for (const auto& prediction : predictions) {
                     if (std::holds_alternative<vision_core::OpticalFlow>(prediction)) {
-                        vision_core::OpticalFlow flow = std::get<vision_core::OpticalFlow>(prediction);
+                        vision_core::OpticalFlow flow =
+                            std::get<vision_core::OpticalFlow>(prediction);
                         flow.flow.copyTo(visualization_frame);
                     }
                 }
@@ -331,7 +351,8 @@ void App::processVideo(const std::string& sourceName) {
             // Add FPS counter
             double fps = 1000.0 / static_cast<double>(diff);
             std::string fpsText = "FPS: " + std::to_string(fps).substr(0, 4);
-            cv::putText(visualization_frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
+            cv::putText(visualization_frame, fpsText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX,
+                        1, cv::Scalar(0, 255, 0), 2);
         }
 
         if (config_->GetShowFrame()) {
@@ -345,7 +366,7 @@ void App::processVideo(const std::string& sourceName) {
 
         // Store current frame as previous frame
         current_frame.copyTo(previous_frame);
-        
+
         // Read next frame
         if (!cap.read(current_frame)) {
             break;
@@ -363,7 +384,8 @@ void App::processVideoClassification(const std::string& sourceName) {
 
     cv::VideoWriter outputVideo;
     if (config_->GetWriteFrame()) {
-        cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH), (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+        cv::Size S = cv::Size((int)cap.get(cv::CAP_PROP_FRAME_WIDTH),
+                              (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
         int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
         std::string outputDir = sourceDir + "/output";
         std::filesystem::create_directories(outputDir);
@@ -397,9 +419,11 @@ void App::processVideoClassification(const std::string& sourceName) {
             for (const auto& prediction : predictions) {
                 if (std::holds_alternative<vision_core::VideoClassification>(prediction)) {
                     const auto& vc = std::get<vision_core::VideoClassification>(prediction);
-                    last_label = vc.action_label.empty()
-                        ? (class_names_.empty() ? "Unknown" : class_names_[static_cast<int>(vc.class_id)])
-                        : vc.action_label;
+                    last_label =
+                        vc.action_label.empty()
+                            ? (class_names_.empty() ? "Unknown"
+                                                    : class_names_[static_cast<int>(vc.class_id)])
+                            : vc.action_label;
                     last_confidence = vc.class_confidence;
                 }
             }
@@ -411,7 +435,8 @@ void App::processVideoClassification(const std::string& sourceName) {
 
         if (config_->GetShowFrame()) {
             cv::imshow("video feed", display_frame);
-            if (cv::waitKey(1) == 27) break;
+            if (cv::waitKey(1) == 27)
+                break;
         }
         if (config_->GetWriteFrame() && outputVideo.isOpened()) {
             outputVideo.write(display_frame);
@@ -423,27 +448,28 @@ void App::renderPrediction(cv::Mat& frame, const vision_core::Result& prediction
     if (std::holds_alternative<vision_core::Classification>(prediction)) {
         const auto& c = std::get<vision_core::Classification>(prediction);
         drawLabel(frame, class_names_[static_cast<int>(c.class_id)], c.class_confidence, 30, 30);
-    }
-    else if (std::holds_alternative<vision_core::Detection>(prediction)) {
+    } else if (std::holds_alternative<vision_core::Detection>(prediction)) {
         const auto& det = std::get<vision_core::Detection>(prediction);
         cv::Rect safeBbox = det.bbox & cv::Rect(0, 0, frame.cols, frame.rows);
         if (safeBbox.width > 0 && safeBbox.height > 0) {
             cv::rectangle(frame, safeBbox, colors_[static_cast<int>(det.class_id)], 2);
-            drawLabel(frame, class_names_[static_cast<int>(det.class_id)], det.class_confidence, safeBbox.x, safeBbox.y - 1);
+            drawLabel(frame, class_names_[static_cast<int>(det.class_id)], det.class_confidence,
+                      safeBbox.x, safeBbox.y - 1);
         }
-    }
-    else if (std::holds_alternative<vision_core::InstanceSegmentation>(prediction)) {
+    } else if (std::holds_alternative<vision_core::InstanceSegmentation>(prediction)) {
         const auto& seg = std::get<vision_core::InstanceSegmentation>(prediction);
         cv::Rect safeBbox = seg.bbox & cv::Rect(0, 0, frame.cols, frame.rows);
         if (safeBbox.width > 0 && safeBbox.height > 0) {
             cv::rectangle(frame, safeBbox, colors_[static_cast<int>(seg.class_id)], 2);
-            drawLabel(frame, class_names_[static_cast<int>(seg.class_id)], seg.class_confidence, safeBbox.x, safeBbox.y - 1);
+            drawLabel(frame, class_names_[static_cast<int>(seg.class_id)], seg.class_confidence,
+                      safeBbox.x, safeBbox.y - 1);
 
             cv::Mat mask;
             if (!seg.mask.empty()) {
                 mask = seg.mask;
             } else if (!seg.mask_data.empty()) {
-                mask = cv::Mat(seg.mask_height, seg.mask_width, CV_8UC1, const_cast<uint8_t*>(seg.mask_data.data()));
+                mask = cv::Mat(seg.mask_height, seg.mask_width, CV_8UC1,
+                               const_cast<uint8_t*>(seg.mask_data.data()));
             }
             if (!mask.empty()) {
                 cv::Mat resized_mask;
@@ -455,11 +481,9 @@ void App::renderPrediction(cv::Mat& frame, const vision_core::Result& prediction
                     cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
             }
         }
-    }
-    else if (std::holds_alternative<vision_core::PoseEstimation>(prediction)) {
+    } else if (std::holds_alternative<vision_core::PoseEstimation>(prediction)) {
         drawPose(frame, std::get<vision_core::PoseEstimation>(prediction));
-    }
-    else if (std::holds_alternative<vision_core::DepthEstimation>(prediction)) {
+    } else if (std::holds_alternative<vision_core::DepthEstimation>(prediction)) {
         const auto& depth = std::get<vision_core::DepthEstimation>(prediction);
         if (!depth.normalized_depth.empty()) {
             cv::Mat depth_8u;
@@ -469,13 +493,14 @@ void App::renderPrediction(cv::Mat& frame, const vision_core::Result& prediction
     }
 }
 
-void App::drawPose(cv::Mat& image, const vision_core::PoseEstimation& pose, float confidence_threshold) {
+void App::drawPose(cv::Mat& image, const vision_core::PoseEstimation& pose,
+                   float confidence_threshold) {
     // COCO 17-keypoint skeleton connections
-    static const std::vector<std::pair<int,int>> kSkeleton = {
-        {0,1},{0,2},{1,3},{2,4},          // head
-        {5,6},{5,7},{7,9},{6,8},{8,10},   // arms
-        {5,11},{6,12},{11,12},            // torso
-        {11,13},{13,15},{12,14},{14,16}   // legs
+    static const std::vector<std::pair<int, int>> kSkeleton = {
+        {0, 1},   {0, 2},   {1, 3},   {2, 4},            // head
+        {5, 6},   {5, 7},   {7, 9},   {6, 8},  {8, 10},  // arms
+        {5, 11},  {6, 12},  {11, 12},                    // torso
+        {11, 13}, {13, 15}, {12, 14}, {14, 16}           // legs
     };
 
     for (const auto& [a, b] : kSkeleton) {
@@ -483,19 +508,17 @@ void App::drawPose(cv::Mat& image, const vision_core::PoseEstimation& pose, floa
             const auto& kpA = pose.keypoints[a];
             const auto& kpB = pose.keypoints[b];
             if (kpA.confidence >= confidence_threshold && kpB.confidence >= confidence_threshold) {
-                cv::line(image,
-                    cv::Point(static_cast<int>(kpA.x), static_cast<int>(kpA.y)),
-                    cv::Point(static_cast<int>(kpB.x), static_cast<int>(kpB.y)),
-                    cv::Scalar(0, 255, 0), 2);
+                cv::line(image, cv::Point(static_cast<int>(kpA.x), static_cast<int>(kpA.y)),
+                         cv::Point(static_cast<int>(kpB.x), static_cast<int>(kpB.y)),
+                         cv::Scalar(0, 255, 0), 2);
             }
         }
     }
 
     for (const auto& kp : pose.keypoints) {
         if (kp.confidence >= confidence_threshold) {
-            cv::circle(image,
-                cv::Point(static_cast<int>(kp.x), static_cast<int>(kp.y)),
-                4, cv::Scalar(0, 0, 255), cv::FILLED);
+            cv::circle(image, cv::Point(static_cast<int>(kp.x), static_cast<int>(kp.y)), 4,
+                       cv::Scalar(0, 0, 255), cv::FILLED);
         }
     }
 }
@@ -505,8 +528,11 @@ void App::drawLabel(cv::Mat& image, const std::string& label, float confidence, 
     int baseLine;
     cv::Size labelSize = cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseLine);
     y = std::max(y, labelSize.height);
-    cv::rectangle(image, cv::Point(x, y - labelSize.height), cv::Point(x + labelSize.width, y + baseLine), cv::Scalar(255, 255, 255), cv::FILLED);
-    cv::putText(image, text, cv::Point(x, y), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
+    cv::rectangle(image, cv::Point(x, y - labelSize.height),
+                  cv::Point(x + labelSize.width, y + baseLine), cv::Scalar(255, 255, 255),
+                  cv::FILLED);
+    cv::putText(image, text, cv::Point(x, y), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0),
+                1);
 }
 
 std::vector<cv::Scalar> App::generateRandomColors(int numColors) {

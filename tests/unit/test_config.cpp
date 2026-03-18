@@ -120,13 +120,8 @@ TEST(ConfigManagerTest, DefaultsWithNoArgs) {
 
 TEST(ConfigManagerTest, ParsesModelArgs) {
     ConfigManager mgr;
-    const char* argv[] = {
-        "tritonic",
-        "--model=yolov8n",
-        "--model_type=yolo",
-        "--labelsFile=/data/coco.names",
-        "--source=/data/image.jpg"
-    };
+    const char* argv[] = {"tritonic", "--model=yolov8n", "--model_type=yolo",
+                          "--labelsFile=/data/coco.names", "--source=/data/image.jpg"};
     int argc = sizeof(argv) / sizeof(argv[0]);
     auto config = mgr.LoadFromCommandLine(argc, argv);
     ASSERT_NE(config, nullptr);
@@ -138,13 +133,8 @@ TEST(ConfigManagerTest, ParsesModelArgs) {
 
 TEST(ConfigManagerTest, ParsesServerArgs) {
     ConfigManager mgr;
-    const char* argv[] = {
-        "tritonic",
-        "--serverAddress=10.0.0.1",
-        "--port=8001",
-        "--protocol=grpc",
-        "--verbose=true"
-    };
+    const char* argv[] = {"tritonic", "--serverAddress=10.0.0.1", "--port=8001", "--protocol=grpc",
+                          "--verbose=true"};
     int argc = sizeof(argv) / sizeof(argv[0]);
     auto config = mgr.LoadFromCommandLine(argc, argv);
     ASSERT_NE(config, nullptr);
@@ -175,11 +165,7 @@ TEST(ConfigManagerTest, ParsesInputSizesMultiple) {
 
 TEST(ConfigManagerTest, ParsesConfidenceAndNms) {
     ConfigManager mgr;
-    const char* argv[] = {
-        "tritonic",
-        "--confidence_threshold=0.7",
-        "--nms_threshold=0.3"
-    };
+    const char* argv[] = {"tritonic", "--confidence_threshold=0.7", "--nms_threshold=0.3"};
     int argc = sizeof(argv) / sizeof(argv[0]);
     auto config = mgr.LoadFromCommandLine(argc, argv);
     ASSERT_NE(config, nullptr);

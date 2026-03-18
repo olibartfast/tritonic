@@ -1,17 +1,10 @@
 #pragma once
 
-#include <string>
 #include <memory>
 #include <sstream>
+#include <string>
 
-enum class LogLevel {
-    TRACE,
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR,
-    FATAL
-};
+enum class LogLevel { TRACE, DEBUG, INFO, WARN, ERROR, FATAL };
 
 class ILogger {
 public:
@@ -57,4 +50,3 @@ public:
     static LogLevel ParseLogLevel(const std::string& level);
     static std::string LogLevelToString(LogLevel level);
 };
-

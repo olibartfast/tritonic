@@ -1,7 +1,7 @@
 #pragma once
-#include <vector>
-#include <string>
 #include <opencv2/core.hpp>
+#include <string>
+#include <vector>
 
 struct TritonModelInfo {
     std::vector<std::string> output_names;
@@ -13,6 +13,6 @@ struct TritonModelInfo {
 
     int type1_{CV_32FC1};
     int type3_{CV_32FC3};
-    int max_batch_size_;
+    int max_batch_size_{0};
     int batch_size_{1};
-}; 
+};

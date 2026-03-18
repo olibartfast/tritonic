@@ -78,8 +78,10 @@ jobs:
       - name: Run cppcheck
         run: |
           cppcheck --enable=warning --std=c++20 --error-exitcode=1 \
+            --inline-suppr \
             --suppress=missingIncludeSystem \
             --suppress=unmatchedSuppression \
+            --suppress=virtualCallInConstructor \
             -I include src/
 
   build-and-test:

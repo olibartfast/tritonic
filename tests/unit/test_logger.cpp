@@ -6,29 +6,29 @@
 TEST(LogLevelTest, Ordering) {
     EXPECT_LT(LogLevel::TRACE, LogLevel::DEBUG);
     EXPECT_LT(LogLevel::DEBUG, LogLevel::INFO);
-    EXPECT_LT(LogLevel::INFO,  LogLevel::WARN);
-    EXPECT_LT(LogLevel::WARN,  LogLevel::ERROR);
+    EXPECT_LT(LogLevel::INFO, LogLevel::WARN);
+    EXPECT_LT(LogLevel::WARN, LogLevel::ERROR);
     EXPECT_LT(LogLevel::ERROR, LogLevel::FATAL);
 }
 
 // LoggerManager
 
 TEST(LoggerManagerTest, ParseLogLevel) {
-    EXPECT_EQ(LoggerManager::ParseLogLevel("trace"),   LogLevel::TRACE);
-    EXPECT_EQ(LoggerManager::ParseLogLevel("debug"),   LogLevel::DEBUG);
-    EXPECT_EQ(LoggerManager::ParseLogLevel("info"),    LogLevel::INFO);
-    EXPECT_EQ(LoggerManager::ParseLogLevel("warn"),    LogLevel::WARN);
+    EXPECT_EQ(LoggerManager::ParseLogLevel("trace"), LogLevel::TRACE);
+    EXPECT_EQ(LoggerManager::ParseLogLevel("debug"), LogLevel::DEBUG);
+    EXPECT_EQ(LoggerManager::ParseLogLevel("info"), LogLevel::INFO);
+    EXPECT_EQ(LoggerManager::ParseLogLevel("warn"), LogLevel::WARN);
     EXPECT_EQ(LoggerManager::ParseLogLevel("warning"), LogLevel::WARN);
-    EXPECT_EQ(LoggerManager::ParseLogLevel("error"),   LogLevel::ERROR);
-    EXPECT_EQ(LoggerManager::ParseLogLevel("fatal"),   LogLevel::FATAL);
-    EXPECT_EQ(LoggerManager::ParseLogLevel("unknown"), LogLevel::INFO); // default
+    EXPECT_EQ(LoggerManager::ParseLogLevel("error"), LogLevel::ERROR);
+    EXPECT_EQ(LoggerManager::ParseLogLevel("fatal"), LogLevel::FATAL);
+    EXPECT_EQ(LoggerManager::ParseLogLevel("unknown"), LogLevel::INFO);  // default
 }
 
 TEST(LoggerManagerTest, LogLevelToString) {
     EXPECT_EQ(LoggerManager::LogLevelToString(LogLevel::TRACE), "TRACE");
     EXPECT_EQ(LoggerManager::LogLevelToString(LogLevel::DEBUG), "DEBUG");
-    EXPECT_EQ(LoggerManager::LogLevelToString(LogLevel::INFO),  "INFO");
-    EXPECT_EQ(LoggerManager::LogLevelToString(LogLevel::WARN),  "WARN");
+    EXPECT_EQ(LoggerManager::LogLevelToString(LogLevel::INFO), "INFO");
+    EXPECT_EQ(LoggerManager::LogLevelToString(LogLevel::WARN), "WARN");
     EXPECT_EQ(LoggerManager::LogLevelToString(LogLevel::ERROR), "ERROR");
     EXPECT_EQ(LoggerManager::LogLevelToString(LogLevel::FATAL), "FATAL");
 }
