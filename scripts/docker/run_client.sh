@@ -1,5 +1,5 @@
-# same level of Dockerfile
-# docker build --rm -t tritonic .
+# build from repository root
+# docker build --rm -t tritonic -f docker/Dockerfile .
 docker run --rm \
 --network host \
 --user root \

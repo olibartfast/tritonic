@@ -3,18 +3,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# shellcheck source=./scripts/lib.sh
-source "$SCRIPT_DIR/scripts/lib.sh"
-# shellcheck source=./scripts/kubectl.sh
-source "$SCRIPT_DIR/scripts/kubectl.sh"
-# shellcheck source=./scripts/cluster.sh
-source "$SCRIPT_DIR/scripts/cluster.sh"
-# shellcheck source=./scripts/gpu.sh
-source "$SCRIPT_DIR/scripts/gpu.sh"
-# shellcheck source=./scripts/triton.sh
-source "$SCRIPT_DIR/scripts/triton.sh"
+# shellcheck source=./lib.sh
+source "$REPO_ROOT/scripts/k8s/lib.sh"
+# shellcheck source=./kubectl.sh
+source "$REPO_ROOT/scripts/k8s/kubectl.sh"
+# shellcheck source=./cluster.sh
+source "$REPO_ROOT/scripts/k8s/cluster.sh"
+# shellcheck source=./gpu.sh
+source "$REPO_ROOT/scripts/k8s/gpu.sh"
+# shellcheck source=./triton.sh
+source "$REPO_ROOT/scripts/k8s/triton.sh"
 
 main() {
   local cluster_status gpu_status triton_status deployment_name use_gpu
