@@ -6,7 +6,7 @@ This folder contains modular Bash scripts used by `k8s/check_and_deploy_triton.s
 
 - `lib.sh`: Shared logging/helpers.
 - `kubectl.sh`: Installs `kubectl` if missing.
-- `cluster.sh`: Validates Kubernetes cluster reachability and node readiness.
+- `cluster.sh`: Validates Kubernetes cluster reachability and node readiness. Automatically starts or installs a local cluster (minikube → kind → k3s) if none is reachable.
 - `gpu.sh`: Checks NVIDIA GPU exposure and NVIDIA-related components.
 - `triton.sh`: Checks/deploys Triton resources and waits for readiness.
 
@@ -21,7 +21,7 @@ Run from repository root:
 What it does in order:
 
 1. Ensures `kubectl` exists (installs if missing).
-2. Checks cluster status.
+2. Checks cluster reachability; if unreachable, attempts to start or install a local cluster automatically (minikube → kind → k3s; installs `kind` if none present and Docker is available).
 3. Checks NVIDIA GPU status in cluster.
 4. Checks if Triton deployment exists.
 5. Deploys Triton if not installed.
@@ -29,10 +29,19 @@ What it does in order:
 
 ## Prerequisites
 
-- A Kubernetes cluster configured in your kubeconfig/context.
-- Network access (only needed if `kubectl` must be downloaded).
+- Network access (required for downloading `kubectl`, `kind`, or cluster images on first run).
 - Permissions to apply manifests in `k8s/`.
 - For GPU deployment: NVIDIA device plugin/operator correctly installed.
+
+**A pre-configured Kubernetes cluster is optional.** If no cluster is reachable, the script will attempt to start one automatically:
+
+| Tool available | Action taken |
+|---|---|
+| `minikube` | `minikube start` |
+| `kind` | `kind create cluster` (or kubeconfig export if cluster exists) |
+| `k3s` | `sudo k3s server` (background, waits up to 60 s) |
+| none + Docker | Downloads and installs the latest `kind` binary, then creates a cluster |
+| none + no Docker | Exits with an error — install one of the above manually |
 
 ## Deployment Behavior
 
@@ -75,6 +84,6 @@ kubectl get pods -A | grep -Ei 'nvidia|gpu-operator|device-plugin'
 
 ## Notes
 
-- If `kubectl` is installed to `~/.local/bin`, ensure it is in your `PATH`.
-- If cluster is not reachable, the script exits early with a summary.
+- If `kubectl` or `kind` is installed to `~/.local/bin`, ensure it is in your `PATH` (the script exports it for the current session automatically).
+- If the cluster cannot be started automatically (no Docker, no supported tool), the script exits with a clear error.
 - Scripts are modular and can be sourced individually for testing.

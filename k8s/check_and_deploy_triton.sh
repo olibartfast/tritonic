@@ -25,7 +25,7 @@ main() {
 
   install_kubectl_if_missing
 
-  if cluster_is_alive; then
+  if ensure_cluster_alive; then
     cluster_status="ALIVE"
     print_cluster_status
   else
@@ -36,7 +36,7 @@ Summary:
 - NVIDIA GPU: ${gpu_status}
 - Triton: ${triton_status}
 
-Cluster is not reachable. Fix kubeconfig/context and rerun.
+Cluster is not reachable and could not be started automatically.
 STATUS
     exit 1
   fi

@@ -12,7 +12,7 @@ Use the modular deployment/check scripts:
 
 The script will:
 1. Install `kubectl` if it is missing.
-2. Check that the cluster is reachable and has Ready nodes.
+2. Check that the cluster is reachable and has Ready nodes. If not reachable, automatically starts or installs a local cluster (see below).
 3. Check NVIDIA GPU availability in the cluster.
 4. Check if Triton is already deployed.
 5. Deploy Triton if missing (GPU deployment when GPU is available, otherwise CPU deployment).
@@ -20,11 +20,23 @@ The script will:
 Module documentation:
 - `k8s/scripts/README.md`
 
+### Automatic Cluster Recovery
+
+If no Kubernetes cluster is reachable, the script tries the following in order:
+
+| Condition | Action |
+|---|---|
+| `minikube` installed | `minikube start` |
+| `kind` installed | `kind create cluster` (or re-exports kubeconfig if cluster exists) |
+| `k3s` installed | starts `k3s server` in background, waits up to 60 s |
+| None installed, Docker available | downloads and installs the latest `kind` binary, then creates a cluster |
+| None installed, no Docker | exits with an error |
+
 ## Prerequisites
 
 - Ubuntu/Debian Linux system
-- Docker installed
-- At least 2 CPU cores and 4GB RAM
+- Docker installed (required for automatic `kind` cluster setup if no other tool is present)
+- At least 2 CPU cores and 4 GB RAM
 - For GPU workloads: NVIDIA GPU with drivers installed
 
 ## Kubernetes Installation
