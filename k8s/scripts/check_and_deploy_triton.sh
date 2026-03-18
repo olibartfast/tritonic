@@ -6,15 +6,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # shellcheck source=./lib.sh
-source "$REPO_ROOT/scripts/k8s/lib.sh"
+source "$REPO_ROOT/k8s/scripts/lib.sh"
 # shellcheck source=./kubectl.sh
-source "$REPO_ROOT/scripts/k8s/kubectl.sh"
+source "$REPO_ROOT/k8s/scripts/kubectl.sh"
 # shellcheck source=./cluster.sh
-source "$REPO_ROOT/scripts/k8s/cluster.sh"
+source "$REPO_ROOT/k8s/scripts/cluster.sh"
 # shellcheck source=./gpu.sh
-source "$REPO_ROOT/scripts/k8s/gpu.sh"
+source "$REPO_ROOT/k8s/scripts/gpu.sh"
 # shellcheck source=./triton.sh
-source "$REPO_ROOT/scripts/k8s/triton.sh"
+source "$REPO_ROOT/k8s/scripts/triton.sh"
 
 main() {
   local cluster_status gpu_status triton_status deployment_name use_gpu

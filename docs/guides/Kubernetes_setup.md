@@ -7,7 +7,7 @@ This guide covers installing Kubernetes and deploying NVIDIA Triton Inference Se
 Use the modular deployment/check scripts:
 
 ```bash
-./scripts/k8s/check_and_deploy_triton.sh
+./k8s/scripts/check_and_deploy_triton.sh
 ```
 
 The script will:
@@ -19,7 +19,7 @@ The script will:
 6. Print external `NodePort` endpoints for HTTP, gRPC, and metrics.
 
 Module documentation:
-- `scripts/k8s/README.md`
+- `k8s/scripts/README.md`
 
 ### Automatic Cluster Recovery
 
@@ -145,7 +145,7 @@ kubectl apply -f k8s/service.yaml
 Notes:
 - The Kubernetes manifests use `nvcr.io/nvidia/tritonserver:25.12-py3`.
 - GPU deployments use `strategy: Recreate` so single-node clusters with one allocatable GPU can update cleanly.
-- On minikube, if the Triton image already exists in host Docker, `scripts/k8s/check_and_deploy_triton.sh` loads it into the node before applying the deployment.
+- On minikube, if the Triton image already exists in host Docker, `k8s/scripts/check_and_deploy_triton.sh` loads it into the node before applying the deployment.
 
 ### 3. Verify Deployment
 

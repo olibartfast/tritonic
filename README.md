@@ -91,7 +91,7 @@ For convenience, you can extract the pre-built Triton client libraries from the 
 
 ```bash
 # Run the extraction script
-./scripts/docker/extract_triton_libs.sh
+./docker/scripts/extract_triton_libs.sh
 ```
 
 This script will:
@@ -220,10 +220,10 @@ To deploy models, set up a model repository following the [Triton Model Reposito
 Use the provided script for easy setup:
 ```bash
 # Start Triton server with GPU support
-./scripts/docker/docker_triton_run.sh /path/to/model_repository 25.06 gpu
+./docker/scripts/docker_triton_run.sh /path/to/model_repository 25.06 gpu
 
 # Start with CPU only
-./scripts/docker/docker_triton_run.sh /path/to/model_repository 25.06 cpu
+./docker/scripts/docker_triton_run.sh /path/to/model_repository 25.06 cpu
 ```
 
 Or manually with Docker:
@@ -291,16 +291,16 @@ Use the provided Docker scripts for quick testing:
 
 ```bash
 # Run object detection
-./scripts/docker/run_client.sh
+./docker/scripts/run_client.sh
 
 # Run with debug mode
-./scripts/docker/run_debug.sh
+./docker/scripts/run_debug.sh
 
 # Run optical flow
-./scripts/docker/run_optical_flow.sh
+./docker/scripts/run_optical_flow.sh
 
 # Run unit tests
-./scripts/docker/run_tests.sh
+./docker/scripts/run_tests.sh
 ```
 
 #### Debugging Tips
@@ -372,11 +372,11 @@ docker run --rm \
 
 For Kubernetes setup and deployment details, see:
 - [Kubernetes Deployment Guide](docs/guides/Kubernetes_setup.md)
-- [K8s Scripts Usage](scripts/k8s/README.md)
+- [K8s Scripts Usage](k8s/scripts/README.md)
 
 Quick start:
 ```bash
-./scripts/k8s/check_and_deploy_triton.sh
+./k8s/scripts/check_and_deploy_triton.sh
 ```
 
 This script performs:
