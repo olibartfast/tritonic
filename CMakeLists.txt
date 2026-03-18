@@ -199,10 +199,10 @@ if(BUILD_TESTING)
             ${PROTOBUF_LIBRARIES}
         )
         
-        add_test(NAME UnitTests COMMAND tritonic_unit_tests)
-        set_tests_properties(UnitTests PROPERTIES
-            TIMEOUT 60
+        include(GoogleTest)
+        gtest_discover_tests(tritonic_unit_tests
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+            PROPERTIES TIMEOUT 60
         )
     endif()
     
