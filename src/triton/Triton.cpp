@@ -185,10 +185,7 @@ TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& m
 
         // Shape
         std::vector<int64_t> shape;
-        bool hasDynamicDim = false;
         for (const auto& dim : input.shape()) {
-            if (dim == -1)
-                hasDynamicDim = true;
             shape.push_back(dim);
         }
         // No dynamic shape handling here (input_sizes not passed in this signature)
@@ -475,7 +472,7 @@ void Triton::createTritonClient() {
     }
 }
 
-std::vector<Tensor> Triton::getInferResults(tc::InferResult* result, const size_t batch_size,
+std::vector<Tensor> Triton::getInferResults(tc::InferResult* result, const size_t /*batch_size*/,
                                             const std::vector<std::string>& output_names) {
     if (!result->RequestStatus().IsOk()) {
         throw std::runtime_error("Inference failed with error: " +
@@ -693,6 +690,8 @@ std::unique_ptr<SharedMemoryRegion> Triton::createCudaSharedMemoryRegion(const s
 
     return region;
 #else
+    (void)name;
+    (void)size;
     throw std::runtime_error(
         "CUDA shared memory requested but CUDA support not enabled. "
         "Please compile with TRITONIC_ENABLE_CUDA=ON");
