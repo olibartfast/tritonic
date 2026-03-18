@@ -350,7 +350,7 @@ For detailed instructions on installing Docker and the NVIDIA Container Toolkit,
 ### Build
 
 ```bash
-docker build --rm -t tritonic .
+docker build --rm -t tritonic -f docker/Dockerfile .
 ```
 
 ### Run Container
@@ -372,11 +372,11 @@ docker run --rm \
 
 For Kubernetes setup and deployment details, see:
 - [Kubernetes Deployment Guide](docs/guides/Kubernetes_setup.md)
-- [K8s Scripts Usage](k8s/scripts/README.md)
+- [K8s Scripts Usage](scripts/k8s/README.md)
 
 Quick start:
 ```bash
-./k8s/check_and_deploy_triton.sh
+./scripts/k8s/check_and_deploy_triton.sh
 ```
 
 This script performs:
