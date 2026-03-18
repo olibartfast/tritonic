@@ -8,7 +8,7 @@ This folder contains modular Bash scripts used by `k8s/check_and_deploy_triton.s
 - `kubectl.sh`: Installs `kubectl` if missing.
 - `cluster.sh`: Validates Kubernetes cluster reachability and node readiness. Automatically starts or installs a local cluster (minikube → kind → k3s) if none is reachable.
 - `gpu.sh`: Checks NVIDIA GPU exposure and NVIDIA-related components.
-- `triton.sh`: Checks/deploys Triton resources and waits for readiness. Uses Helm (`helm/triton-server/`) when available; falls back to raw `kubectl apply` on `k8s/*.yaml`.
+- `triton.sh`: Checks/deploys Triton resources, reconciles existing deployments to the current manifests, waits for readiness, and prints external access information. Uses Helm (`helm/triton-server/`) when available; falls back to raw `kubectl apply` on `k8s/*.yaml`.
 
 ## Main Entrypoint
 
@@ -24,8 +24,8 @@ What it does in order:
 2. Checks cluster reachability; if unreachable, attempts to start or install a local cluster automatically (minikube → kind → k3s; installs `kind` if none present and Docker is available).
 3. Checks NVIDIA GPU status in cluster.
 4. Checks if Triton deployment exists.
-5. Deploys Triton if not installed.
-6. Prints final status summary.
+5. Applies the current Triton manifests or Helm chart even when a deployment already exists.
+6. Waits for readiness and prints final status summary plus external endpoints.
 
 ## Prerequisites
 
@@ -46,6 +46,10 @@ What it does in order:
 ## Deployment Behavior
 
 GPU resources detected (`nvidia.com/gpu` > 0) → GPU variant; otherwise CPU variant.
+
+On minikube, if the Triton image is already present in host Docker, the script loads it into the minikube node before rollout. This avoids long waits on large `nvcr.io` image pulls.
+
+GPU deployments use `Recreate` to avoid deadlocking rollouts on single-node clusters with only one allocatable GPU.
 
 ### Helm (preferred — used automatically when `helm` is in PATH)
 
@@ -75,6 +79,11 @@ Applies in order:
 - `k8s/deployment-gpu.yaml` or `k8s/deployment-cpu.yaml`
 - `k8s/service.yaml`
 
+External access:
+- `triton-service` exposes internal cluster access on ports `8000`, `8001`, and `8002`.
+- `triton-service-nodeport` exposes external access on `30800` (HTTP), `30801` (gRPC), and `30802` (metrics).
+- On minikube, the deploy script prints endpoints based on `minikube ip`.
+
 ## Useful Commands
 
 Check cluster:
@@ -90,6 +99,7 @@ Check Triton resources:
 kubectl get deploy,pods,svc -n triton
 kubectl logs -n triton deployment/triton-server-cpu
 kubectl logs -n triton deployment/triton-server-gpu
+minikube ip
 ```
 
 Check NVIDIA components:

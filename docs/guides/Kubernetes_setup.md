@@ -15,7 +15,8 @@ The script will:
 2. Check that the cluster is reachable and has Ready nodes. If not reachable, automatically starts or installs a local cluster (see below).
 3. Check NVIDIA GPU availability in the cluster.
 4. Check if Triton is already deployed.
-5. Deploy Triton if missing (GPU deployment when GPU is available, otherwise CPU deployment).
+5. Reconcile the existing Triton deployment to the current manifests or Helm chart.
+6. Print external `NodePort` endpoints for HTTP, gRPC, and metrics.
 
 Module documentation:
 - `k8s/scripts/README.md`
@@ -65,9 +66,8 @@ sudo mv minikube /usr/local/bin/
 # Start Minikube with Docker driver
 minikube start --driver=docker --memory=4096 --cpus=2
 
-# Enable GPU support (if available)
-minikube addons enable nvidia-driver-installer
-minikube addons enable nvidia-gpu-device-plugin
+# For GPU passthrough on supported hosts
+minikube start --driver=docker --gpus all
 
 # Verify cluster is running
 kubectl get nodes
@@ -90,17 +90,7 @@ kubectl cluster-info --context kind-triton-cluster
 
 ## GPU Support Setup
 
-For GPU workloads, install NVIDIA GPU Operator:
-
-```bash
-# Add NVIDIA Helm repository
-helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
-helm repo update
-
-# Install GPU Operator
-kubectl create namespace gpu-operator
-helm install gpu-operator nvidia/gpu-operator -n gpu-operator
-```
+For GPU workloads, the deployment script installs the NVIDIA device plugin when the host GPU is detected but `nvidia.com/gpu` is not yet exposed in the cluster. You can still install the GPU Operator manually if your environment requires it, but the local minikube path is designed around the device plugin plus Docker GPU passthrough.
 
 ## Triton Server Deployment
 
@@ -139,7 +129,7 @@ kubectl apply -f k8s/persistent-volume.yaml
 # Deploy CPU version (recommended for testing)
 kubectl apply -f k8s/deployment-cpu.yaml
 
-# OR deploy GPU version (requires GPU operator)
+# OR deploy GPU version (requires cluster GPU support)
 # kubectl apply -f k8s/deployment-gpu.yaml
 
 # Create services
@@ -151,6 +141,11 @@ kubectl apply -f k8s/service.yaml
 # Optional: Enable auto-scaling
 # kubectl apply -f k8s/hpa.yaml
 ```
+
+Notes:
+- The Kubernetes manifests use `nvcr.io/nvidia/tritonserver:25.12-py3`.
+- GPU deployments use `strategy: Recreate` so single-node clusters with one allocatable GPU can update cleanly.
+- On minikube, if the Triton image already exists in host Docker, `k8s/check_and_deploy_triton.sh` loads it into the node before applying the deployment.
 
 ### 3. Verify Deployment
 
@@ -168,7 +163,15 @@ kubectl wait --for=condition=ready pod -l app=triton-server -n triton --timeout=
 
 ### 4. Test the Deployment
 
-Port-forward to access locally:
+Use the default `NodePort` service for external access:
+```bash
+export TRITON_IP=$(minikube ip)
+curl "http://${TRITON_IP}:30800/v2/health/ready"
+curl "http://${TRITON_IP}:30800/v2/models"
+curl "http://${TRITON_IP}:30802/metrics"
+```
+
+Port-forwarding remains useful for ad hoc local testing:
 ```bash
 kubectl port-forward -n triton svc/triton-service 8000:8000 8001:8001 8002:8002
 ```
@@ -197,15 +200,14 @@ curl http://localhost:8002/metrics
 
 ### External Access Options
 
-#### 1. NodePort (Development)
+#### 1. NodePort (Default)
 ```bash
-# Get node IP
-kubectl get nodes -o wide
+minikube ip
 
 # Access via NodePort
-# HTTP: http://<node-ip>:30800
-# GRPC: <node-ip>:30801
-# Metrics: http://<node-ip>:30802
+# HTTP:   http://<node-ip>:30800
+# gRPC:   <node-ip>:30801
+# Metrics: http://<node-ip>:30802/metrics
 ```
 
 #### 2. Port Forwarding (Testing)
@@ -247,7 +249,7 @@ Update your client configuration to use the Kubernetes service:
     --model=yolov8m \
     --labelsFile=labels/coco.txt \
     --protocol=http \
-    --serverAddress=<node-ip> \
+    --serverAddress=$(minikube ip) \
     --port=30800
 ```
 
