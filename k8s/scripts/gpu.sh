@@ -7,6 +7,36 @@ _host_has_nvidia_gpu() {
   command_exists nvidia-smi && nvidia-smi --query-gpu=name --format=csv,noheader >/dev/null 2>&1
 }
 
+# Install nvidia-container-toolkit (if missing) and set nvidia as Docker's default runtime.
+_configure_nvidia_runtime() {
+  if ! command_exists nvidia-ctk; then
+    log_info "nvidia-container-toolkit not found — installing..."
+    if command_exists curl; then
+      curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
+        | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+      curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list \
+        | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
+        | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list >/dev/null
+    elif command_exists wget; then
+      wget -qO- https://nvidia.github.io/libnvidia-container/gpgkey \
+        | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+      wget -qO- https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list \
+        | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
+        | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list >/dev/null
+    else
+      log_warn "Neither curl nor wget available — cannot install nvidia-container-toolkit"
+      return 1
+    fi
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq nvidia-container-toolkit
+  fi
+
+  log_info "Configuring NVIDIA runtime as Docker default..."
+  sudo nvidia-ctk runtime configure --runtime=docker --set-as-default
+  sudo systemctl restart docker
+  log_info "Docker restarted with NVIDIA runtime as default"
+}
+
 _install_nvidia_device_plugin() {
   local plugin_url="https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.17.0/deployments/static/nvidia-device-plugin.yml"
   log_info "Installing NVIDIA device plugin into the cluster..."

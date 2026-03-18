@@ -40,8 +40,18 @@ ensure_cluster_alive() {
   fi
 
   if command_exists kind; then
-    log_info "Found kind — creating cluster 'kind'"
-    # Create only if it does not already exist
+    log_info "Found kind — preparing cluster"
+    # If host has a GPU, configure the nvidia runtime before cluster creation so
+    # kind node containers inherit GPU device access. Delete any existing cluster
+    # first because it was created without the nvidia runtime.
+    if _host_has_nvidia_gpu; then
+      _configure_nvidia_runtime
+      if kind get clusters 2>/dev/null | grep -q '^kind$'; then
+        log_info "Deleting existing kind cluster to recreate with GPU support..."
+        kind delete cluster --name kind
+      fi
+    fi
+
     if ! kind get clusters 2>/dev/null | grep -q '^kind$'; then
       kind create cluster --name kind || { log_warn "kind create cluster failed"; }
     else
@@ -74,7 +84,11 @@ ensure_cluster_alive() {
   # No tool found — try to install kind (requires Docker)
   log_info "No local cluster tool found. Attempting to install kind..."
   if _install_kind; then
-    log_info "kind installed. Creating cluster..."
+    log_info "kind installed."
+    if _host_has_nvidia_gpu; then
+      _configure_nvidia_runtime
+    fi
+    log_info "Creating cluster..."
     kind create cluster --name kind || { log_warn "kind create cluster failed"; return 1; }
     _wait_nodes_ready 120
     if cluster_is_alive; then

@@ -18,8 +18,8 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 - [Notes](#notes)
 - [Deploying Models](#deploying-models)
 - [Running Inference](#running-inference)
-- [Kubernetes Deployment](#kubernetes-deployment)
 - [Docker Support](#docker-support)
+- [Kubernetes Deployment](#kubernetes-deployment)
 - [Demo](#demo)
 - [References](#references)
 - [Feedback](#feedback)
@@ -323,24 +323,6 @@ To view all available parameters, run:
 ./tritonic --help
 ```
 
-## Kubernetes Deployment
-
-For Kubernetes setup and deployment details, see:
-- [Kubernetes Deployment Guide](docs/guides/Kubernetes_setup.md)
-- [K8s Scripts Usage](k8s/scripts/README.md)
-
-Quick start:
-```bash
-./k8s/check_and_deploy_triton.sh
-```
-
-This script performs:
-1. `kubectl` installation check (and install if missing)
-2. Kubernetes cluster liveness check — automatically starts or installs a local cluster (minikube → kind → k3s) if none is reachable; installs `kind` via Docker if no tool is present
-3. NVIDIA GPU availability check inside cluster
-4. Triton deployment status check
-5. Triton deploy (GPU or CPU manifest) if not installed
-
 #### Model Type Tag Parameters
 | Model                  | Model Type Parameter   | Notes |
 |------------------------|------------------------|-------|
@@ -362,8 +344,8 @@ This script performs:
 | RAFT Optical Flow      | `raft`                 |       |
 
 
-## Docker Support  
-For detailed instructions on installing Docker and the NVIDIA Container Toolkit, refer to the [Docker Setup Document](docs/guides/Docker_setup.md).  
+## Docker Support
+For detailed instructions on installing Docker and the NVIDIA Container Toolkit, refer to the [Docker Setup Document](docs/guides/Docker_setup.md).
 
 ### Build
 
@@ -385,6 +367,24 @@ docker run --rm \
   --serverAddress=<triton-ip> \
   --port=<8000 for http, 8001 for grpc>
 ```
+
+## Kubernetes Deployment
+
+For Kubernetes setup and deployment details, see:
+- [Kubernetes Deployment Guide](docs/guides/Kubernetes_setup.md)
+- [K8s Scripts Usage](k8s/scripts/README.md)
+
+Quick start:
+```bash
+./k8s/check_and_deploy_triton.sh
+```
+
+This script performs:
+1. `kubectl` installation check (and install if missing)
+2. Kubernetes cluster liveness check — automatically starts or installs a local cluster (minikube → kind → k3s) if none is reachable; installs `kind` via Docker if no tool is present
+3. NVIDIA GPU availability check inside cluster — installs `nvidia-container-toolkit` and the NVIDIA device plugin automatically if the host has a GPU
+4. Triton deployment status check
+5. Triton deploy (GPU or CPU manifest) if not installed
 
 ## Demo
 
