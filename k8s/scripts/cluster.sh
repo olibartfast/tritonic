@@ -10,7 +10,7 @@ cluster_is_alive() {
   fi
 
   local ready_nodes
-  ready_nodes="$(kubectl get nodes --no-headers 2>/dev/null | awk '$2 ~ /Ready/ {count++} END {print count+0}')"
+  ready_nodes="$(kubectl get nodes --no-headers 2>/dev/null | awk '$2 == "Ready" {count++} END {print count+0}')"
 
   if [[ "$ready_nodes" -lt 1 ]]; then
     log_warn "No Ready nodes found in the cluster"
@@ -33,6 +33,7 @@ ensure_cluster_alive() {
   if command_exists minikube; then
     log_info "Found minikube — running 'minikube start'"
     minikube start || { log_warn "minikube start failed"; }
+    _wait_nodes_ready 120
     if cluster_is_alive; then
       return 0
     fi
@@ -47,6 +48,7 @@ ensure_cluster_alive() {
       log_info "kind cluster already exists; merging kubeconfig"
       kind export kubeconfig --name kind || true
     fi
+    _wait_nodes_ready 120
     if cluster_is_alive; then
       return 0
     fi
@@ -74,6 +76,7 @@ ensure_cluster_alive() {
   if _install_kind; then
     log_info "kind installed. Creating cluster..."
     kind create cluster --name kind || { log_warn "kind create cluster failed"; return 1; }
+    _wait_nodes_ready 120
     if cluster_is_alive; then
       return 0
     fi
@@ -134,6 +137,15 @@ _install_kind() {
   fi
 
   command_exists kind
+}
+
+# Wait up to <timeout> seconds for at least one node to reach Ready status.
+_wait_nodes_ready() {
+  local timeout="${1:-120}"
+  log_info "Waiting up to ${timeout}s for nodes to become Ready..."
+  kubectl wait --for=condition=Ready node --all --timeout="${timeout}s" 2>/dev/null && return 0
+  log_warn "Timed out waiting for nodes to become Ready"
+  return 1
 }
 
 print_cluster_status() {
