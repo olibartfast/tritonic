@@ -50,21 +50,25 @@ STATUS
 
   if deployment_name="$(triton_deployment_exists)"; then
     log_info "Triton deployment already present: ${deployment_name}"
-    wait_for_triton_ready "$deployment_name"
-    triton_status="RUNNING"
+    log_info "Reconciling Triton deployment with the current manifests."
   else
     log_info "No Triton deployment found. Deploying now."
-    deploy_triton_stack "$REPO_ROOT" "$use_gpu"
-
-    if [[ "$use_gpu" == "true" ]]; then
-      deployment_name="triton-server-gpu"
-    else
-      deployment_name="triton-server-cpu"
-    fi
-
-    wait_for_triton_ready "$deployment_name"
-    triton_status="DEPLOYED_AND_RUNNING"
   fi
+
+  deploy_triton_stack "$REPO_ROOT" "$use_gpu"
+
+  # Helm path: --wait already handled readiness; resolve deployment name for status display
+  if [[ "$use_gpu" == "true" ]]; then
+    deployment_name="triton-server-gpu"
+  else
+    deployment_name="triton-server-cpu"
+  fi
+
+  if ! command_exists helm; then
+    wait_for_triton_ready "$deployment_name"
+  fi
+
+  triton_status="DEPLOYED_AND_RUNNING"
 
   print_triton_status
 

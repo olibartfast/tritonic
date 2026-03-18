@@ -8,7 +8,13 @@ _host_has_nvidia_gpu() {
 }
 
 # Install nvidia-container-toolkit (if missing) and set nvidia as Docker's default runtime.
+# Idempotent: skips if already configured.
 _configure_nvidia_runtime() {
+  # Already configured if daemon.json already lists nvidia as default runtime
+  if docker info 2>/dev/null | grep -q 'Default Runtime: nvidia'; then
+    log_info "NVIDIA is already the Docker default runtime — skipping reconfiguration"
+    return 0
+  fi
   if ! command_exists nvidia-ctk; then
     log_info "nvidia-container-toolkit not found — installing..."
     if command_exists curl; then
@@ -37,48 +43,15 @@ _configure_nvidia_runtime() {
   log_info "Docker restarted with NVIDIA runtime as default"
 }
 
-# Configure the containerd runtime inside each kind node to use nvidia,
-# then install the device plugin. Must be called after the cluster is created.
-configure_kind_nodes_for_gpu() {
-  if ! command_exists kind; then
-    return 0  # not a kind cluster, nothing to do
-  fi
-
-  local nvidia_ctk_path
-  nvidia_ctk_path="$(command -v nvidia-ctk 2>/dev/null)" || {
-    log_warn "nvidia-ctk not found on host — skipping kind node GPU configuration"
-    return 1
-  }
-
-  local nodes
-  nodes="$(kind get nodes --name kind 2>/dev/null)" || {
-    log_warn "Could not list kind nodes"
-    return 1
-  }
-
-  log_info "Configuring containerd nvidia runtime on kind nodes..."
-  local node
-  for node in $nodes; do
-    log_info "  node: ${node}"
-    # Copy nvidia-ctk into the node (kindest/node image doesn't include it)
-    docker cp "$nvidia_ctk_path" "${node}:/usr/local/bin/nvidia-ctk"
-    # Configure containerd to use nvidia runtime and restart it
-    docker exec -t "$node" bash -c \
-      "nvidia-ctk runtime configure --runtime=containerd && systemctl restart containerd"
-  done
-
-  log_info "Kind node containerd configured. Installing device plugin..."
-  _install_nvidia_device_plugin
-}
-
+# Install the NVIDIA k8s device plugin and wait for nvidia.com/gpu to be allocatable.
 _install_nvidia_device_plugin() {
   local plugin_url="https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.17.0/deployments/static/nvidia-device-plugin.yml"
   log_info "Installing NVIDIA device plugin into the cluster..."
   kubectl apply -f "$plugin_url" >/dev/null 2>&1 || { log_warn "Failed to apply NVIDIA device plugin manifest"; return 1; }
 
-  log_info "Waiting up to 60s for nvidia.com/gpu to become allocatable..."
+  log_info "Waiting up to 120s for nvidia.com/gpu to become allocatable..."
   local elapsed=0
-  while [[ $elapsed -lt 60 ]]; do
+  while [[ $elapsed -lt 120 ]]; do
     local allocatable
     allocatable="$(kubectl get nodes -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}' 2>/dev/null || true)"
     if grep -Eq '[1-9]' <<<"$allocatable"; then
@@ -89,8 +62,42 @@ _install_nvidia_device_plugin() {
     elapsed=$((elapsed + 5))
   done
 
-  log_warn "nvidia.com/gpu not allocatable after device plugin install (check container runtime GPU support)"
+  log_warn "nvidia.com/gpu not allocatable after device plugin install"
   return 1
+}
+
+# Configure the cluster to expose the host GPU.
+# Strategy by cluster driver:
+#   minikube — GPU passthrough is handled by --gpus all at start time; only the
+#              device plugin needs to be installed.
+#   kind     — kind does not support native GPU passthrough; the cluster is deleted
+#              and recreated via minikube (preferred) or the user is warned.
+#   other    — install device plugin and hope the runtime is already set up.
+configure_cluster_for_gpu() {
+  local driver
+  driver="$(_cluster_driver 2>/dev/null || echo other)"
+
+  case "$driver" in
+    minikube)
+      log_info "minikube cluster detected — installing NVIDIA device plugin..."
+      _install_nvidia_device_plugin
+      return
+      ;;
+    kind)
+      log_info "kind cluster detected — kind does not support native GPU passthrough."
+      log_info "Migrating to minikube for proper GPU support..."
+      kind delete cluster --name kind 2>/dev/null || true
+      if command_exists minikube || _install_minikube; then
+        _start_minikube_gpu && _install_nvidia_device_plugin && return 0
+      fi
+      log_warn "Could not migrate to minikube; GPU will not be available"
+      return 1
+      ;;
+    *)
+      log_info "Unknown cluster driver — attempting device plugin install..."
+      _install_nvidia_device_plugin
+      ;;
+  esac
 }
 
 nvidia_gpu_available() {
@@ -99,28 +106,21 @@ nvidia_gpu_available() {
 
   if [[ -n "${allocatable// /}" ]] && grep -Eq '[1-9]' <<<"$allocatable"; then
     log_info "Node GPU allocatable values: $allocatable"
-    if kubectl get pods -A 2>/dev/null | grep -Eqi 'nvidia|gpu-operator|device-plugin'; then
-      log_info "NVIDIA-related pods detected in the cluster"
-    else
-      log_warn "No NVIDIA operator/device-plugin pods detected"
-    fi
     return 0
   fi
 
-  # Cluster doesn't expose GPU yet — check host and try full kind node setup
   if _host_has_nvidia_gpu; then
-    log_info "Host has NVIDIA GPU but cluster does not expose it; configuring kind nodes and installing device plugin..."
-    if configure_kind_nodes_for_gpu; then
-      # Re-check allocatable after setup
-      allocatable="$(kubectl get nodes -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}' 2>/dev/null || true)"
-      if [[ -n "${allocatable// /}" ]] && grep -Eq '[1-9]' <<<"$allocatable"; then
-        log_info "Node GPU allocatable values: $allocatable"
-        return 0
-      fi
+    log_info "Host has NVIDIA GPU but cluster does not expose it — configuring now..."
+    configure_cluster_for_gpu || true
+    # Re-check after configuration
+    allocatable="$(kubectl get nodes -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}' 2>/dev/null || true)"
+    if [[ -n "${allocatable// /}" ]] && grep -Eq '[1-9]' <<<"$allocatable"; then
+      log_info "Node GPU allocatable values: $allocatable"
+      return 0
     fi
-    log_warn "GPU not allocatable after node configuration"
+    log_warn "GPU not allocatable after cluster configuration"
   else
-    log_warn "No allocatable nvidia.com/gpu resources found on nodes and no host GPU detected"
+    log_warn "No allocatable nvidia.com/gpu resources found and no host GPU detected"
   fi
 
   return 1

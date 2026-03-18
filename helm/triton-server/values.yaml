@@ -3,11 +3,14 @@ replicaCount: 1
 
 image:
   repository: nvcr.io/nvidia/tritonserver
-  tag: "25.06-py3"
+  tag: "25.12-py3"
   pullPolicy: IfNotPresent
 
 nameOverride: ""
 fullnameOverride: ""
+
+deploymentStrategy:
+  type: Recreate
 
 # Server configuration
 server:
@@ -26,6 +29,7 @@ server:
   args:
     - "--model-repository=/models"
     - "--log-verbose=1"
+    - "--backend-config=tensorflow,allow_soft_placement=true"
     - "--allow-http=true"
     - "--allow-grpc=true"
     - "--allow-metrics=true"
@@ -60,18 +64,23 @@ service:
 ingress:
   enabled: false
   className: "nginx"
-  annotations: {}
-    # nginx.ingress.kubernetes.io/rewrite-target: /
-    # nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
-    # nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
   hosts:
     - host: triton.local
       paths:
         - path: /
           pathType: Prefix
           service:
-            name: triton-server
             port: 8000
+        - path: /metrics
+          pathType: Prefix
+          service:
+            port: 8002
   tls: []
   #  - secretName: triton-tls
   #    hosts:
@@ -145,8 +154,8 @@ affinity: {}
 
 # Storage configuration
 storage:
-  # Storage type: hostPath, pvc, or configMap
-  type: "hostPath"
+  # Storage type: hostPath or pvc
+  type: "pvc"
   
   # For PVC storage
   pvc:

@@ -21,95 +21,149 @@ cluster_is_alive() {
   return 0
 }
 
+# Returns the local cluster tool driving the current context: "minikube", "kind", or "other".
+_cluster_driver() {
+  local ctx
+  ctx="$(kubectl config current-context 2>/dev/null || true)"
+  if [[ "$ctx" == minikube* ]]; then
+    echo "minikube"
+  elif [[ "$ctx" == kind-* ]]; then
+    echo "kind"
+  else
+    echo "other"
+  fi
+}
+
 # Try to start a local cluster using whichever tool is available.
-# Returns 0 if a cluster becomes reachable, 1 otherwise.
+# When the host has an NVIDIA GPU, minikube is strongly preferred because it
+# passes through GPU devices natively (--gpus all); kind requires complex manual
+# containerd configuration that is unreliable across versions.
 ensure_cluster_alive() {
+  # If cluster is already alive, check whether we need to migrate a kind cluster
+  # to minikube so that the GPU becomes usable.
   if cluster_is_alive; then
-    return 0
+    if _host_has_nvidia_gpu && [[ "$(_cluster_driver)" == "kind" ]]; then
+      log_info "Running cluster is kind but host has GPU — migrating to minikube for native GPU support..."
+      kind delete cluster --name kind 2>/dev/null || true
+      # Ensure minikube is installed before attempting to start
+      if command_exists minikube || _install_minikube; then
+        _start_minikube_gpu && return 0
+      fi
+      log_warn "minikube migration failed; falling through to normal startup"
+    else
+      return 0
+    fi
   fi
 
   log_info "Attempting to start a local cluster automatically..."
 
-  if command_exists minikube; then
-    log_info "Found minikube — running 'minikube start'"
-    minikube start || { log_warn "minikube start failed"; }
-    _wait_nodes_ready 120
-    if cluster_is_alive; then
-      return 0
+  # --- GPU host: prefer minikube ---
+  if _host_has_nvidia_gpu; then
+    if command_exists minikube || _install_minikube; then
+      _start_minikube_gpu && return 0
     fi
+    log_warn "Could not start minikube with GPU support; falling back to kind (no GPU)"
+  fi
+
+  # --- No-GPU / minikube-failed path ---
+  if command_exists minikube; then
+    log_info "Starting minikube (CPU)..."
+    minikube start --driver=docker || { log_warn "minikube start failed"; }
+    _wait_nodes_ready 120
+    cluster_is_alive && return 0
   fi
 
   if command_exists kind; then
-    log_info "Found kind — preparing cluster"
-    # If host has a GPU, configure the nvidia runtime before cluster creation so
-    # kind node containers inherit GPU device access. Delete any existing cluster
-    # first because it was created without the nvidia runtime.
-    if _host_has_nvidia_gpu; then
-      _configure_nvidia_runtime
-      if kind get clusters 2>/dev/null | grep -q '^kind$'; then
-        log_info "Deleting existing kind cluster to recreate with GPU support..."
-        kind delete cluster --name kind
-      fi
-    fi
-
-    local created_fresh=false
-    if ! kind get clusters 2>/dev/null | grep -q '^kind$'; then
-      kind create cluster --name kind || { log_warn "kind create cluster failed"; }
-      created_fresh=true
-    else
-      log_info "kind cluster already exists; merging kubeconfig"
-      kind export kubeconfig --name kind || true
-    fi
-    _wait_nodes_ready 120
-
-    # After a fresh GPU-enabled cluster, configure containerd on each node
-    if [[ "$created_fresh" == true ]] && _host_has_nvidia_gpu; then
-      configure_kind_nodes_for_gpu || true
-    fi
-
-    if cluster_is_alive; then
-      return 0
-    fi
+    _start_kind_cluster && return 0
   fi
 
   if command_exists k3s; then
     log_info "Found k3s — starting server in background"
     sudo k3s server --disable=traefik &>/tmp/k3s-server.log &
-    local k3s_pid=$!
-    log_info "k3s started (pid ${k3s_pid}); waiting up to 60 s for nodes to become Ready"
+    log_info "k3s started; waiting up to 60 s for nodes to become Ready"
     local elapsed=0
     while [[ $elapsed -lt 60 ]]; do
       export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-      if cluster_is_alive; then
-        return 0
-      fi
-      sleep 5
-      elapsed=$((elapsed + 5))
+      cluster_is_alive && return 0
+      sleep 5; elapsed=$((elapsed + 5))
     done
     log_warn "k3s did not become ready in time"
   fi
 
-  # No tool found — try to install kind (requires Docker)
+  # Last resort: install kind (requires Docker)
   log_info "No local cluster tool found. Attempting to install kind..."
   if _install_kind; then
-    log_info "kind installed."
-    if _host_has_nvidia_gpu; then
-      _configure_nvidia_runtime
-    fi
-    log_info "Creating cluster..."
-    kind create cluster --name kind || { log_warn "kind create cluster failed"; return 1; }
-    _wait_nodes_ready 120
-    if _host_has_nvidia_gpu; then
-      configure_kind_nodes_for_gpu || true
-    fi
-    if cluster_is_alive; then
-      return 0
-    fi
+    _start_kind_cluster && return 0
   fi
 
   log_error "Could not bring up a reachable cluster automatically."
-  log_error "Install minikube, kind, or k3s (or fix your kubeconfig) and rerun."
+  log_error "Install minikube (recommended for GPU) or kind/k3s, then rerun."
   return 1
+}
+
+# Start minikube with GPU passthrough.
+_start_minikube_gpu() {
+  _configure_nvidia_runtime  # ensure Docker uses nvidia runtime
+  log_info "Starting minikube with --gpus all (Docker driver)..."
+  minikube start --driver=docker --gpus all || {
+    log_warn "minikube start --gpus all failed"
+    return 1
+  }
+  _wait_nodes_ready 120
+  cluster_is_alive
+}
+
+# Create (or reuse) a kind cluster.
+_start_kind_cluster() {
+  log_info "Setting up kind cluster..."
+  if ! kind get clusters 2>/dev/null | grep -q '^kind$'; then
+    kind create cluster --name kind || { log_warn "kind create cluster failed"; return 1; }
+  else
+    log_info "kind cluster already exists; exporting kubeconfig"
+    kind export kubeconfig --name kind || true
+  fi
+  _wait_nodes_ready 120
+  cluster_is_alive
+}
+
+_install_minikube() {
+  if ! command_exists docker; then
+    log_warn "Docker is not available — cannot install minikube"
+    return 1
+  fi
+
+  local os arch
+  os="$(uname | tr '[:upper:]' '[:lower:]')"
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64)       arch="amd64" ;;
+    aarch64|arm64) arch="arm64" ;;
+    *) log_warn "Unsupported architecture for minikube: $arch"; return 1 ;;
+  esac
+
+  local url="https://storage.googleapis.com/minikube/releases/latest/minikube-${os}-${arch}"
+  log_info "Downloading minikube from ${url}..."
+  local bin
+  bin="$(mktemp)"
+  if command_exists curl; then
+    curl -fsSL "$url" -o "$bin"
+  elif command_exists wget; then
+    wget -qO "$bin" "$url"
+  else
+    log_warn "Neither curl nor wget available"; return 1
+  fi
+  chmod +x "$bin"
+
+  if [[ -w /usr/local/bin ]]; then
+    mv "$bin" /usr/local/bin/minikube
+    log_info "minikube installed at /usr/local/bin/minikube"
+  else
+    mkdir -p "$HOME/.local/bin"
+    mv "$bin" "$HOME/.local/bin/minikube"
+    export PATH="$HOME/.local/bin:$PATH"
+    log_info "minikube installed at $HOME/.local/bin/minikube"
+  fi
+  command_exists minikube
 }
 
 _install_kind() {
@@ -122,7 +176,7 @@ _install_kind() {
   os="$(uname | tr '[:upper:]' '[:lower:]')"
   arch="$(uname -m)"
   case "$arch" in
-    x86_64)  arch="amd64" ;;
+    x86_64)       arch="amd64" ;;
     aarch64|arm64) arch="arm64" ;;
     *) log_warn "Unsupported architecture for kind: $arch"; return 1 ;;
   esac
@@ -134,15 +188,13 @@ _install_kind() {
     version="$(wget -qO- https://api.github.com/repos/kubernetes-sigs/kind/releases/latest \
       | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')"
   else
-    log_warn "Neither curl nor wget available to download kind"
-    return 1
+    log_warn "Neither curl nor wget available to download kind"; return 1
   fi
 
   [[ -z "$version" ]] && { log_warn "Could not determine latest kind version"; return 1; }
 
   local url="https://github.com/kubernetes-sigs/kind/releases/download/${version}/kind-${os}-${arch}"
   log_info "Downloading kind ${version} from ${url}"
-
   kind_bin="$(mktemp)"
   if command_exists curl; then
     curl -fsSL "$url" -o "$kind_bin"
@@ -160,7 +212,6 @@ _install_kind() {
     export PATH="$HOME/.local/bin:$PATH"
     log_info "kind installed at $HOME/.local/bin/kind"
   fi
-
   command_exists kind
 }
 
