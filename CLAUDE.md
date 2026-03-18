@@ -12,7 +12,7 @@ TritonIC is a C++20 application for running ML inference (object detection, inst
 ```bash
 export TritonClientBuild_DIR=$(pwd)/triton_client_libs/install
 # Extract libraries from Docker if not already present:
-./scripts/docker/extract_triton_libs.sh
+./docker/scripts/extract_triton_libs.sh
 ```
 
 **Standard build:**
@@ -63,7 +63,7 @@ For dynamic input sizes: `--input_sizes="c,h,w"` (e.g., `"3,640,640"` or `"3,640
 
 **Triton server (Docker):**
 ```bash
-./scripts/docker/docker_triton_run.sh /path/to/model_repository 25.06 gpu
+./docker/scripts/docker_triton_run.sh /path/to/model_repository 25.06 gpu
 ```
 
 ## Architecture

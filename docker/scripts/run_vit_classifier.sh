@@ -1,5 +1,5 @@
 #!/bin/bash
-# filepath: /home/oli/repos/tritonic/scripts/docker/run_vit_classifier.sh
+# filepath: /home/oli/repos/tritonic/docker/scripts/run_vit_classifier.sh
 
 # Verify image exists locally first
 if [ ! -f "data/images/cat.jpeg" ]; then

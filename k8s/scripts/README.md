@@ -1,6 +1,6 @@
 # Triton Kubernetes Scripts
 
-This folder contains modular Bash scripts used by `scripts/k8s/check_and_deploy_triton.sh`.
+This folder contains modular Bash scripts used by `k8s/scripts/check_and_deploy_triton.sh`.
 
 ## Scripts Overview
 
@@ -15,7 +15,7 @@ This folder contains modular Bash scripts used by `scripts/k8s/check_and_deploy_
 Run from repository root:
 
 ```bash
-./scripts/k8s/check_and_deploy_triton.sh
+./k8s/scripts/check_and_deploy_triton.sh
 ```
 
 What it does in order:
