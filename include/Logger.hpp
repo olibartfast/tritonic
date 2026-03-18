@@ -25,7 +25,7 @@ public:
 class Logger : public ILogger {
 public:
     explicit Logger(const std::string& name = "");
-    ~Logger() override = default;
+    ~Logger() override;
 
     void Log(LogLevel level, const std::string& message) override;
     void SetLevel(LogLevel level) override;

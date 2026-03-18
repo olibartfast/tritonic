@@ -47,6 +47,8 @@ public:
     }
 };
 
+Logger::~Logger() = default;
+
 Logger::Logger(const std::string& name) : pImpl_(std::make_unique<Impl>()) {
     pImpl_->name_ = name.empty() ? "default" : name;
 }

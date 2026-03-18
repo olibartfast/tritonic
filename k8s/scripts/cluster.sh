@@ -52,13 +52,21 @@ ensure_cluster_alive() {
       fi
     fi
 
+    local created_fresh=false
     if ! kind get clusters 2>/dev/null | grep -q '^kind$'; then
       kind create cluster --name kind || { log_warn "kind create cluster failed"; }
+      created_fresh=true
     else
       log_info "kind cluster already exists; merging kubeconfig"
       kind export kubeconfig --name kind || true
     fi
     _wait_nodes_ready 120
+
+    # After a fresh GPU-enabled cluster, configure containerd on each node
+    if [[ "$created_fresh" == true ]] && _host_has_nvidia_gpu; then
+      configure_kind_nodes_for_gpu || true
+    fi
+
     if cluster_is_alive; then
       return 0
     fi
@@ -91,6 +99,9 @@ ensure_cluster_alive() {
     log_info "Creating cluster..."
     kind create cluster --name kind || { log_warn "kind create cluster failed"; return 1; }
     _wait_nodes_ready 120
+    if _host_has_nvidia_gpu; then
+      configure_kind_nodes_for_gpu || true
+    fi
     if cluster_is_alive; then
       return 0
     fi
