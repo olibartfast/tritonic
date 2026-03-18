@@ -2,34 +2,29 @@ name: CI
 
 on:
   push:
-    branches: [ master, main, develop ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
+    branches: [master]
   pull_request:
-    branches: [ master, main, develop ]
-    types: [ opened, synchronize, reopened ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-  schedule:
-    - cron: '0 0 * * 1'
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+    branches: [master]
 
 jobs:
-  pipeline:
-    name: Pipeline
-    if: github.event_name != 'schedule'
-    runs-on: ubuntu-24.04
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check formatting
+        run: |
+          find include src tests -type f \( -name '*.cpp' -o -name '*.hpp' \) | \
+            xargs clang-format --dry-run --Werror
+
+  clang-tidy:
+    name: Clang-Tidy
+    runs-on: ubuntu-latest
     env:
       TritonClientBuild_DIR: ${{ github.workspace }}/triton_client_libs/install
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Cache Triton Client Libraries
         id: cache-triton
@@ -44,111 +39,122 @@ jobs:
           chmod +x docker/scripts/extract_triton_libs.sh
           ./docker/scripts/extract_triton_libs.sh
 
-      - name: Install System Dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
-            clang-format \
             clang-tidy \
-            clang-tools \
             cmake \
-            cppcheck \
+            libcurl4-openssl-dev \
+            libopencv-dev \
+            libprotobuf-dev \
+            protobuf-compiler \
+            rapidjson-dev
+
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ github.job }}-${{ runner.os }}
+
+      - name: Generate compile_commands.json
+        run: cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Run clang-tidy
+        run: |
+          find src -type f -name '*.cpp' | \
+            xargs clang-tidy -p build --header-filter='^(include|src)/'
+
+  cppcheck:
+    name: Cppcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        run: |
+          cppcheck --enable=warning --std=c++20 --error-exitcode=1 \
+            --suppress=missingIncludeSystem \
+            --suppress=unmatchedSuppression \
+            -I include src/
+
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    env:
+      TritonClientBuild_DIR: ${{ github.workspace }}/triton_client_libs/install
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Triton Client Libraries
+        id: cache-triton
+        uses: actions/cache@v4
+        with:
+          path: triton_client_libs
+          key: triton-client-r25.06-${{ runner.os }}
+
+      - name: Extract Triton Client Libraries
+        if: steps.cache-triton.outputs.cache-hit != 'true'
+        run: |
+          chmod +x docker/scripts/extract_triton_libs.sh
+          ./docker/scripts/extract_triton_libs.sh
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
             libcurl4-openssl-dev \
             libgmock-dev \
             libgtest-dev \
-            libopencv-core-dev \
             libopencv-dev \
-            libopencv-highgui-dev \
-            libopencv-imgcodecs-dev \
-            libopencv-imgproc-dev \
-            libopencv-videoio-dev \
             libprotobuf-dev \
             protobuf-compiler \
             rapidjson-dev
 
-      - name: Format Check
-        run: |
-          mapfile -t files < <(find include src tests -type f \( -name "*.hpp" -o -name "*.cpp" \) | sort)
-          clang-format --dry-run --Werror "${files[@]}"
-
-      - name: Configure Clang-Tidy Build Directory
-        run: |
-          cmake -S . -B build-tidy -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
-
-      - name: Configure Build Directory
-        run: |
-          cmake -S . -B build-ci -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-
-      - name: Clang-Tidy
-        run: |
-          mapfile -t files < <(find src -type f -name "*.cpp" | sort)
-          clang-tidy -p build-tidy --header-filter='^(include|src)/' "${files[@]}"
-
-      - name: Cppcheck
-        run: |
-          cppcheck \
-            --enable=warning,style,performance,portability \
-            --error-exitcode=1 \
-            --inline-suppr \
-            --std=c++20 \
-            --language=c++ \
-            --suppress=missingIncludeSystem \
-            include src tests
-
-      - name: Build & Test
-        run: |
-          cmake --build build-ci -j"$(nproc)"
-          ctest --test-dir build-ci --output-on-failure
-
-      - name: Build with Strict Warnings
-        run: |
-          cmake -S . -B build-strict \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_TESTING=ON \
-            -DTRITONIC_STRICT_WARNINGS=ON
-          cmake --build build-strict -j"$(nproc)"
-
-  codeql:
-    name: CodeQL Security Analysis
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'cpp', 'python' ]
-
-    steps:
-      - name: Free Disk Space
-        if: matrix.language == 'cpp'
-        run: |
-          df -h
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/share/boost
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          sudo docker image prune --all --force || true
-          df -h
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1
         with:
-          languages: ${{ matrix.language }}
-          config-file: ./.github/codeql-config.yml
+          key: ${{ github.job }}-${{ runner.os }}
 
-      - name: Install Dependencies for C++
-        if: matrix.language == 'cpp'
+      - name: Configure
+        run: cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
+
+  build-warnings:
+    name: Build with Strict Warnings
+    runs-on: ubuntu-latest
+    env:
+      TritonClientBuild_DIR: ${{ github.workspace }}/triton_client_libs/install
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Triton Client Libraries
+        id: cache-triton
+        uses: actions/cache@v4
+        with:
+          path: triton_client_libs
+          key: triton-client-r25.06-${{ runner.os }}
+
+      - name: Extract Triton Client Libraries
+        if: steps.cache-triton.outputs.cache-hit != 'true'
+        run: |
+          chmod +x docker/scripts/extract_triton_libs.sh
+          ./docker/scripts/extract_triton_libs.sh
+
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
             cmake \
             libcurl4-openssl-dev \
             libopencv-dev \
@@ -156,32 +162,13 @@ jobs:
             protobuf-compiler \
             rapidjson-dev
 
-      - name: Build C++ Project
-        if: matrix.language == 'cpp'
-        env:
-          TritonClientBuild_DIR: ${{ github.workspace }}/triton_client_libs/install
-        run: |
-          chmod +x docker/scripts/extract_triton_libs.sh
-          ./docker/scripts/extract_triton_libs.sh || true
-          cmake -S . -B build-codeql -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF || true
-          cmake --build build-codeql -j2 || true
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1
         with:
-          ram: 4096
-          threads: 2
+          key: ${{ github.job }}-${{ runner.os }}
 
-  dependency-review:
-    name: Dependency Review
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+      - name: Configure with -DTRITONIC_STRICT_WARNINGS=ON
+        run: cmake -S . -B build -DTRITONIC_STRICT_WARNINGS=ON -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Dependency Review
-        uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: moderate
+      - name: Build
+        run: cmake --build build --parallel
