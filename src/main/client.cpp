@@ -1,18 +1,17 @@
+#include <iostream>
 #include "App.hpp"
-#include "Logger.hpp"
 #include "Config.hpp"
 #include "ConfigManager.hpp"
+#include "Logger.hpp"
 #include "Triton.hpp"
-#include <iostream>
 
 int main(int argc, const char* argv[]) {
     try {
         // Initialize logging
-        auto logger = std::dynamic_pointer_cast<Logger>(
-            LoggerManager::GetLogger("tritonic"));
+        auto logger = std::dynamic_pointer_cast<Logger>(LoggerManager::GetLogger("tritonic"));
         logger->SetLevel(LogLevel::INFO);
         logger->EnableConsoleOutput(true);
-        
+
         // Load configuration
         std::unique_ptr<InferenceConfig> config;
         try {
@@ -22,21 +21,25 @@ int main(int argc, const char* argv[]) {
             logger->Error("Command line configuration error: " + std::string(e.what()));
             return 1;
         }
-        
+
         if (!config) {
-            return 0; // Help requested
+            return 0;  // Help requested
         }
-        
+
         // Configure logger
         if (!config->GetLogFile().empty()) {
             logger->SetOutputFile(config->GetLogFile());
         }
-        
-        if (config->GetLogLevel() == "debug") logger->SetLevel(LogLevel::DEBUG);
-        else if (config->GetLogLevel() == "warn") logger->SetLevel(LogLevel::WARN);
-        else if (config->GetLogLevel() == "error") logger->SetLevel(LogLevel::ERROR);
-        else logger->SetLevel(LogLevel::INFO);
-        
+
+        if (config->GetLogLevel() == "debug")
+            logger->SetLevel(LogLevel::DEBUG);
+        else if (config->GetLogLevel() == "warn")
+            logger->SetLevel(LogLevel::WARN);
+        else if (config->GetLogLevel() == "error")
+            logger->SetLevel(LogLevel::ERROR);
+        else
+            logger->SetLevel(LogLevel::INFO);
+
         // Log configuration
         logger->Info("Configuration:");
         logger->Info("  Server Address: " + config->GetServerAddress());
@@ -53,24 +56,28 @@ int main(int argc, const char* argv[]) {
 
         // Create dependencies
         int port = config->GetPort();
-        ProtocolType protocol = config->GetProtocol() == "grpc" ? ProtocolType::GRPC : ProtocolType::HTTP;
+        ProtocolType protocol =
+            config->GetProtocol() == "grpc" ? ProtocolType::GRPC : ProtocolType::HTTP;
 
         // Auto-switch port if protocol is GRPC and port is default HTTP port
         if (protocol == ProtocolType::GRPC && port == 8000) {
-            logger->Warn("Protocol is GRPC but port is 8000 (default HTTP). Switching to 8001 (default GRPC).");
+            logger->Warn(
+                "Protocol is GRPC but port is 8000 (default HTTP). Switching to 8001 (default "
+                "GRPC).");
             port = 8001;
         }
 
         std::string url = config->GetServerAddress() + ":" + std::to_string(port);
-        
-        auto triton = std::make_shared<Triton>(url, protocol, config->GetModelName(), config->GetModelVersion(), config->GetVerbose());
-        
+
+        auto triton = std::make_shared<Triton>(url, protocol, config->GetModelName(),
+                                               config->GetModelVersion(), config->GetVerbose());
+
         // Create and run App
         std::shared_ptr<InferenceConfig> configPtr = std::move(config);
-        
+
         App app(triton, configPtr, logger);
         return app.run();
-        
+
     } catch (const std::exception& e) {
         std::cerr << "Fatal error: " << e.what() << std::endl;
         return 1;

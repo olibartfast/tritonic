@@ -22,7 +22,8 @@ std::vector<std::vector<int64_t>> ConfigManager::ParseInputSizes(const std::stri
             if (s != std::string::npos)
                 dims.push_back(std::stoll(tok.substr(s, e - s + 1)));
         }
-        if (!dims.empty()) sizes.push_back(dims);
+        if (!dims.empty())
+            sizes.push_back(dims);
     }
     return sizes;
 }
@@ -99,4 +100,3 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
 
     return config;
 }
-

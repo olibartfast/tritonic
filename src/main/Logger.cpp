@@ -1,12 +1,12 @@
 #include "Logger.hpp"
-#include <iostream>
-#include <fstream>
+#include <algorithm>
 #include <chrono>
+#include <fstream>
 #include <iomanip>
+#include <iostream>
+#include <mutex>
 #include <sstream>
 #include <unordered_map>
-#include <mutex>
-#include <algorithm>
 
 class Logger::Impl {
 public:
@@ -54,7 +54,8 @@ Logger::Logger(const std::string& name) : pImpl_(std::make_unique<Impl>()) {
 }
 
 void Logger::Log(LogLevel level, const std::string& message) {
-    if (level < pImpl_->current_level_) return;
+    if (level < pImpl_->current_level_)
+        return;
 
     std::lock_guard<std::mutex> lock(pImpl_->log_mutex_);
     std::string formatted = pImpl_->FormatMessage(level, message);
@@ -70,31 +71,59 @@ void Logger::Log(LogLevel level, const std::string& message) {
         pImpl_->file_stream_ << formatted << std::endl;
 }
 
-void Logger::SetLevel(LogLevel level)       { pImpl_->current_level_ = level; }
-LogLevel Logger::GetLevel() const           { return pImpl_->current_level_; }
+void Logger::SetLevel(LogLevel level) {
+    pImpl_->current_level_ = level;
+}
+LogLevel Logger::GetLevel() const {
+    return pImpl_->current_level_;
+}
 
 void Logger::Flush() {
     std::lock_guard<std::mutex> lock(pImpl_->log_mutex_);
-    if (pImpl_->console_enabled_) { std::cout.flush(); std::cerr.flush(); }
-    if (pImpl_->file_stream_.is_open()) pImpl_->file_stream_.flush();
+    if (pImpl_->console_enabled_) {
+        std::cout.flush();
+        std::cerr.flush();
+    }
+    if (pImpl_->file_stream_.is_open())
+        pImpl_->file_stream_.flush();
 }
 
 void Logger::SetOutputFile(const std::string& filename) {
     std::lock_guard<std::mutex> lock(pImpl_->log_mutex_);
-    if (pImpl_->file_stream_.is_open()) pImpl_->file_stream_.close();
-    if (!filename.empty()) pImpl_->file_stream_.open(filename, std::ios::app);
+    if (pImpl_->file_stream_.is_open())
+        pImpl_->file_stream_.close();
+    if (!filename.empty())
+        pImpl_->file_stream_.open(filename, std::ios::app);
 }
 
-void Logger::EnableConsoleOutput(bool enable) { pImpl_->console_enabled_ = enable; }
-void Logger::EnableTimestamp(bool enable)     { pImpl_->timestamp_enabled_ = enable; }
-void Logger::SetPattern(const std::string& p) { pImpl_->pattern_ = p; }
+void Logger::EnableConsoleOutput(bool enable) {
+    pImpl_->console_enabled_ = enable;
+}
+void Logger::EnableTimestamp(bool enable) {
+    pImpl_->timestamp_enabled_ = enable;
+}
+void Logger::SetPattern(const std::string& p) {
+    pImpl_->pattern_ = p;
+}
 
-void Logger::Trace(const std::string& m) { Log(LogLevel::TRACE, m); }
-void Logger::Debug(const std::string& m) { Log(LogLevel::DEBUG, m); }
-void Logger::Info(const std::string& m)  { Log(LogLevel::INFO,  m); }
-void Logger::Warn(const std::string& m)  { Log(LogLevel::WARN,  m); }
-void Logger::Error(const std::string& m) { Log(LogLevel::ERROR, m); }
-void Logger::Fatal(const std::string& m) { Log(LogLevel::FATAL, m); }
+void Logger::Trace(const std::string& m) {
+    Log(LogLevel::TRACE, m);
+}
+void Logger::Debug(const std::string& m) {
+    Log(LogLevel::DEBUG, m);
+}
+void Logger::Info(const std::string& m) {
+    Log(LogLevel::INFO, m);
+}
+void Logger::Warn(const std::string& m) {
+    Log(LogLevel::WARN, m);
+}
+void Logger::Error(const std::string& m) {
+    Log(LogLevel::ERROR, m);
+}
+void Logger::Fatal(const std::string& m) {
+    Log(LogLevel::FATAL, m);
+}
 
 // LoggerManager
 
@@ -142,31 +171,45 @@ void LoggerManager::SetGlobalLevel(LogLevel level) {
     auto& impl = GetManagerImpl();
     std::lock_guard<std::mutex> lock(impl.manager_mutex_);
     impl.global_level_ = level;
-    if (impl.default_logger_) impl.default_logger_->SetLevel(level);
-    for (auto& [n, l] : impl.loggers_) l->SetLevel(level);
+    if (impl.default_logger_)
+        impl.default_logger_->SetLevel(level);
+    for (auto& [n, l] : impl.loggers_)
+        l->SetLevel(level);
 }
 
 LogLevel LoggerManager::ParseLogLevel(const std::string& level) {
     std::string s = level;
     std::transform(s.begin(), s.end(), s.begin(), ::tolower);
-    if (s == "trace")                  return LogLevel::TRACE;
-    if (s == "debug")                  return LogLevel::DEBUG;
-    if (s == "info")                   return LogLevel::INFO;
-    if (s == "warn" || s == "warning") return LogLevel::WARN;
-    if (s == "error")                  return LogLevel::ERROR;
-    if (s == "fatal")                  return LogLevel::FATAL;
+    if (s == "trace")
+        return LogLevel::TRACE;
+    if (s == "debug")
+        return LogLevel::DEBUG;
+    if (s == "info")
+        return LogLevel::INFO;
+    if (s == "warn" || s == "warning")
+        return LogLevel::WARN;
+    if (s == "error")
+        return LogLevel::ERROR;
+    if (s == "fatal")
+        return LogLevel::FATAL;
     return LogLevel::INFO;
 }
 
 std::string LoggerManager::LogLevelToString(LogLevel level) {
     switch (level) {
-        case LogLevel::TRACE: return "TRACE";
-        case LogLevel::DEBUG: return "DEBUG";
-        case LogLevel::INFO:  return "INFO";
-        case LogLevel::WARN:  return "WARN";
-        case LogLevel::ERROR: return "ERROR";
-        case LogLevel::FATAL: return "FATAL";
-        default:              return "UNKNOWN";
+        case LogLevel::TRACE:
+            return "TRACE";
+        case LogLevel::DEBUG:
+            return "DEBUG";
+        case LogLevel::INFO:
+            return "INFO";
+        case LogLevel::WARN:
+            return "WARN";
+        case LogLevel::ERROR:
+            return "ERROR";
+        case LogLevel::FATAL:
+            return "FATAL";
+        default:
+            return "UNKNOWN";
     }
 }
-
