@@ -37,6 +37,40 @@ _configure_nvidia_runtime() {
   log_info "Docker restarted with NVIDIA runtime as default"
 }
 
+# Configure the containerd runtime inside each kind node to use nvidia,
+# then install the device plugin. Must be called after the cluster is created.
+configure_kind_nodes_for_gpu() {
+  if ! command_exists kind; then
+    return 0  # not a kind cluster, nothing to do
+  fi
+
+  local nvidia_ctk_path
+  nvidia_ctk_path="$(command -v nvidia-ctk 2>/dev/null)" || {
+    log_warn "nvidia-ctk not found on host — skipping kind node GPU configuration"
+    return 1
+  }
+
+  local nodes
+  nodes="$(kind get nodes --name kind 2>/dev/null)" || {
+    log_warn "Could not list kind nodes"
+    return 1
+  }
+
+  log_info "Configuring containerd nvidia runtime on kind nodes..."
+  local node
+  for node in $nodes; do
+    log_info "  node: ${node}"
+    # Copy nvidia-ctk into the node (kindest/node image doesn't include it)
+    docker cp "$nvidia_ctk_path" "${node}:/usr/local/bin/nvidia-ctk"
+    # Configure containerd to use nvidia runtime and restart it
+    docker exec -t "$node" bash -c \
+      "nvidia-ctk runtime configure --runtime=containerd && systemctl restart containerd"
+  done
+
+  log_info "Kind node containerd configured. Installing device plugin..."
+  _install_nvidia_device_plugin
+}
+
 _install_nvidia_device_plugin() {
   local plugin_url="https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.17.0/deployments/static/nvidia-device-plugin.yml"
   log_info "Installing NVIDIA device plugin into the cluster..."
@@ -73,13 +107,18 @@ nvidia_gpu_available() {
     return 0
   fi
 
-  # Cluster doesn't expose GPU yet — check host and try to install device plugin
+  # Cluster doesn't expose GPU yet — check host and try full kind node setup
   if _host_has_nvidia_gpu; then
-    log_info "Host has NVIDIA GPU but cluster does not expose it; attempting device plugin install..."
-    if _install_nvidia_device_plugin; then
-      return 0
+    log_info "Host has NVIDIA GPU but cluster does not expose it; configuring kind nodes and installing device plugin..."
+    if configure_kind_nodes_for_gpu; then
+      # Re-check allocatable after setup
+      allocatable="$(kubectl get nodes -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}' 2>/dev/null || true)"
+      if [[ -n "${allocatable// /}" ]] && grep -Eq '[1-9]' <<<"$allocatable"; then
+        log_info "Node GPU allocatable values: $allocatable"
+        return 0
+      fi
     fi
-    log_warn "Device plugin installed but GPU not allocatable — container runtime may not support GPU passthrough"
+    log_warn "GPU not allocatable after node configuration"
   else
     log_warn "No allocatable nvidia.com/gpu resources found on nodes and no host GPU detected"
   fi
