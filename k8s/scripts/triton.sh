@@ -13,6 +13,27 @@ _running_on_minikube() {
   [[ "$ctx" == minikube* ]]
 }
 
+_minikube_image_present() {
+  local image_ref
+  image_ref="$1"
+  minikube ssh -- "sudo crictl inspecti '$image_ref' >/dev/null 2>&1" >/dev/null 2>&1
+}
+
+_wait_for_minikube_image_load() {
+  local image_ref elapsed
+  image_ref="$1"
+  elapsed=0
+
+  log_info "A minikube image load is already in progress for ${image_ref}; waiting for it to finish..."
+  while pgrep -f "minikube image load ${image_ref}" >/dev/null 2>&1; do
+    sleep 5
+    elapsed=$((elapsed + 5))
+    if (( elapsed % 30 == 0 )); then
+      log_info "Still waiting for minikube image load (${elapsed}s elapsed)"
+    fi
+  done
+}
+
 _preload_minikube_image_if_cached() {
   local image_ref
   image_ref="$1"
@@ -24,6 +45,19 @@ _preload_minikube_image_if_cached() {
   if ! docker image inspect "$image_ref" >/dev/null 2>&1; then
     log_info "Image ${image_ref} is not present in host Docker cache; minikube will pull it directly."
     return 0
+  fi
+
+  if _minikube_image_present "$image_ref"; then
+    log_info "Image ${image_ref} is already present in minikube; skipping image load."
+    return 0
+  fi
+
+  if pgrep -f "minikube image load ${image_ref}" >/dev/null 2>&1; then
+    _wait_for_minikube_image_load "$image_ref"
+    if _minikube_image_present "$image_ref"; then
+      log_info "Image ${image_ref} is now present in minikube."
+      return 0
+    fi
   fi
 
   log_info "Loading cached image into minikube: ${image_ref}"
