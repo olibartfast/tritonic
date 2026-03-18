@@ -336,7 +336,7 @@ Quick start:
 
 This script performs:
 1. `kubectl` installation check (and install if missing)
-2. Kubernetes cluster liveness check
+2. Kubernetes cluster liveness check — automatically starts or installs a local cluster (minikube → kind → k3s) if none is reachable; installs `kind` via Docker if no tool is present
 3. NVIDIA GPU availability check inside cluster
 4. Triton deployment status check
 5. Triton deploy (GPU or CPU manifest) if not installed
