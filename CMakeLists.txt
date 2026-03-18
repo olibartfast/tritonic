@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 project(tritonic)
 message(STATUS ${PROJECT_NAME})
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(TRITON_CLIENT_BUILD_DIR "$ENV{TritonClientBuild_DIR}" CACHE PATH "Path to Triton client build directory")
 
@@ -50,6 +51,19 @@ FetchContent_MakeAvailable(vision-core)
 
 option(WITH_SHOW_FRAME "Option description" OFF)
 option(WITH_WRITE_FRAME "Option description" ON)
+option(TRITONIC_STRICT_WARNINGS "Enable strict compiler warnings for tritonic targets." OFF)
+
+function(tritonic_apply_strict_warnings target_name)
+  if(NOT TRITONIC_STRICT_WARNINGS)
+    return()
+  endif()
+
+  if(MSVC)
+    target_compile_options(${target_name} PRIVATE /W4 /WX)
+  else()
+    target_compile_options(${target_name} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  endif()
+endfunction()
 
 if(WITH_SHOW_FRAME)
   add_definitions(-DSHOW_FRAME)
@@ -95,6 +109,7 @@ add_executable(${PROJECT_NAME}
     ${TRITON_SOURCES}
     ${INFRA_SOURCES}
 )
+tritonic_apply_strict_warnings(${PROJECT_NAME})
 
 # Set include directories for the target
 target_include_directories(${PROJECT_NAME}
@@ -160,6 +175,7 @@ if(BUILD_TESTING)
             src/triton/Triton.cpp
             ${INFRA_SOURCES}
         )
+        tritonic_apply_strict_warnings(tritonic_unit_tests)
         
         target_include_directories(tritonic_unit_tests PRIVATE
             ${PROJECT_SOURCE_DIR}/include
@@ -199,6 +215,7 @@ if(BUILD_TESTING)
             src/main/App.cpp
             ${INFRA_SOURCES}
         )
+        tritonic_apply_strict_warnings(tritonic_integration_tests)
         
         target_include_directories(tritonic_integration_tests PRIVATE
             ${PROJECT_SOURCE_DIR}/include
