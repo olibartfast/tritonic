@@ -383,8 +383,19 @@ This script performs:
 1. `kubectl` installation check (and install if missing)
 2. Kubernetes cluster liveness check — automatically starts or installs a local cluster (minikube → kind → k3s) if none is reachable; installs `kind` via Docker if no tool is present
 3. NVIDIA GPU availability check inside cluster — installs `nvidia-container-toolkit` and the NVIDIA device plugin automatically if the host has a GPU
-4. Triton deployment status check
-5. Triton deploy (GPU or CPU manifest) if not installed
+4. Triton deployment status check and reconciliation against the current manifests
+5. Triton deploy or update (GPU or CPU manifest)
+6. External Triton endpoint summary for the `NodePort` service
+
+Default external access on minikube:
+- HTTP: `http://$(minikube ip):30800`
+- gRPC: `$(minikube ip):30801`
+- Metrics: `http://$(minikube ip):30802/metrics`
+
+Notes:
+- The deployment uses the Triton `25.12-py3` image by default for Kubernetes.
+- On minikube, if the Triton image is already present in host Docker, the deploy script loads it into the node before rollout to avoid long registry pulls.
+- GPU deployments use the `Recreate` strategy so updates work on single-node, single-GPU clusters.
 
 ## Demo
 
