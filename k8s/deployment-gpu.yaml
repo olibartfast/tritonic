@@ -8,6 +8,8 @@ metadata:
     variant: gpu
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: triton-server
@@ -20,7 +22,7 @@ spec:
     spec:
       containers:
       - name: triton-server
-        image: nvcr.io/nvidia/tritonserver:25.06-py3
+        image: nvcr.io/nvidia/tritonserver:25.12-py3
         ports:
         - containerPort: 8000
           name: http
@@ -45,11 +47,7 @@ spec:
           echo "Starting Triton Server (GPU mode)..."
           echo "Available GPUs:"
           nvidia-smi -L || echo "No GPUs detected"
-          tritonserver --model-repository=/models \
-                      --log-verbose=1 \
-                      --allow-http=true \
-                      --allow-grpc=true \
-                      --allow-metrics=true
+          exec tritonserver ${TRITON_SERVER_ARGS}
         volumeMounts:
         - name: triton-models
           mountPath: /models
@@ -78,5 +76,3 @@ spec:
       - name: triton-models
         persistentVolumeClaim:
           claimName: triton-models-pvc
-      nodeSelector:
-        accelerator: nvidia-tesla-k80  # Adjust based on your GPU type

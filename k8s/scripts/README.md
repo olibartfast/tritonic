@@ -8,7 +8,7 @@ This folder contains modular Bash scripts used by `k8s/check_and_deploy_triton.s
 - `kubectl.sh`: Installs `kubectl` if missing.
 - `cluster.sh`: Validates Kubernetes cluster reachability and node readiness. Automatically starts or installs a local cluster (minikube → kind → k3s) if none is reachable.
 - `gpu.sh`: Checks NVIDIA GPU exposure and NVIDIA-related components.
-- `triton.sh`: Checks/deploys Triton resources and waits for readiness.
+- `triton.sh`: Checks/deploys Triton resources and waits for readiness. Uses Helm (`helm/triton-server/`) when available; falls back to raw `kubectl apply` on `k8s/*.yaml`.
 
 ## Main Entrypoint
 
@@ -45,16 +45,34 @@ What it does in order:
 
 ## Deployment Behavior
 
-- If GPU resources are detected (`nvidia.com/gpu` > 0), script uses:
-  - `k8s/deployment-gpu.yaml`
-- Otherwise it falls back to:
-  - `k8s/deployment-cpu.yaml`
+GPU resources detected (`nvidia.com/gpu` > 0) → GPU variant; otherwise CPU variant.
 
-In both cases it also applies:
+### Helm (preferred — used automatically when `helm` is in PATH)
 
+```bash
+helm upgrade --install triton-server helm/triton-server \
+  --namespace triton --create-namespace \
+  --set gpu.enabled=true   # or false
+```
+
+Chart location: `helm/triton-server/`. Key `values.yaml` overrides:
+
+| Value | Default | Description |
+|---|---|---|
+| `gpu.enabled` | `false` | Enable GPU variant |
+| `image.tag` | `25.12-py3` | Triton image tag |
+| `storage.type` | `pvc` | `pvc` or `hostPath` |
+| `storage.hostPath.path` | `/tmp/triton-models` | Model repo path (hostPath) |
+| `autoscaling.enabled` | `false` | Enable HPA |
+| `ingress.enabled` | `false` | Enable Ingress |
+
+### kubectl fallback (used when `helm` is not installed)
+
+Applies in order:
 - `k8s/namespace.yaml`
 - `k8s/configmap.yaml`
 - `k8s/persistent-volume.yaml`
+- `k8s/deployment-gpu.yaml` or `k8s/deployment-cpu.yaml`
 - `k8s/service.yaml`
 
 ## Useful Commands

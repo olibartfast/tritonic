@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triton-server-{{ if .Values.gpu.enabled }}gpu{{ else }}cpu{{ end }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "triton-server.labels" . | nindent 4 }}
+    variant: {{ if .Values.gpu.enabled }}gpu{{ else }}cpu{{ end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: {{ .Values.deploymentStrategy.type }}
+  selector:
+    matchLabels:
+      {{- include "triton-server.selectorLabels" . | nindent 6 }}
+      variant: {{ if .Values.gpu.enabled }}gpu{{ else }}cpu{{ end }}
+  template:
+    metadata:
+      labels:
+        {{- include "triton-server.selectorLabels" . | nindent 8 }}
+        variant: {{ if .Values.gpu.enabled }}gpu{{ else }}cpu{{ end }}
+    spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: triton-server
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+            - name: grpc
+              containerPort: 8001
+              protocol: TCP
+            - name: metrics
+              containerPort: 8002
+              protocol: TCP
+          env:
+            - name: TRITON_SERVER_ARGS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "triton-server.fullname" . }}-config
+                  key: TRITON_SERVER_ARGS
+            {{- if .Values.gpu.enabled }}
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "compute,utility"
+            {{- end }}
+            {{- with .Values.server.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          command: ["/bin/bash"]
+          args:
+            - -c
+            - |
+              echo "Starting Triton Server ({{ if .Values.gpu.enabled }}GPU{{ else }}CPU{{ end }} mode)..."
+              {{- if .Values.gpu.enabled }}
+              echo "Available GPUs:"
+              nvidia-smi -L || echo "No GPUs detected"
+              {{- end }}
+              exec tritonserver ${TRITON_SERVER_ARGS}
+          volumeMounts:
+            - name: triton-models
+              mountPath: /models
+          resources:
+            {{- include "triton-server.resources" . | nindent 12 }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.httpGet.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.httpGet.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          {{- end }}
+      volumes:
+        - name: triton-models
+          {{- if eq .Values.storage.type "pvc" }}
+          persistentVolumeClaim:
+            claimName: {{ include "triton-server.fullname" . }}-pvc
+          {{- else }}
+          hostPath:
+            path: {{ .Values.storage.hostPath.path }}
+            type: {{ .Values.storage.hostPath.type }}
+          {{- end }}
+      {{- with (include "triton-server.nodeSelector" . | fromYaml) }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

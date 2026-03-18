@@ -5,6 +5,6 @@ metadata:
   namespace: triton
 data:
   # Triton server configuration
-  TRITON_SERVER_ARGS: "--model-repository=/models --backend-config=tensorflow,allow_soft_placement=true --log-verbose=1"
+  TRITON_SERVER_ARGS: "--model-repository=/models --backend-config=tensorflow,allow_soft_placement=true --log-verbose=1 --allow-http=true --allow-grpc=true --allow-metrics=true"
   # Model repository path inside container
   MODEL_REPOSITORY_PATH: "/models"

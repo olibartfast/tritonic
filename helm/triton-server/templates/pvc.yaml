@@ -1,0 +1,35 @@
+{{- if eq .Values.storage.type "pvc" }}
+{{- if .Values.storage.pvc.create }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "triton-server.fullname" . }}-pv
+  labels:
+    {{- include "triton-server.labels" . | nindent 4 }}
+spec:
+  capacity:
+    storage: {{ .Values.storage.pvc.size }}
+  accessModes:
+    - {{ .Values.storage.pvc.accessMode }}
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: {{ .Values.storage.pvc.storageClass }}
+  hostPath:
+    path: {{ .Values.server.modelRepository.hostPath }}
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "triton-server.fullname" . }}-pvc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "triton-server.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.storage.pvc.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.pvc.size }}
+  storageClassName: {{ .Values.storage.pvc.storageClass }}
+{{- end }}
+{{- end }}
