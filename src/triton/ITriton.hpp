@@ -29,6 +29,12 @@ public:
     virtual std::vector<Tensor> infer(const std::vector<std::vector<uint8_t>>& input_data) = 0;
 
     /**
+     * Perform inference with string-based inputs for BYTES/STRING models.
+     */
+    virtual std::vector<Tensor> inferText(
+        const std::vector<std::vector<std::string>>& string_inputs) = 0;
+
+    /**
      * Set input shapes for dynamic shape models
      */
     virtual void setInputShapes(const std::vector<std::vector<int64_t>>& shapes) = 0;

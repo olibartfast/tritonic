@@ -142,7 +142,7 @@ public:
         log_file_ = v;
     }
 
-    // Multimodal (unused by tritonic but preserved for API compatibility)
+    // Multimodal and text-generation support
     bool GetEnableMultimodal() const noexcept {
         return enable_multimodal_;
     }
@@ -192,6 +192,37 @@ public:
         audio_weight_ = v;
     }
 
+    int GetMaxTokens() const noexcept {
+        return max_tokens_;
+    }
+    void SetMaxTokens(int v) noexcept {
+        max_tokens_ = v;
+    }
+    float GetTemperature() const noexcept {
+        return temperature_;
+    }
+    void SetTemperature(float v) noexcept {
+        temperature_ = v;
+    }
+    float GetTopP() const noexcept {
+        return top_p_;
+    }
+    void SetTopP(float v) noexcept {
+        top_p_ = v;
+    }
+    float GetRepetitionPenalty() const noexcept {
+        return repetition_penalty_;
+    }
+    void SetRepetitionPenalty(float v) noexcept {
+        repetition_penalty_ = v;
+    }
+    const std::string& GetStopWords() const noexcept {
+        return stop_words_;
+    }
+    void SetStopWords(const std::string& v) {
+        stop_words_ = v;
+    }
+
 private:
     std::string server_address_{"localhost"};
     int port_{8000};
@@ -226,4 +257,9 @@ private:
     float text_weight_{1.0f};
     float image_weight_{1.0f};
     float audio_weight_{1.0f};
+    int max_tokens_{256};
+    float temperature_{1.0f};
+    float top_p_{1.0f};
+    float repetition_penalty_{1.0f};
+    std::string stop_words_;
 };
