@@ -673,8 +673,7 @@ std::vector<Tensor> Triton::infer(const std::vector<std::vector<uint8_t>>& input
     return tensors;
 }
 
-std::vector<Tensor> Triton::inferText(
-    const std::vector<std::vector<std::string>>& string_inputs) {
+std::vector<Tensor> Triton::inferText(const std::vector<std::vector<std::string>>& string_inputs) {
     tc::Error err;
     std::vector<std::unique_ptr<tc::InferInput>> inputs;
     std::vector<std::unique_ptr<tc::InferRequestedOutput>> outputs;
