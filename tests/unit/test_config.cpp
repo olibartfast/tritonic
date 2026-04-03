@@ -172,3 +172,64 @@ TEST(ConfigManagerTest, ParsesConfidenceAndNms) {
     EXPECT_FLOAT_EQ(config->GetConfidenceThreshold(), 0.7f);
     EXPECT_FLOAT_EQ(config->GetNmsThreshold(), 0.3f);
 }
+
+// Multimodal configuration tests
+
+TEST(InferenceConfigTest, MultimodalDefaults) {
+    InferenceConfig config;
+    EXPECT_FALSE(config.GetEnableMultimodal());
+    EXPECT_TRUE(config.GetTextInput().empty());
+    EXPECT_TRUE(config.GetAudioInput().empty());
+    EXPECT_TRUE(config.GetTextPrompt().empty());
+    EXPECT_EQ(config.GetModalityCombination(), "concat");
+    EXPECT_FLOAT_EQ(config.GetTextWeight(), 1.0f);
+    EXPECT_FLOAT_EQ(config.GetImageWeight(), 1.0f);
+    EXPECT_FLOAT_EQ(config.GetAudioWeight(), 1.0f);
+}
+
+TEST(InferenceConfigTest, MultimodalSettersGetters) {
+    InferenceConfig config;
+    config.SetEnableMultimodal(true);
+    config.SetTextInput("/data/prompt.txt");
+    config.SetTextPrompt("Describe this image");
+    config.SetAudioInput("/data/audio.wav");
+    config.SetModalityCombination("weighted");
+    config.SetTextWeight(0.5f);
+    config.SetImageWeight(0.8f);
+    config.SetAudioWeight(0.3f);
+
+    EXPECT_TRUE(config.GetEnableMultimodal());
+    EXPECT_EQ(config.GetTextInput(), "/data/prompt.txt");
+    EXPECT_EQ(config.GetTextPrompt(), "Describe this image");
+    EXPECT_EQ(config.GetAudioInput(), "/data/audio.wav");
+    EXPECT_EQ(config.GetModalityCombination(), "weighted");
+    EXPECT_FLOAT_EQ(config.GetTextWeight(), 0.5f);
+    EXPECT_FLOAT_EQ(config.GetImageWeight(), 0.8f);
+    EXPECT_FLOAT_EQ(config.GetAudioWeight(), 0.3f);
+}
+
+TEST(ConfigManagerTest, ParsesMultimodalArgs) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--enable_multimodal=true",
+                          "--text_prompt=What is in this image?", "--model_type=vllm",
+                          "--model=llama3"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    auto config = mgr.LoadFromCommandLine(argc, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_TRUE(config->GetEnableMultimodal());
+    EXPECT_EQ(config->GetTextPrompt(), "What is in this image?");
+    EXPECT_EQ(config->GetModelType(), "vllm");
+    EXPECT_EQ(config->GetModelName(), "llama3");
+}
+
+TEST(ConfigManagerTest, ParsesVllmModelType) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--model_type=vllm", "--model=llama3",
+                          "--text_prompt=Hello world"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    auto config = mgr.LoadFromCommandLine(argc, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetModelType(), "vllm");
+    EXPECT_EQ(config->GetModelName(), "llama3");
+    EXPECT_EQ(config->GetTextPrompt(), "Hello world");
+}

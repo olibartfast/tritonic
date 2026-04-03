@@ -2,6 +2,8 @@
 #include <chrono>
 #include <deque>
 #include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <random>
 #include <sstream>
 #include <thread>
@@ -10,6 +12,18 @@
 App::App(std::shared_ptr<ITriton> triton, std::shared_ptr<InferenceConfig> config,
          std::shared_ptr<Logger> logger)
     : tritonClient_(triton), config_(config), logger_(logger) {}
+
+bool App::isTextGenerationModel() const {
+    const std::string& type = config_->GetModelType();
+    // Normalize: lowercase and strip hyphens/underscores for comparison
+    std::string normalized;
+    for (char c : type) {
+        if (c != '-' && c != '_') {
+            normalized += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        }
+    }
+    return normalized == "vllm" || normalized == "llm" || normalized == "textgeneration";
+}
 
 int App::run() {
     try {
@@ -63,73 +77,82 @@ int App::run() {
         TritonModelInfo modelInfo = tritonClient_->getModelInfo(
             config_->GetModelName(), config_->GetServerAddress(), config_->GetInputSizes());
 
-        // Create task instance
-        logger_->Info("Creating task instance for model type: " + config_->GetModelType());
-        auto visionCoreModelInfo = convertToVisionCoreModelInfo(modelInfo);
-        vision_core::TaskConfig taskConfig;
-        taskConfig.confidence_threshold = config_->GetConfidenceThreshold();
-        taskConfig.nms_threshold = config_->GetNmsThreshold();
-        task_ = vision_core::TaskFactory::createTaskInstance(config_->GetModelType(),
-                                                             visionCoreModelInfo, taskConfig);
+        // Branch based on model type: text generation vs. vision tasks
+        if (isTextGenerationModel()) {
+            logger_->Info("Text generation model detected (model_type: " +
+                          config_->GetModelType() + ")");
+            processTextGeneration();
+        } else {
+            // Create task instance for vision models
+            logger_->Info("Creating task instance for model type: " + config_->GetModelType());
+            auto visionCoreModelInfo = convertToVisionCoreModelInfo(modelInfo);
+            vision_core::TaskConfig taskConfig;
+            taskConfig.confidence_threshold = config_->GetConfidenceThreshold();
+            taskConfig.nms_threshold = config_->GetNmsThreshold();
+            task_ = vision_core::TaskFactory::createTaskInstance(
+                config_->GetModelType(), visionCoreModelInfo, taskConfig);
 
-        if (!task_) {
-            throw std::runtime_error("Failed to create task instance");
-        }
-
-        // Extract frame buffer size for video classification from 5D input shape [B, T, C, H, W]
-        if (task_->getTaskType() == vision_core::TaskType::VideoClassification &&
-            !modelInfo.input_shapes.empty()) {
-            const auto& shape = modelInfo.input_shapes[0];
-            if (shape.size() == 5) {
-                num_frames_ = static_cast<int>(shape[1]);
+            if (!task_) {
+                throw std::runtime_error("Failed to create task instance");
             }
-            logger_->Info("Video classification frame buffer size: " + std::to_string(num_frames_));
-        }
 
-        // Load class names
-        class_names_ = task_->readLabelNames(config_->GetLabelsFile());
-        logger_->Info("Loaded " + std::to_string(class_names_.size()) + " class names from " +
-                      config_->GetLabelsFile());
-        colors_ = generateRandomColors(class_names_.size());
-
-        // Parse source files
-        std::vector<std::string> sourceNames = split(config_->GetSource(), ',');
-
-        // Categorize source files
-        std::vector<std::string> image_list;
-        std::vector<std::string> video_list;
-        for (const auto& sourceName : sourceNames) {
-            if (isImageFile(sourceName)) {
-                image_list.push_back(sourceName);
-                logger_->Debug("Added image file: " + sourceName);
-            } else if (isVideoFile(sourceName)) {
-                video_list.push_back(sourceName);
-                logger_->Debug("Added video file: " + sourceName);
-            } else {
-                logger_->Warn("Unknown file type: " + sourceName);
+            // Extract frame buffer size for video classification
+            if (task_->getTaskType() == vision_core::TaskType::VideoClassification &&
+                !modelInfo.input_shapes.empty()) {
+                const auto& shape = modelInfo.input_shapes[0];
+                if (shape.size() == 5) {
+                    num_frames_ = static_cast<int>(shape[1]);
+                }
+                logger_->Info("Video classification frame buffer size: " +
+                              std::to_string(num_frames_));
             }
-        }
 
-        if (image_list.empty() && video_list.empty()) {
-            throw std::runtime_error("No valid image or video files provided");
-        }
+            // Load class names
+            class_names_ = task_->readLabelNames(config_->GetLabelsFile());
+            logger_->Info("Loaded " + std::to_string(class_names_.size()) +
+                          " class names from " + config_->GetLabelsFile());
+            colors_ = generateRandomColors(class_names_.size());
 
-        logger_->Info("Processing " + std::to_string(image_list.size()) + " images and " +
-                      std::to_string(video_list.size()) + " videos");
+            // Parse source files
+            std::vector<std::string> sourceNames = split(config_->GetSource(), ',');
 
-        // Process images
-        if (!image_list.empty()) {
-            processImages(image_list);
-        }
-
-        // Process videos
-        if (!video_list.empty()) {
-            logger_->Info("Processing videos");
-            for (const auto& sourceName : video_list) {
-                if (task_->getTaskType() == vision_core::TaskType::VideoClassification) {
-                    processVideoClassification(sourceName);
+            // Categorize source files
+            std::vector<std::string> image_list;
+            std::vector<std::string> video_list;
+            for (const auto& sourceName : sourceNames) {
+                if (isImageFile(sourceName)) {
+                    image_list.push_back(sourceName);
+                    logger_->Debug("Added image file: " + sourceName);
+                } else if (isVideoFile(sourceName)) {
+                    video_list.push_back(sourceName);
+                    logger_->Debug("Added video file: " + sourceName);
                 } else {
-                    processVideo(sourceName);
+                    logger_->Warn("Unknown file type: " + sourceName);
+                }
+            }
+
+            if (image_list.empty() && video_list.empty()) {
+                throw std::runtime_error("No valid image or video files provided");
+            }
+
+            logger_->Info("Processing " + std::to_string(image_list.size()) +
+                          " images and " + std::to_string(video_list.size()) + " videos");
+
+            // Process images
+            if (!image_list.empty()) {
+                processImages(image_list);
+            }
+
+            // Process videos
+            if (!video_list.empty()) {
+                logger_->Info("Processing videos");
+                for (const auto& sourceName : video_list) {
+                    if (task_->getTaskType() ==
+                        vision_core::TaskType::VideoClassification) {
+                        processVideoClassification(sourceName);
+                    } else {
+                        processVideo(sourceName);
+                    }
                 }
             }
         }
@@ -440,6 +463,55 @@ void App::processVideoClassification(const std::string& sourceName) {
         }
         if (config_->GetWriteFrame() && outputVideo.isOpened()) {
             outputVideo.write(display_frame);
+        }
+    }
+}
+
+void App::processTextGeneration() {
+    // Determine text input: use --text_prompt, --text_input (file), or --source as text
+    std::string prompt;
+    if (!config_->GetTextPrompt().empty()) {
+        prompt = config_->GetTextPrompt();
+    } else if (!config_->GetTextInput().empty()) {
+        std::ifstream file(config_->GetTextInput());
+        if (!file.is_open()) {
+            throw std::runtime_error("Could not open text input file: " +
+                                     config_->GetTextInput());
+        }
+        prompt.assign(std::istreambuf_iterator<char>(file),
+                      std::istreambuf_iterator<char>());
+    } else if (!config_->GetSource().empty()) {
+        prompt = config_->GetSource();
+    } else {
+        throw std::runtime_error(
+            "No text input provided. Use --text_prompt, --text_input, or --source");
+    }
+
+    logger_->Info("Text prompt: " + prompt);
+
+    // Convert prompt to byte vector for Triton inference
+    std::vector<uint8_t> prompt_bytes(prompt.begin(), prompt.end());
+
+    // Build the input data vector matching model input count
+    // vLLM models on Triton typically have a single BYTES input named "text_input"
+    std::vector<std::vector<uint8_t>> input_data;
+    input_data.push_back(prompt_bytes);
+
+    auto start = std::chrono::steady_clock::now();
+    std::vector<Tensor> output_tensors = tritonClient_->infer(input_data);
+    auto end = std::chrono::steady_clock::now();
+    auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    logger_->Info("Inference time: " + std::to_string(diff) + " ms");
+
+    // Extract text output from response tensors
+    for (size_t i = 0; i < output_tensors.size(); ++i) {
+        const auto& tensor = output_tensors[i];
+        for (const auto& element : tensor.data) {
+            if (std::holds_alternative<std::string>(element)) {
+                const std::string& text = std::get<std::string>(element);
+                logger_->Info("Generated text: " + text);
+                std::cout << text << std::endl;
+            }
         }
     }
 }

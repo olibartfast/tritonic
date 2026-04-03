@@ -1,5 +1,6 @@
 #include "Triton.hpp"
 #include <chrono>
+#include <cstring>
 #include <stdexcept>
 #include <thread>
 
@@ -205,6 +206,8 @@ TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& m
             info.input_types.push_back(CV_32S);
         } else if (datatype == "INT64") {
             info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
+        } else if (datatype == "BYTES" || datatype == "STRING") {
+            info.input_types.push_back(-1);  // Sentinel for string/bytes type
         } else {
             throw std::runtime_error("Unsupported data type: " + datatype);
         }
@@ -310,6 +313,9 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
             info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
             logger->Warn("Warning: INT64 type detected for input '" + info.input_names.back() +
                          "'. Will be mapped to CV_32S.");
+        } else if (datatype == "BYTES" || datatype == "STRING") {
+            info.input_types.push_back(-1);  // Sentinel for string/bytes type
+            logger->Info("String/bytes type detected for input '" + info.input_names.back() + "'");
         } else {
             throw std::runtime_error("Unsupported data type: " + datatype);
         }
@@ -524,6 +530,19 @@ std::vector<Tensor> Triton::getInferResults(tc::InferResult* result, const size_
             for (size_t i = 0; i < elementCount; ++i) {
                 infer_result.emplace_back(longData[i]);
             }
+        } else if (output_datatype == "BYTES") {
+            // For BYTES/STRING outputs, extract string data from Triton's
+            // serialized format: each string is prefixed with a 4-byte length
+            size_t offset = 0;
+            while (offset + sizeof(uint32_t) <= outputByteSize) {
+                uint32_t str_len;
+                std::memcpy(&str_len, outputData + offset, sizeof(uint32_t));
+                offset += sizeof(uint32_t);
+                if (offset + str_len > outputByteSize) break;
+                std::string str_val(reinterpret_cast<const char*>(outputData + offset), str_len);
+                infer_result.emplace_back(std::move(str_val));
+                offset += str_len;
+            }
         } else {
             throw std::runtime_error("Unsupported datatype: " + output_datatype);
         }
@@ -580,7 +599,15 @@ std::vector<Tensor> Triton::infer(const std::vector<std::vector<uint8_t>>& input
             continue;  // Skip appending empty data
         }
 
-        err = input->AppendRaw(input_data[i]);
+        const std::string& datatype = model_info_.input_datatypes[i];
+        if (datatype == "BYTES" || datatype == "STRING") {
+            // For string/bytes inputs, use AppendFromString
+            std::string str_data(input_data[i].begin(), input_data[i].end());
+            std::vector<std::string> string_inputs = {str_data};
+            err = input->AppendFromString(string_inputs);
+        } else {
+            err = input->AppendRaw(input_data[i]);
+        }
         if (!err.IsOk()) {
             throw std::runtime_error("Failed setting input " + model_info_.input_names[i] + ": " +
                                      err.Message());
@@ -713,6 +740,11 @@ size_t Triton::calculateTensorSize(const std::vector<int64_t>& shape, const std:
         element_size = sizeof(int64_t);
     } else if (datatype == "UINT8") {
         element_size = sizeof(uint8_t);
+    } else if (datatype == "BYTES" || datatype == "STRING") {
+        // BYTES/STRING inputs are not supported with shared memory
+        throw std::runtime_error(
+            "BYTES/STRING datatype is not supported with shared memory. "
+            "Use standard inference (--shared_memory_type=none) for text inputs.");
     } else {
         throw std::runtime_error("Unsupported datatype for shared memory: " + datatype);
     }

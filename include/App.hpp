@@ -38,6 +38,10 @@ private:
 
     void processVideoClassification(const std::string& sourceName);
 
+    void processTextGeneration();
+
+    bool isTextGenerationModel() const;
+
     void renderPrediction(cv::Mat& frame, const vision_core::Result& prediction);
 
     void drawLabel(cv::Mat& image, const std::string& label, float confidence, int x, int y);

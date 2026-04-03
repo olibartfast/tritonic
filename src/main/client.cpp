@@ -54,6 +54,16 @@ int main(int argc, const char* argv[]) {
         logger->Info("  Show Frame: " + std::string(config->GetShowFrame() ? "true" : "false"));
         logger->Info("  Write Frame: " + std::string(config->GetWriteFrame() ? "true" : "false"));
 
+        if (config->GetEnableMultimodal()) {
+            logger->Info("  Multimodal: enabled");
+            if (!config->GetTextPrompt().empty())
+                logger->Info("  Text Prompt: " + config->GetTextPrompt());
+            if (!config->GetTextInput().empty())
+                logger->Info("  Text Input: " + config->GetTextInput());
+            if (!config->GetAudioInput().empty())
+                logger->Info("  Audio Input: " + config->GetAudioInput());
+        }
+
         // Create dependencies
         int port = config->GetPort();
         ProtocolType protocol =

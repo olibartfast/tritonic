@@ -13,7 +13,7 @@
 // Common types and lightweight includes that don't require heavy dependencies
 // Heavy dependencies like grpc_client.h should only be included where needed
 
-using TensorElement = std::variant<float, int32_t, int64_t, uint8_t>;
+using TensorElement = std::variant<float, int32_t, int64_t, uint8_t, std::string>;
 
 /**
  * @brief Tensor structure combining data and shape
