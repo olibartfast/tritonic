@@ -66,7 +66,7 @@ int App::run() {
         // Check if this is a text generation / LLM model
         if (isTextGenerationModelType(config_->GetModelType())) {
             logger_->Info("Detected text generation model type: " + config_->GetModelType());
-            processTextGeneration();
+            processTextGeneration(modelInfo);
             logger_->Info("Application completed successfully");
             return 0;
         }
@@ -543,7 +543,7 @@ void App::drawLabel(cv::Mat& image, const std::string& label, float confidence, 
                 1);
 }
 
-void App::processTextGeneration() {
+void App::processTextGeneration(const TritonModelInfo& modelInfo) {
     std::string prompt = config_->GetTextPrompt();
     if (prompt.empty()) {
         prompt = config_->GetSource();
@@ -574,8 +574,6 @@ void App::processTextGeneration() {
     // Build inputs matching the model's expected input names
     // Typical vLLM inputs: text_input, sampling_parameters, stream, exclude_input_in_output
     std::vector<std::vector<std::string>> string_inputs;
-    TritonModelInfo modelInfo = tritonClient_->getModelInfo(
-        config_->GetModelName(), config_->GetServerAddress(), config_->GetInputSizes());
 
     for (size_t i = 0; i < modelInfo.input_names.size(); ++i) {
         const std::string& name = modelInfo.input_names[i];

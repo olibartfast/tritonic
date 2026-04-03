@@ -38,7 +38,7 @@ private:
 
     void processVideoClassification(const std::string& sourceName);
 
-    void processTextGeneration();
+    void processTextGeneration(const TritonModelInfo& modelInfo);
 
     void renderPrediction(cv::Mat& frame, const vision_core::Result& prediction);
 
