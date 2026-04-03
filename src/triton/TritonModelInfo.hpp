@@ -11,6 +11,9 @@ struct TritonModelInfo {
     std::vector<std::string> input_datatypes;
     std::vector<int> input_types;
 
+    std::vector<std::string> output_datatypes;
+    std::vector<std::vector<int64_t>> output_shapes;
+
     int type1_{CV_32FC1};
     int type3_{CV_32FC3};
     int max_batch_size_{0};

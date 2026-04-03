@@ -80,6 +80,13 @@ tritonic/
 
 - [RAFT](https://pytorch.org/vision/stable/models/raft.html)
 
+## Text Generation / LLM (via vLLM Backend)
+
+- LLaMA, Mistral, Qwen, Phi, Gemma, ChatGLM, and other models supported by
+  [vLLM on Triton](https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/getting_started/quickstart.html)
+
+See [vLLM / Multimodal Support Guide](docs/guides/vllm_multimodal_support.md) for setup and usage details.
+
 
 ## Build Client Libraries
 
@@ -342,6 +349,13 @@ To view all available parameters, run:
 | Tensorflow Classifier  | `tensorflow-classifier` |      |
 | ViT Classifier         | `vit-classifier`       |       |
 | RAFT Optical Flow      | `raft`                 |       |
+| vLLM Text Generation   | `vllm`                 | Any vLLM-served LLM |
+| Generic LLM            | `llm`                  | Generic text generation model |
+| LLaMA                  | `llama`                | LLaMA family models |
+| Mistral                | `mistral`              | Mistral models |
+| Qwen                   | `qwen`                 | Qwen models |
+| Phi                    | `phi`                  | Phi models |
+| Gemma                  | `gemma`                | Gemma models |
 
 
 ## Docker Support

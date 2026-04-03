@@ -58,7 +58,12 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
         "{modality_combination mc |concat | how to combine modalities}"
         "{text_weight tw |1.0   | weight for text modality}"
         "{image_weight iw |1.0  | weight for image modality}"
-        "{audio_weight aw |1.0  | weight for audio modality}";
+        "{audio_weight aw |1.0  | weight for audio modality}"
+        "{max_tokens mxt |256  | max tokens for LLM generation}"
+        "{temperature temp |1.0 | temperature for LLM generation}"
+        "{top_p |1.0            | top-p (nucleus) sampling for LLM generation}"
+        "{repetition_penalty rp |1.0 | repetition penalty for LLM generation}"
+        "{stop_words sw  |      | comma-separated stop words for LLM generation}";
 
     cv::CommandLineParser parser(argc, argv, keys);
 
@@ -92,6 +97,11 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
     config->SetTextWeight(parser.get<float>("text_weight"));
     config->SetImageWeight(parser.get<float>("image_weight"));
     config->SetAudioWeight(parser.get<float>("audio_weight"));
+    config->SetMaxTokens(parser.get<int>("max_tokens"));
+    config->SetTemperature(parser.get<float>("temperature"));
+    config->SetTopP(parser.get<float>("top_p"));
+    config->SetRepetitionPenalty(parser.get<float>("repetition_penalty"));
+    config->SetStopWords(parser.get<cv::String>("stop_words"));
 
     if (parser.has("input_sizes")) {
         std::string s = parser.get<cv::String>("input_sizes");

@@ -172,3 +172,42 @@ TEST(ConfigManagerTest, ParsesConfidenceAndNms) {
     EXPECT_FLOAT_EQ(config->GetConfidenceThreshold(), 0.7f);
     EXPECT_FLOAT_EQ(config->GetNmsThreshold(), 0.3f);
 }
+
+// LLM generation parameters
+
+TEST(InferenceConfigTest, LLMDefaultValues) {
+    InferenceConfig config;
+    EXPECT_EQ(config.GetMaxTokens(), 256);
+    EXPECT_FLOAT_EQ(config.GetTemperature(), 1.0f);
+    EXPECT_FLOAT_EQ(config.GetTopP(), 1.0f);
+    EXPECT_FLOAT_EQ(config.GetRepetitionPenalty(), 1.0f);
+    EXPECT_TRUE(config.GetStopWords().empty());
+}
+
+TEST(InferenceConfigTest, LLMSettersGetters) {
+    InferenceConfig config;
+    config.SetMaxTokens(512);
+    config.SetTemperature(0.7f);
+    config.SetTopP(0.9f);
+    config.SetRepetitionPenalty(1.2f);
+    config.SetStopWords("\\n,</s>");
+    EXPECT_EQ(config.GetMaxTokens(), 512);
+    EXPECT_FLOAT_EQ(config.GetTemperature(), 0.7f);
+    EXPECT_FLOAT_EQ(config.GetTopP(), 0.9f);
+    EXPECT_FLOAT_EQ(config.GetRepetitionPenalty(), 1.2f);
+    EXPECT_EQ(config.GetStopWords(), "\\n,</s>");
+}
+
+TEST(ConfigManagerTest, ParsesLLMArgs) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--max_tokens=128", "--temperature=0.5", "--top_p=0.8",
+                           "--repetition_penalty=1.1", "--stop_words=\\n"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    auto config = mgr.LoadFromCommandLine(argc, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetMaxTokens(), 128);
+    EXPECT_FLOAT_EQ(config->GetTemperature(), 0.5f);
+    EXPECT_FLOAT_EQ(config->GetTopP(), 0.8f);
+    EXPECT_FLOAT_EQ(config->GetRepetitionPenalty(), 1.1f);
+    EXPECT_EQ(config->GetStopWords(), "\\n");
+}

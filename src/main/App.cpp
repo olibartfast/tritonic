@@ -63,6 +63,14 @@ int App::run() {
         TritonModelInfo modelInfo = tritonClient_->getModelInfo(
             config_->GetModelName(), config_->GetServerAddress(), config_->GetInputSizes());
 
+        // Check if this is a text generation / LLM model
+        if (isTextGenerationModelType(config_->GetModelType())) {
+            logger_->Info("Detected text generation model type: " + config_->GetModelType());
+            processTextGeneration();
+            logger_->Info("Application completed successfully");
+            return 0;
+        }
+
         // Create task instance
         logger_->Info("Creating task instance for model type: " + config_->GetModelType());
         auto visionCoreModelInfo = convertToVisionCoreModelInfo(modelInfo);
@@ -533,6 +541,95 @@ void App::drawLabel(cv::Mat& image, const std::string& label, float confidence, 
                   cv::FILLED);
     cv::putText(image, text, cv::Point(x, y), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0),
                 1);
+}
+
+void App::processTextGeneration() {
+    std::string prompt = config_->GetTextPrompt();
+    if (prompt.empty()) {
+        prompt = config_->GetSource();
+    }
+    if (prompt.empty()) {
+        throw std::runtime_error(
+            "No text prompt provided. Use --text_prompt or --source to specify input text.");
+    }
+
+    logger_->Info("Text generation prompt: " + prompt);
+
+    // Build sampling parameters JSON
+    std::string sampling_params = "{";
+    sampling_params += "\"max_tokens\":" + std::to_string(config_->GetMaxTokens());
+    sampling_params += ",\"temperature\":" + std::to_string(config_->GetTemperature());
+    sampling_params += ",\"top_p\":" + std::to_string(config_->GetTopP());
+    if (config_->GetRepetitionPenalty() != 1.0f) {
+        sampling_params +=
+            ",\"repetition_penalty\":" + std::to_string(config_->GetRepetitionPenalty());
+    }
+    if (!config_->GetStopWords().empty()) {
+        sampling_params += ",\"stop\":\"" + config_->GetStopWords() + "\"";
+    }
+    sampling_params += "}";
+
+    logger_->Debug("Sampling parameters: " + sampling_params);
+
+    // Build inputs matching the model's expected input names
+    // Typical vLLM inputs: text_input, sampling_parameters, stream, exclude_input_in_output
+    std::vector<std::vector<std::string>> string_inputs;
+    TritonModelInfo modelInfo = tritonClient_->getModelInfo(
+        config_->GetModelName(), config_->GetServerAddress(), config_->GetInputSizes());
+
+    for (size_t i = 0; i < modelInfo.input_names.size(); ++i) {
+        const std::string& name = modelInfo.input_names[i];
+        if (name == "text_input" || name == "prompt") {
+            string_inputs.push_back({prompt});
+        } else if (name == "sampling_parameters") {
+            string_inputs.push_back({sampling_params});
+        } else if (name == "stream") {
+            string_inputs.push_back({"false"});
+        } else if (name == "exclude_input_in_output") {
+            string_inputs.push_back({"true"});
+        } else if (name == "image" && config_->GetEnableMultimodal() &&
+                   !config_->GetSource().empty() && isImageFile(config_->GetSource())) {
+            // For multimodal: read image and base64-encode it
+            // This requires vision-core multimodal support (see docs/guides/vllm_multimodal_support.md)
+            logger_->Warn("Multimodal image input detected but full multimodal preprocessing "
+                          "requires vision-core support. Passing empty image input.");
+            string_inputs.push_back({""});
+        } else {
+            logger_->Debug("Using empty default for unrecognized input: " + name);
+            string_inputs.push_back({""});
+        }
+    }
+
+    auto start = std::chrono::steady_clock::now();
+    std::vector<Tensor> results = tritonClient_->inferText(string_inputs);
+    auto end = std::chrono::steady_clock::now();
+    auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    logger_->Info("Text generation completed in " + std::to_string(diff) + " ms");
+
+    // Extract and display text output
+    for (size_t i = 0; i < results.size(); ++i) {
+        const auto& tensor = results[i];
+        for (const auto& elem : tensor.data) {
+            if (std::holds_alternative<std::string>(elem)) {
+                const std::string& text = std::get<std::string>(elem);
+                logger_->Info("Generated text: " + text);
+            }
+        }
+    }
+}
+
+bool App::isTextGenerationModelType(const std::string& modelType) {
+    // Normalize: lowercase, strip hyphens, underscores, spaces
+    std::string normalized;
+    for (char c : modelType) {
+        if (c != '-' && c != '_' && c != ' ') {
+            normalized += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        }
+    }
+    return normalized == "vllm" || normalized == "llm" || normalized == "textgeneration" ||
+           normalized == "llama" || normalized == "mistral" || normalized == "chatglm" ||
+           normalized == "qwen" || normalized == "phi" || normalized == "gemma";
 }
 
 std::vector<cv::Scalar> App::generateRandomColors(int numColors) {

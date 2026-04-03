@@ -182,6 +182,8 @@ public:
 
     void createTritonClient() override;
     std::vector<Tensor> infer(const std::vector<std::vector<uint8_t>>& input_data) override;
+    std::vector<Tensor> inferText(
+        const std::vector<std::vector<std::string>>& string_inputs) override;
     std::vector<Tensor> getInferResults(tc::InferResult* result, const size_t batch_size,
                                         const std::vector<std::string>& output_names);
 

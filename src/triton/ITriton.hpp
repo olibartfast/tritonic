@@ -29,6 +29,14 @@ public:
     virtual std::vector<Tensor> infer(const std::vector<std::vector<uint8_t>>& input_data) = 0;
 
     /**
+     * Perform inference with string inputs (for LLM/vLLM backends).
+     * Each element in string_inputs corresponds to one model input,
+     * containing a vector of strings for that input tensor.
+     */
+    virtual std::vector<Tensor> inferText(
+        const std::vector<std::vector<std::string>>& string_inputs) = 0;
+
+    /**
      * Set input shapes for dynamic shape models
      */
     virtual void setInputShapes(const std::vector<std::vector<int64_t>>& shapes) = 0;

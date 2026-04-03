@@ -38,6 +38,8 @@ private:
 
     void processVideoClassification(const std::string& sourceName);
 
+    void processTextGeneration();
+
     void renderPrediction(cv::Mat& frame, const vision_core::Result& prediction);
 
     void drawLabel(cv::Mat& image, const std::string& label, float confidence, int x, int y);
@@ -49,5 +51,6 @@ private:
 
     bool isImageFile(const std::string& filename);
     bool isVideoFile(const std::string& filename);
+    bool isTextGenerationModelType(const std::string& modelType);
     std::vector<std::string> split(const std::string& s, char delimiter);
 };

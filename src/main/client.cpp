@@ -54,6 +54,13 @@ int main(int argc, const char* argv[]) {
         logger->Info("  Show Frame: " + std::string(config->GetShowFrame() ? "true" : "false"));
         logger->Info("  Write Frame: " + std::string(config->GetWriteFrame() ? "true" : "false"));
 
+        if (!config->GetTextPrompt().empty()) {
+            logger->Info("  Text Prompt: " + config->GetTextPrompt());
+            logger->Info("  Max Tokens: " + std::to_string(config->GetMaxTokens()));
+            logger->Info("  Temperature: " + std::to_string(config->GetTemperature()));
+            logger->Info("  Top-P: " + std::to_string(config->GetTopP()));
+        }
+
         // Create dependencies
         int port = config->GetPort();
         ProtocolType protocol =
