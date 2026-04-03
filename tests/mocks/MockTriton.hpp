@@ -16,6 +16,9 @@ public:
     MOCK_METHOD(std::vector<Tensor>, infer, (const std::vector<std::vector<uint8_t>>& input_data),
                 (override));
 
+    MOCK_METHOD(std::vector<Tensor>, inferText,
+                (const std::vector<std::vector<std::string>>& string_inputs), (override));
+
     MOCK_METHOD(void, setInputShapes, (const std::vector<std::vector<int64_t>>& shapes),
                 (override));
 

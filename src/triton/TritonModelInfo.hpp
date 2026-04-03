@@ -4,7 +4,11 @@
 #include <vector>
 
 struct TritonModelInfo {
+    static constexpr int kStringTypeSentinel = -1;
+
     std::vector<std::string> output_names;
+    std::vector<std::string> output_datatypes;
+    std::vector<std::vector<int64_t>> output_shapes;
     std::vector<std::string> input_names;
     std::vector<std::vector<int64_t>> input_shapes;
     std::vector<std::string> input_formats;

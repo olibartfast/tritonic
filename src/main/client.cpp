@@ -53,6 +53,13 @@ int main(int argc, const char* argv[]) {
         logger->Info("  Verbose: " + std::string(config->GetVerbose() ? "true" : "false"));
         logger->Info("  Show Frame: " + std::string(config->GetShowFrame() ? "true" : "false"));
         logger->Info("  Write Frame: " + std::string(config->GetWriteFrame() ? "true" : "false"));
+        if (!config->GetTextPrompt().empty() || !config->GetTextInput().empty()) {
+            logger->Info("  Text Prompt: " + config->GetTextPrompt());
+            logger->Info("  Text Input: " + config->GetTextInput());
+            logger->Info("  Max Tokens: " + std::to_string(config->GetMaxTokens()));
+            logger->Info("  Temperature: " + std::to_string(config->GetTemperature()));
+            logger->Info("  Top-P: " + std::to_string(config->GetTopP()));
+        }
 
         // Create dependencies
         int port = config->GetPort();

@@ -205,6 +205,10 @@ TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& m
             info.input_types.push_back(CV_32S);
         } else if (datatype == "INT64") {
             info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
+        } else if (datatype == "BOOL") {
+            info.input_types.push_back(CV_8U);
+        } else if (datatype == "BYTES" || datatype == "STRING") {
+            info.input_types.push_back(TritonModelInfo::kStringTypeSentinel);
         } else {
             throw std::runtime_error("Unsupported data type: " + datatype);
         }
@@ -214,6 +218,15 @@ TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& m
     // Outputs
     for (const auto& output : model_metadata.outputs()) {
         info.output_names.push_back(output.name());
+        std::string datatype = output.datatype();
+        if (datatype.rfind("TYPE_", 0) == 0)
+            datatype = datatype.substr(5);
+        info.output_datatypes.push_back(datatype);
+        std::vector<int64_t> shape;
+        for (const auto& dim : output.shape()) {
+            shape.push_back(dim);
+        }
+        info.output_shapes.push_back(shape);
     }
     return info;
 }
@@ -300,7 +313,9 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
         info.input_shapes.push_back(shape);
 
         std::string datatype = input["data_type"].GetString();
-        datatype.erase(0, 5);  // Remove the "TYPE_" prefix
+        if (datatype.rfind("TYPE_", 0) == 0) {
+            datatype.erase(0, 5);
+        }
         info.input_datatypes.push_back(datatype);
         if (datatype == "FP32") {
             info.input_types.push_back(CV_32F);
@@ -310,6 +325,10 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
             info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
             logger->Warn("Warning: INT64 type detected for input '" + info.input_names.back() +
                          "'. Will be mapped to CV_32S.");
+        } else if (datatype == "BOOL") {
+            info.input_types.push_back(CV_8U);
+        } else if (datatype == "BYTES" || datatype == "STRING") {
+            info.input_types.push_back(TritonModelInfo::kStringTypeSentinel);
         } else {
             throw std::runtime_error("Unsupported data type: " + datatype);
         }
@@ -319,6 +338,18 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
 
     for (const auto& output : responseJson["output"].GetArray()) {
         info.output_names.push_back(output["name"].GetString());
+        std::string datatype = output["data_type"].GetString();
+        if (datatype.rfind("TYPE_", 0) == 0) {
+            datatype.erase(0, 5);
+        }
+        info.output_datatypes.push_back(datatype);
+        std::vector<int64_t> shape;
+        if (output.HasMember("dims")) {
+            for (const auto& dim : output["dims"].GetArray()) {
+                shape.push_back(dim.GetInt64());
+            }
+        }
+        info.output_shapes.push_back(shape);
     }
 
     return info;
@@ -390,6 +421,16 @@ TritonModelInfo Triton::getModelInfo(const std::string& modelName, const std::st
 
 void Triton::updateInputTypes() {
     for (size_t i = 0; i < model_info_.input_shapes.size(); ++i) {
+        const auto& datatype = model_info_.input_datatypes[i];
+        if (datatype == "BYTES" || datatype == "STRING") {
+            model_info_.input_types[i] = TritonModelInfo::kStringTypeSentinel;
+            continue;
+        }
+        if (datatype == "BOOL") {
+            model_info_.input_types[i] = CV_8U;
+            continue;
+        }
+
         const auto& shape = model_info_.input_shapes[i];
         const auto& format = model_info_.input_formats[i];
 
@@ -524,6 +565,23 @@ std::vector<Tensor> Triton::getInferResults(tc::InferResult* result, const size_
             for (size_t i = 0; i < elementCount; ++i) {
                 infer_result.emplace_back(longData[i]);
             }
+        } else if (output_datatype == "BYTES" || output_datatype == "STRING") {
+            std::vector<std::string> stringData;
+            err = result->StringData(outputName, &stringData);
+            if (!err.IsOk()) {
+                throw std::runtime_error("Unable to get string data for " + outputName + ": " +
+                                         err.Message());
+            }
+            infer_result.reserve(stringData.size());
+            for (const auto& value : stringData) {
+                infer_result.emplace_back(value);
+            }
+        } else if (output_datatype == "BOOL") {
+            const uint8_t* boolData = reinterpret_cast<const uint8_t*>(outputData);
+            infer_result.reserve(outputByteSize);
+            for (size_t i = 0; i < outputByteSize; ++i) {
+                infer_result.emplace_back(boolData[i]);
+            }
         } else {
             throw std::runtime_error("Unsupported datatype: " + output_datatype);
         }
@@ -612,6 +670,94 @@ std::vector<Tensor> Triton::infer(const std::vector<std::vector<uint8_t>>& input
     result_ptr.reset(result);
 
     // Smart pointers automatically clean up inputs and outputs
+    return tensors;
+}
+
+std::vector<Tensor> Triton::inferText(
+    const std::vector<std::vector<std::string>>& string_inputs) {
+    tc::Error err;
+    std::vector<std::unique_ptr<tc::InferInput>> inputs;
+    std::vector<std::unique_ptr<tc::InferRequestedOutput>> outputs;
+
+    for (const auto& output_name : model_info_.output_names) {
+        tc::InferRequestedOutput* output;
+        err = tc::InferRequestedOutput::Create(&output, output_name);
+        if (!err.IsOk()) {
+            throw std::runtime_error("Unable to get output: " + err.Message());
+        }
+        outputs.emplace_back(output);
+    }
+
+    std::vector<const tc::InferRequestedOutput*> output_ptrs;
+    output_ptrs.reserve(outputs.size());
+    for (const auto& output : outputs) {
+        output_ptrs.push_back(output.get());
+    }
+
+    tc::InferOptions options(model_name_);
+    options.model_version_ = model_version_;
+
+    if (string_inputs.size() != model_info_.input_names.size()) {
+        throw std::runtime_error("Mismatch in number of inputs. Expected " +
+                                 std::to_string(model_info_.input_names.size()) + ", but got " +
+                                 std::to_string(string_inputs.size()));
+    }
+
+    for (size_t i = 0; i < model_info_.input_names.size(); ++i) {
+        tc::InferInput* input;
+        std::vector<int64_t> shape = model_info_.input_shapes[i];
+        if (shape.empty()) {
+            shape = {static_cast<int64_t>(string_inputs[i].size())};
+        }
+
+        err = tc::InferInput::Create(&input, model_info_.input_names[i], shape,
+                                     model_info_.input_datatypes[i]);
+        if (!err.IsOk()) {
+            throw std::runtime_error("Unable to create input " + model_info_.input_names[i] + ": " +
+                                     err.Message());
+        }
+        inputs.emplace_back(input);
+
+        const std::string& datatype = model_info_.input_datatypes[i];
+        if (datatype == "BYTES" || datatype == "STRING") {
+            err = input->AppendFromString(string_inputs[i]);
+        } else if (datatype == "BOOL") {
+            std::vector<uint8_t> bool_values;
+            bool_values.reserve(string_inputs[i].size());
+            for (const auto& value : string_inputs[i]) {
+                bool_values.push_back((value == "1" || value == "true" || value == "True") ? 1 : 0);
+            }
+            err = input->AppendRaw(bool_values);
+        } else {
+            throw std::runtime_error("inferText only supports BYTES/STRING/BOOL inputs, got " +
+                                     datatype + " for " + model_info_.input_names[i]);
+        }
+
+        if (!err.IsOk()) {
+            throw std::runtime_error("Failed setting input " + model_info_.input_names[i] + ": " +
+                                     err.Message());
+        }
+    }
+
+    std::vector<tc::InferInput*> input_ptrs;
+    input_ptrs.reserve(inputs.size());
+    for (const auto& input : inputs) {
+        input_ptrs.push_back(input.get());
+    }
+
+    tc::InferResult* result;
+    std::unique_ptr<tc::InferResult> result_ptr;
+    if (protocol_ == ProtocolType::HTTP) {
+        err = triton_client_.httpClient->Infer(&result, options, input_ptrs, output_ptrs);
+    } else {
+        err = triton_client_.grpcClient->Infer(&result, options, input_ptrs, output_ptrs);
+    }
+    if (!err.IsOk()) {
+        throw std::runtime_error("Failed sending synchronous infer request: " + err.Message());
+    }
+
+    auto tensors = getInferResults(result, model_info_.batch_size_, model_info_.output_names);
+    result_ptr.reset(result);
     return tensors;
 }
 
@@ -711,8 +857,11 @@ size_t Triton::calculateTensorSize(const std::vector<int64_t>& shape, const std:
         element_size = sizeof(int32_t);
     } else if (datatype == "INT64") {
         element_size = sizeof(int64_t);
-    } else if (datatype == "UINT8") {
+    } else if (datatype == "UINT8" || datatype == "BOOL") {
         element_size = sizeof(uint8_t);
+    } else if (datatype == "BYTES" || datatype == "STRING") {
+        throw std::runtime_error(
+            "BYTES/STRING inputs are not supported with shared memory inference.");
     } else {
         throw std::runtime_error("Unsupported datatype for shared memory: " + datatype);
     }
