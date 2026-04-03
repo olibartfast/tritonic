@@ -60,8 +60,8 @@ std::string EscapeJsonString(const std::string& value) {
 
 std::string BuildSamplingParameters(const InferenceConfig& config) {
     std::ostringstream oss;
-    oss << "{\"max_tokens\":" << config.GetMaxTokens() << ",\"temperature\":"
-        << config.GetTemperature() << ",\"top_p\":" << config.GetTopP();
+    oss << "{\"max_tokens\":" << config.GetMaxTokens()
+        << ",\"temperature\":" << config.GetTemperature() << ",\"top_p\":" << config.GetTopP();
     if (config.GetRepetitionPenalty() != 1.0f) {
         oss << ",\"repetition_penalty\":" << config.GetRepetitionPenalty();
     }
@@ -273,8 +273,7 @@ bool App::isTextGenerationModelType(const std::string& modelType) {
     const std::string normalized = NormalizeModelType(modelType);
     return normalized == "vllm" || normalized == "llm" || normalized == "llama" ||
            normalized == "mistral" || normalized == "qwen" || normalized == "phi" ||
-           normalized == "gemma" || normalized == "chatglm" ||
-           normalized == "textgeneration";
+           normalized == "gemma" || normalized == "chatglm" || normalized == "textgeneration";
 }
 
 void App::processTextGeneration(const TritonModelInfo& modelInfo) {
