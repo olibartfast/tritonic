@@ -207,7 +207,7 @@ TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& m
         } else if (datatype == "INT64") {
             info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
         } else if (datatype == "BYTES" || datatype == "STRING") {
-            info.input_types.push_back(-1);  // Sentinel for string/bytes type
+            info.input_types.push_back(TritonModelInfo::kStringTypeSentinel);
         } else {
             throw std::runtime_error("Unsupported data type: " + datatype);
         }
@@ -314,7 +314,7 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
             logger->Warn("Warning: INT64 type detected for input '" + info.input_names.back() +
                          "'. Will be mapped to CV_32S.");
         } else if (datatype == "BYTES" || datatype == "STRING") {
-            info.input_types.push_back(-1);  // Sentinel for string/bytes type
+            info.input_types.push_back(TritonModelInfo::kStringTypeSentinel);
             logger->Info("String/bytes type detected for input '" + info.input_names.back() + "'");
         } else {
             throw std::runtime_error("Unsupported data type: " + datatype);

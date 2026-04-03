@@ -489,7 +489,9 @@ void App::processTextGeneration() {
 
     logger_->Info("Text prompt: " + prompt);
 
-    // Convert prompt to byte vector for Triton inference
+    // Convert prompt to byte vector for Triton inference.
+    // The Triton::infer() method accepts raw bytes and converts BYTES-type
+    // inputs back to strings via AppendFromString for the Triton client API.
     std::vector<uint8_t> prompt_bytes(prompt.begin(), prompt.end());
 
     // Build the input data vector matching model input count

@@ -48,10 +48,10 @@ TEST(TritonInterfaceTest, TritonModelInfoCanStoreBytesDatatype) {
     modelInfo.input_shapes.push_back({1});
     modelInfo.input_formats.push_back("FORMAT_NONE");
     modelInfo.input_datatypes.push_back("BYTES");
-    modelInfo.input_types.push_back(-1);  // Sentinel for string type
+    modelInfo.input_types.push_back(TritonModelInfo::kStringTypeSentinel);
 
     EXPECT_EQ(modelInfo.input_datatypes[0], "BYTES");
-    EXPECT_EQ(modelInfo.input_types[0], -1);
+    EXPECT_EQ(modelInfo.input_types[0], TritonModelInfo::kStringTypeSentinel);
 }
 
 TEST(TritonInterfaceTest, TritonModelInfoVllmLayout) {
@@ -62,7 +62,7 @@ TEST(TritonInterfaceTest, TritonModelInfoVllmLayout) {
     modelInfo.input_shapes = {{1}};
     modelInfo.input_formats = {"FORMAT_NONE"};
     modelInfo.input_datatypes = {"BYTES"};
-    modelInfo.input_types = {-1};
+    modelInfo.input_types = {TritonModelInfo::kStringTypeSentinel};
     modelInfo.max_batch_size_ = 0;
 
     EXPECT_EQ(modelInfo.input_names[0], "text_input");
