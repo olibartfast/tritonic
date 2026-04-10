@@ -28,8 +28,18 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 
 ```
 tritonic/
-├── src/                          # Source code (main app, triton client, tasks, utils)
-├── include/                      # Header files
+├── src/
+│   ├── main/                     # Entry point (client.cpp), App, Logger, ConfigManager
+│   ├── triton/                   # Triton client (Triton.hpp/.cpp, forwarding headers)
+│   ├── chat/                     # OpenAI-compatible backend (ChatBackend, ChatSession)
+│   └── common/                   # Shared forwarding headers
+├── include/
+│   ├── tritonic/                 # Canonical namespaced headers
+│   │   ├── core/                 # types.hpp, interfaces.hpp
+│   │   ├── triton/               # model_info.hpp, itriton.hpp, triton_backend.hpp
+│   │   ├── chat/                 # ichat_backend.hpp
+│   │   └── infra/                # logger.hpp, config.hpp, config_manager.hpp
+│   └── *.hpp                     # Backward-compat forwarding headers
 ├── deploy/                       # Model export scripts (per task type)
 ├── scripts/                      # Docker, setup, and utility scripts
 ├── config/                       # Configuration files
@@ -192,11 +202,37 @@ cmake --build .
 
 ## Architecture
 
-TritonIC uses a modular architecture:
+TritonIC uses a modular, dual-backend architecture.
 
-- **[vision-core](https://github.com/olibartfast/vision-core)**: Handles all model-specific preprocessing and postprocessing logic, task management, and computer vision algorithms. Automatically fetched as a CMake dependency via `FetchContent`.
+### Backends
 
-- **Local infrastructure** (`include/Logger.hpp`, `include/Config.hpp`, `include/ConfigManager.hpp`): Provides logging (`Logger`, `LoggerManager`, `LogLevel`) and CLI configuration parsing (`InferenceConfig`, `ConfigManager`) as plain types with no external dependency.
+| Backend | Flag | Use case |
+|---------|------|----------|
+| **Triton** (default) | `--backend=triton` | Binary tensor inference — object detection, segmentation, classification, optical flow, pose, depth |
+| **Chat** | `--backend=chat` | OpenAI-compatible `/v1/chat/completions` — VLMs, LLMs, multimodal chat (Ollama, llama.cpp, SGLang, vLLM, OpenAI) |
+
+Both backends implement the common `tritonic::core::IInferenceBackend` interface, enabling dependency injection and mockability in tests.
+
+### Key components
+
+- **[vision-core](https://github.com/olibartfast/vision-core)**: All model-specific pre/postprocessing and `TaskFactory`. Automatically fetched via CMake `FetchContent`.
+
+- **Local infrastructure** (`include/tritonic/infra/`): Logging (`tritonic::infra::Logger`, `LoggerManager`, `LogLevel`) and CLI configuration (`tritonic::infra::InferenceConfig`, `ConfigManager`). Backward-compat forwarding headers kept in `include/` root.
+
+- **Triton backend** (`tritonic::triton::TritonBackend`): Adapter wrapping `ITriton` for binary tensor I/O over HTTP or gRPC.
+
+- **Chat backend** (`src/chat/ChatBackend`): Facade over libcurl implementing `/v1/chat/completions`. No extra JSON or base64 library dependencies.
+
+- **ChatSession** (`src/chat/ChatSession`): Stateful multi-turn conversation manager with sliding-window history trim and pinned context support.
+
+### Namespace layout
+
+| Namespace | Headers | Contents |
+|-----------|---------|----------|
+| `tritonic::core` | `include/tritonic/core/` | `Tensor`, `Message`, `ChatRequest/Response`, `IInferenceBackend` |
+| `tritonic::triton` | `include/tritonic/triton/` | `ITriton`, `ModelInfo`, `TritonBackend` |
+| `tritonic::chat` | `include/tritonic/chat/` | `IChatBackend` |
+| `tritonic::infra` | `include/tritonic/infra/` | `InferenceConfig`, `ConfigManager`, `Logger` |
 
 ## Notes
 
@@ -342,7 +378,49 @@ To view all available parameters, run:
 | Tensorflow Classifier  | `tensorflow-classifier` |      |
 | ViT Classifier         | `vit-classifier`       |       |
 | RAFT Optical Flow      | `raft`                 |       |
+| VideoMAE               | `videomae`             | 16-frame sliding window video |
+| ViViT                  | `vivit`                | Video Transformer |
+| TimeSformer            | `timesformer`          | Video Transformer |
+| ViTPose                | `vitpose`              | Pose estimation (COCO 17 keypoints) |
+| Depth Anything V2      | `depth_anything_v2`    | Monocular depth estimation |
 
+
+## Chat Backend (OpenAI-compatible)
+
+Query any OpenAI-compatible server (Ollama, llama.cpp, SGLang, vLLM, OpenAI, Together AI) without a Triton server.
+
+### Single-turn with an image
+```bash
+./tritonic \
+    --backend=chat \
+    --api_endpoint=http://localhost:11434/v1/chat/completions \
+    --model=llava:7b \
+    --text_prompt="Describe what you see" \
+    --source=/path/to/image.jpg
+```
+
+### Interactive multi-turn session
+```bash
+./tritonic \
+    --backend=chat \
+    --api_endpoint=http://localhost:11434/v1/chat/completions \
+    --model=llava:7b \
+    --text_prompt="You are a helpful assistant" \
+    --interactive
+```
+
+**Chat CLI parameters:**
+
+| Parameter | Short | Default | Description |
+|-----------|-------|---------|-------------|
+| `--backend` | `be` | `triton` | `triton` or `chat` |
+| `--api_endpoint` | `ae` | — | Full URL, e.g. `http://localhost:11434/v1/chat/completions` |
+| `--api_key_env` | `ak` | — | Env-var name that holds the API key (e.g. `OPENAI_API_KEY`) |
+| `--text_prompt` | `tp` | — | System prompt (interactive) or user prompt (single-turn) |
+| `--max_tokens` | `mxt` | `256` | Max tokens to generate |
+| `--temperature` | `temp` | `1.0` | Sampling temperature |
+| `--target_image_size` | `tis` | `512` | Longest edge (px) before base64 encoding |
+| `--interactive` | `ia` | `false` | Enable multi-turn REPL |
 
 ## Docker Support
 For detailed instructions on installing Docker and the NVIDIA Container Toolkit, refer to the [Docker Setup Document](docs/guides/Docker_setup.md).
