@@ -1,15 +1,21 @@
 ![Alt text](data/tritonic.jpeg)
 
-# TritonIC - C++ Triton Inference Client for Computer Vision Models
+# TritonIC - C++ Inference Client
 
 [![CI](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml)
 
-This C++ application enables machine learning tasks (e.g. object detection, classification, optical flow ...) using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
+TritonIC is a C++ application that supports two complementary inference modes:
+
+- **Triton backend** — computer vision tasks (object detection, segmentation, classification, optical flow, pose, depth) via the [NVIDIA Triton Inference Server](https://github.com/triton-inference-server/server) over HTTP or gRPC.
+- **Chat backend** — text and multimodal generation via any OpenAI-compatible `/v1/chat/completions` endpoint (Ollama, llama.cpp, SGLang, vLLM, OpenAI, etc.).
+
+The two backends are complementary: use Triton for real-time computer vision at high throughput; use the Chat backend for VLMs and LLMs without a Triton server.
 
 > 🚧 Status: Under Development — expect frequent updates.
 
 ## Table of Contents
 - [Project Structure](#project-structure)
+- [Architecture](#architecture)
 - [Tested Models](#tested-models)
 - [Build Client Libraries](#build-client-libraries)
 - [Dependencies](#dependencies)
@@ -18,6 +24,8 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 - [Notes](#notes)
 - [Deploying Models](#deploying-models)
 - [Running Inference](#running-inference)
+  - [Triton backend](#command-line-inference-on-video-or-image)
+  - [Chat backend](#chat-backend-openai-compatible)
 - [Docker Support](#docker-support)
 - [Kubernetes Deployment](#kubernetes-deployment)
 - [Demo](#demo)
@@ -51,6 +59,23 @@ tritonic/
 
 **CMake Fetched Dependencies:**
 - [vision-core](https://github.com/olibartfast/vision-core) - Model pre/post processing and task management
+
+## Architecture
+
+TritonIC selects an inference backend at startup via `--backend`:
+
+| `--backend` | Requires | Best for |
+|-------------|----------|----------|
+| `triton` (default) | NVIDIA Triton server | CV tasks — detection, segmentation, classification, optical flow, pose, depth |
+| `chat` | Any OpenAI-compatible server | LLMs, VLMs, multimodal chat |
+
+The two modes are **not competing** — Triton handles binary tensor workloads at real-time throughput, while the Chat backend handles text/image generation over a REST API. Choose based on your model and server.
+
+Both implement the common `tritonic::core::IInferenceBackend` interface (Strategy pattern), enabling clean dependency injection and unit testing without live servers.
+
+> Note: "backend" here refers to *tritonic's* server selection (`--backend=triton` vs `--backend=chat`). This is distinct from the Triton server's own *framework backends* (TensorRT, ONNX Runtime, etc.), which are configured server-side.
+
+For full code structure and namespace layout see [AGENTS.md](AGENTS.md).
 
 ## Tested Models
 
@@ -199,40 +224,6 @@ cmake --build .
 - [Optical Flow](https://github.com/olibartfast/vision-core/blob/master/export/optical_flow/OpticalFlow.md)
 
 *Other tasks are in TODO list.*
-
-## Architecture
-
-TritonIC uses a modular, dual-backend architecture.
-
-### Backends
-
-| Backend | Flag | Use case |
-|---------|------|----------|
-| **Triton** (default) | `--backend=triton` | Binary tensor inference — object detection, segmentation, classification, optical flow, pose, depth |
-| **Chat** | `--backend=chat` | OpenAI-compatible `/v1/chat/completions` — VLMs, LLMs, multimodal chat (Ollama, llama.cpp, SGLang, vLLM, OpenAI) |
-
-Both backends implement the common `tritonic::core::IInferenceBackend` interface, enabling dependency injection and mockability in tests.
-
-### Key components
-
-- **[vision-core](https://github.com/olibartfast/vision-core)**: All model-specific pre/postprocessing and `TaskFactory`. Automatically fetched via CMake `FetchContent`.
-
-- **Local infrastructure** (`include/tritonic/infra/`): Logging (`tritonic::infra::Logger`, `LoggerManager`, `LogLevel`) and CLI configuration (`tritonic::infra::InferenceConfig`, `ConfigManager`). Backward-compat forwarding headers kept in `include/` root.
-
-- **Triton backend** (`tritonic::triton::TritonBackend`): Adapter wrapping `ITriton` for binary tensor I/O over HTTP or gRPC.
-
-- **Chat backend** (`src/chat/ChatBackend`): Facade over libcurl implementing `/v1/chat/completions`. No extra JSON or base64 library dependencies.
-
-- **ChatSession** (`src/chat/ChatSession`): Stateful multi-turn conversation manager with sliding-window history trim and pinned context support.
-
-### Namespace layout
-
-| Namespace | Headers | Contents |
-|-----------|---------|----------|
-| `tritonic::core` | `include/tritonic/core/` | `Tensor`, `Message`, `ChatRequest/Response`, `IInferenceBackend` |
-| `tritonic::triton` | `include/tritonic/triton/` | `ITriton`, `ModelInfo`, `TritonBackend` |
-| `tritonic::chat` | `include/tritonic/chat/` | `IChatBackend` |
-| `tritonic::infra` | `include/tritonic/infra/` | `InferenceConfig`, `ConfigManager`, `Logger` |
 
 ## Notes
 
@@ -384,12 +375,11 @@ To view all available parameters, run:
 | ViTPose                | `vitpose`              | Pose estimation (COCO 17 keypoints) |
 | Depth Anything V2      | `depth_anything_v2`    | Monocular depth estimation |
 
+### Chat Backend (OpenAI-compatible)
 
-## Chat Backend (OpenAI-compatible)
+Skip Triton entirely and query any OpenAI-compatible server. Works with Ollama, llama.cpp, SGLang, vLLM, OpenAI, Together AI — provider is selected by `--api_endpoint` alone.
 
-Query any OpenAI-compatible server (Ollama, llama.cpp, SGLang, vLLM, OpenAI, Together AI) without a Triton server.
-
-### Single-turn with an image
+**Single-turn with an image:**
 ```bash
 ./tritonic \
     --backend=chat \
@@ -399,7 +389,7 @@ Query any OpenAI-compatible server (Ollama, llama.cpp, SGLang, vLLM, OpenAI, Tog
     --source=/path/to/image.jpg
 ```
 
-### Interactive multi-turn session
+**Interactive multi-turn session:**
 ```bash
 ./tritonic \
     --backend=chat \
