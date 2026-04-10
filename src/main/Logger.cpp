@@ -1,4 +1,4 @@
-#include "Logger.hpp"
+#include "tritonic/infra/logger.hpp"
 #include <algorithm>
 #include <chrono>
 #include <fstream>
@@ -7,6 +7,8 @@
 #include <mutex>
 #include <sstream>
 #include <unordered_map>
+
+namespace tritonic::infra {
 
 class Logger::Impl {
 public:
@@ -213,3 +215,5 @@ std::string LoggerManager::LogLevelToString(LogLevel level) {
             return "UNKNOWN";
     }
 }
+
+}  // namespace tritonic::infra

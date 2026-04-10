@@ -1,7 +1,9 @@
-#include "ConfigManager.hpp"
+#include "tritonic/infra/config_manager.hpp"
 #include <opencv2/opencv.hpp>
 #include <sstream>
 #include <stdexcept>
+
+namespace tritonic::infra {
 
 ConfigManager::ConfigManager() = default;
 ConfigManager::~ConfigManager() = default;
@@ -63,7 +65,12 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
         "{temperature temp |1.0 | sampling temperature for LLM generation}"
         "{top_p |1.0            | top-p sampling for LLM generation}"
         "{repetition_penalty rp |1.0 | repetition penalty for LLM generation}"
-        "{stop_words sw |       | comma-separated stop words for LLM generation}";
+        "{stop_words sw |       | comma-separated stop words for LLM generation}"
+        "{backend be   |triton | inference backend: triton or chat}"
+        "{api_endpoint ae |    | full URL for chat backend (e.g. http://localhost:11434/v1/chat/completions)}"
+        "{api_key_env ak |     | env-var name containing the API key for chat backend}"
+        "{target_image_size tis |512 | image resize size (px) before base64 encoding for chat backend}"
+        "{interactive ia |false | enable multi-turn interactive chat session (--backend=chat only)}";
 
     cv::CommandLineParser parser(argc, argv, keys);
 
@@ -102,6 +109,11 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
     config->SetTopP(parser.get<float>("top_p"));
     config->SetRepetitionPenalty(parser.get<float>("repetition_penalty"));
     config->SetStopWords(parser.get<cv::String>("stop_words"));
+    config->SetBackend(parser.get<cv::String>("backend"));
+    config->SetApiEndpoint(parser.get<cv::String>("api_endpoint"));
+    config->SetApiKeyEnv(parser.get<cv::String>("api_key_env"));
+    config->SetTargetImageSize(parser.get<int>("target_image_size"));
+    config->SetInteractive(parser.get<bool>("interactive"));
 
     if (parser.has("input_sizes")) {
         std::string s = parser.get<cv::String>("input_sizes");
@@ -110,3 +122,5 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
 
     return config;
 }
+
+}  // namespace tritonic::infra
