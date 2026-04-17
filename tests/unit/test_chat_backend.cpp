@@ -1,5 +1,5 @@
-#include <functional>
 #include <gtest/gtest.h>
+#include <functional>
 
 #include "chat/ChatSession.hpp"
 #include "chat/IChatBackend.hpp"
@@ -45,9 +45,7 @@ TEST(IChatBackendTest, SingleTurnSuccess) {
 
 TEST(IChatBackendTest, ServerErrorPropagates) {
     StubChatBackend backend;
-    backend.handler = [](const ChatRequest&) -> ChatResponse {
-        return fail("Connection refused");
-    };
+    backend.handler = [](const ChatRequest&) -> ChatResponse { return fail("Connection refused"); };
 
     ChatRequest req;
     req.messages.push_back({Message::Role::User, "hello"});
