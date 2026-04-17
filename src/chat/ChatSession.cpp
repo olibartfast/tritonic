@@ -4,7 +4,8 @@
 
 ChatSession::ChatSession(std::shared_ptr<IChatBackend> backend, int max_history_turns)
     : backend_(std::move(backend)), max_history_turns_(max_history_turns) {
-    if (!backend_) throw std::invalid_argument("ChatSession: backend must not be null");
+    if (!backend_)
+        throw std::invalid_argument("ChatSession: backend must not be null");
     if (max_history_turns_ < 1)
         throw std::invalid_argument("ChatSession: max_history_turns must be >= 1");
 }
@@ -31,13 +32,12 @@ void ChatSession::clear() {
 // ---------------------------------------------------------------------------
 
 ChatResponse ChatSession::send(const std::string& user_message,
-                               const std::vector<std::string>& images,
-                               const std::string& model,
+                               const std::vector<std::string>& images, const std::string& model,
                                int max_tokens) {
     Message user_turn;
-    user_turn.role    = Message::Role::User;
+    user_turn.role = Message::Role::User;
     user_turn.content = user_message;
-    user_turn.images  = images;
+    user_turn.images = images;
 
     ChatRequest req = buildRequest(user_turn, model, max_tokens);
     ChatResponse resp = backend_->infer(req);
@@ -56,16 +56,15 @@ ChatResponse ChatSession::send(const std::string& user_message,
 // Request builder
 // ---------------------------------------------------------------------------
 
-ChatRequest ChatSession::buildRequest(const Message& user_turn,
-                                      const std::string& model,
+ChatRequest ChatSession::buildRequest(const Message& user_turn, const std::string& model,
                                       int max_tokens) const {
     ChatRequest req;
-    req.model             = model.empty() ? model_ : model;
-    req.max_tokens        = max_tokens > 0 ? max_tokens : default_max_tokens_;
-    req.temperature       = temperature_;
-    req.top_p             = top_p_;
+    req.model = model.empty() ? model_ : model;
+    req.max_tokens = max_tokens > 0 ? max_tokens : default_max_tokens_;
+    req.temperature = temperature_;
+    req.top_p = top_p_;
     req.target_image_size = target_image_size_;
-    req.detail            = detail_;
+    req.detail = detail_;
 
     // 1. System prompt
     if (!system_prompt_.empty()) {

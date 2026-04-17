@@ -18,8 +18,7 @@ namespace tritonic::triton {
  */
 class TritonBackend final : public core::IInferenceBackend {
 public:
-    explicit TritonBackend(std::shared_ptr<ITriton> triton)
-        : triton_(std::move(triton)) {}
+    explicit TritonBackend(std::shared_ptr<ITriton> triton) : triton_(std::move(triton)) {}
 
     core::BackendResponse infer(const core::BackendRequest& request) override {
         if (const auto* req = std::get_if<core::TritonInferRequest>(&request)) {
@@ -29,10 +28,16 @@ public:
             "TritonBackend: received ChatRequest — use ChatBackend instead");
     }
 
-    std::string backendName() const noexcept override { return "triton"; }
+    std::string backendName() const noexcept override {
+        return "triton";
+    }
 
-    ITriton& client() noexcept { return *triton_; }
-    const ITriton& client() const noexcept { return *triton_; }
+    ITriton& client() noexcept {
+        return *triton_;
+    }
+    const ITriton& client() const noexcept {
+        return *triton_;
+    }
 
 private:
     std::shared_ptr<ITriton> triton_;

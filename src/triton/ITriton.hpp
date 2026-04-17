@@ -3,7 +3,7 @@
 #include "tritonic/triton/itriton.hpp"
 
 // Backward-compatibility aliases (global namespace)
-using ITriton         = tritonic::triton::ITriton;
+using ITriton = tritonic::triton::ITriton;
 using TritonModelInfo = tritonic::triton::ModelInfo;
-using Tensor          = tritonic::core::Tensor;
-using TensorElement   = tritonic::core::TensorElement;
+using Tensor = tritonic::core::Tensor;
+using TensorElement = tritonic::core::TensorElement;

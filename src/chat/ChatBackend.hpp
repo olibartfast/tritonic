@@ -1,8 +1,8 @@
 #pragma once
 
 #include <string>
-#include "common/IInferenceBackend.hpp"
 #include "IChatBackend.hpp"
+#include "common/IInferenceBackend.hpp"
 
 /**
  * Concrete OpenAI-compatible Chat Completions client.
@@ -36,7 +36,9 @@ public:
 
     // IInferenceBackend — variant-based, used by App
     BackendResponse infer(const BackendRequest& request) override;
-    std::string backendName() const noexcept override { return "chat"; }
+    std::string backendName() const noexcept override {
+        return "chat";
+    }
 
 private:
     std::string endpoint_;
@@ -48,6 +50,6 @@ private:
     static std::string buildRequestBody(const ChatRequest& request);
     static ChatResponse parseResponse(const std::string& raw_json);
 
-    static std::size_t writeCallback(void* contents, std::size_t size,
-                                     std::size_t nmemb, std::string* out);
+    static std::size_t writeCallback(void* contents, std::size_t size, std::size_t nmemb,
+                                     std::string* out);
 };
