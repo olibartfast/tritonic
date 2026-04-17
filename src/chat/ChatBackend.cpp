@@ -55,8 +55,7 @@ ChatResponse ChatBackend::infer(const ChatRequest& request) {
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK) {
-        std::string err = error_buf.data()[0] ? error_buf.data()
-                                              : curl_easy_strerror(res);
+        std::string err = error_buf.data()[0] ? error_buf.data() : curl_easy_strerror(res);
         return {.text = {}, .success = false, .error = "CURL error: " + err};
     }
 
@@ -81,9 +80,12 @@ BackendResponse ChatBackend::infer(const BackendRequest& request) {
 std::string ChatBackend::buildRequestBody(const ChatRequest& request) {
     auto roleStr = [](Message::Role r) -> const char* {
         switch (r) {
-            case Message::Role::System:    return "system";
-            case Message::Role::Assistant: return "assistant";
-            default:                       return "user";
+            case Message::Role::System:
+                return "system";
+            case Message::Role::Assistant:
+                return "assistant";
+            default:
+                return "user";
         }
     };
 
@@ -92,7 +94,8 @@ std::string ChatBackend::buildRequestBody(const ChatRequest& request) {
     messages << '[';
     bool first_msg = true;
     for (const auto& msg : request.messages) {
-        if (!first_msg) messages << ',';
+        if (!first_msg)
+            messages << ',';
         first_msg = false;
 
         messages << "{\"role\":\"" << roleStr(msg.role) << "\",";
@@ -107,9 +110,9 @@ std::string ChatBackend::buildRequestBody(const ChatRequest& request) {
             for (const auto& img : msg.images) {
                 messages << ',';
                 if (isUrl(img)) {
-                    messages << "{\"type\":\"image_url\",\"image_url\":{"
-                             << "\"url\":\"" << escapeJson(img) << "\","
-                             << "\"detail\":\"" << escapeJson(request.detail) << "\"}}";
+                    messages << "{\"type\":\"image_url\",\"image_url\":{" << "\"url\":\""
+                             << escapeJson(img) << "\"," << "\"detail\":\""
+                             << escapeJson(request.detail) << "\"}}";
                 } else {
                     std::string b64 = encodeImageToBase64(img, request.target_image_size);
                     messages << "{\"type\":\"image_url\",\"image_url\":{"
@@ -128,11 +131,8 @@ std::string ChatBackend::buildRequestBody(const ChatRequest& request) {
     if (!request.model.empty()) {
         body << "\"model\":\"" << escapeJson(request.model) << "\",";
     }
-    body << "\"messages\":" << messages.str()
-         << ",\"max_tokens\":" << request.max_tokens
-         << ",\"temperature\":" << request.temperature
-         << ",\"top_p\":" << request.top_p
-         << '}';
+    body << "\"messages\":" << messages.str() << ",\"max_tokens\":" << request.max_tokens
+         << ",\"temperature\":" << request.temperature << ",\"top_p\":" << request.top_p << '}';
 
     return body.str();
 }
@@ -149,17 +149,26 @@ ChatResponse ChatBackend::parseResponse(const std::string& raw_json) {
     auto extract = [&](const std::string& key) -> std::string {
         std::string needle = "\"" + key + "\":\"";
         auto pos = raw_json.find(needle);
-        if (pos == std::string::npos) return {};
+        if (pos == std::string::npos)
+            return {};
         pos += needle.size();
         std::string value;
         while (pos < raw_json.size()) {
             if (raw_json[pos] == '\\' && pos + 1 < raw_json.size()) {
                 char esc = raw_json[pos + 1];
                 switch (esc) {
-                    case 'n': value += '\n'; break;
-                    case 'r': value += '\r'; break;
-                    case 't': value += '\t'; break;
-                    default:  value += esc;  break;
+                    case 'n':
+                        value += '\n';
+                        break;
+                    case 'r':
+                        value += '\r';
+                        break;
+                    case 't':
+                        value += '\t';
+                        break;
+                    default:
+                        value += esc;
+                        break;
                 }
                 pos += 2;
             } else if (raw_json[pos] == '"') {
@@ -209,14 +218,14 @@ std::string ChatBackend::encodeImageToBase64(const std::string& image_path, int 
     cv::Mat resized;
     cv::resize(image, resized, cv::Size(new_w, new_h));
 
-    int top    = (target_size - new_h) / 2;
+    int top = (target_size - new_h) / 2;
     int bottom = target_size - new_h - top;
-    int left   = (target_size - new_w) / 2;
-    int right  = target_size - new_w - left;
+    int left = (target_size - new_w) / 2;
+    int right = target_size - new_w - left;
 
     cv::Mat padded;
-    cv::copyMakeBorder(resized, padded, top, bottom, left, right,
-                       cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+    cv::copyMakeBorder(resized, padded, top, bottom, left, right, cv::BORDER_CONSTANT,
+                       cv::Scalar(0, 0, 0));
 
     std::vector<uint8_t> buf;
     cv::imencode(".jpg", padded, buf);
@@ -229,8 +238,10 @@ std::string ChatBackend::encodeImageToBase64(const std::string& image_path, int 
     out.reserve(((buf.size() + 2) / 3) * 4);
     for (std::size_t i = 0; i < buf.size(); i += 3) {
         uint32_t b = static_cast<uint32_t>(buf[i]) << 16;
-        if (i + 1 < buf.size()) b |= static_cast<uint32_t>(buf[i + 1]) << 8;
-        if (i + 2 < buf.size()) b |= static_cast<uint32_t>(buf[i + 2]);
+        if (i + 1 < buf.size())
+            b |= static_cast<uint32_t>(buf[i + 1]) << 8;
+        if (i + 2 < buf.size())
+            b |= static_cast<uint32_t>(buf[i + 2]);
 
         out += kTable[(b >> 18) & 0x3F];
         out += kTable[(b >> 12) & 0x3F];
@@ -251,11 +262,21 @@ std::string ChatBackend::escapeJson(const std::string& s) {
     out.reserve(s.size());
     for (unsigned char c : s) {
         switch (c) {
-            case '\\': out += "\\\\"; break;
-            case '"':  out += "\\\""; break;
-            case '\n': out += "\\n";  break;
-            case '\r': out += "\\r";  break;
-            case '\t': out += "\\t";  break;
+            case '\\':
+                out += "\\\\";
+                break;
+            case '"':
+                out += "\\\"";
+                break;
+            case '\n':
+                out += "\\n";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            case '\t':
+                out += "\\t";
+                break;
             default:
                 if (c < 0x20) {
                     char buf[7];
@@ -275,8 +296,8 @@ std::string ChatBackend::escapeJson(const std::string& s) {
 // ---------------------------------------------------------------------------
 
 /* static */
-std::size_t ChatBackend::writeCallback(void* contents, std::size_t size,
-                                       std::size_t nmemb, std::string* out) {
+std::size_t ChatBackend::writeCallback(void* contents, std::size_t size, std::size_t nmemb,
+                                       std::string* out) {
     std::size_t total = size * nmemb;
     out->append(static_cast<char*>(contents), total);
     return total;

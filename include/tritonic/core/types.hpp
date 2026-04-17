@@ -32,15 +32,15 @@ struct ChatRequest {
     std::vector<Message> messages;
     std::string model;
     std::string detail{"low"};
-    int   max_tokens{300};
+    int max_tokens{300};
     float temperature{1.0f};
     float top_p{1.0f};
-    int   target_image_size{512};
+    int target_image_size{512};
 };
 
 struct ChatResponse {
     std::string text;
-    bool  success{false};
+    bool success{false};
     std::string error;
 };
 
@@ -56,7 +56,7 @@ struct TritonInferRequest {
 // Unified variant types (Strategy pattern I/O)
 // ---------------------------------------------------------------------------
 
-using BackendRequest  = std::variant<TritonInferRequest, ChatRequest>;
+using BackendRequest = std::variant<TritonInferRequest, ChatRequest>;
 using BackendResponse = std::variant<std::vector<Tensor>, ChatResponse>;
 
 }  // namespace tritonic::core

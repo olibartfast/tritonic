@@ -43,8 +43,7 @@ public:
      *                           before the oldest pair is evicted.  Does not count
      *                           the system message or pinned context.
      */
-    explicit ChatSession(std::shared_ptr<IChatBackend> backend,
-                         int max_history_turns = 20);
+    explicit ChatSession(std::shared_ptr<IChatBackend> backend, int max_history_turns = 20);
 
     /** Set the system-level instruction.  Replaces any previous system prompt.
      *  Must be called before the first send() for best results. */
@@ -63,33 +62,32 @@ public:
      * @param model         Model name; empty = use whatever was set last.
      * @param max_tokens    Per-turn token budget (0 = use session default).
      */
-    ChatResponse send(const std::string& user_message,
-                      const std::vector<std::string>& images = {},
-                      const std::string& model = {},
-                      int max_tokens = 0);
+    ChatResponse send(const std::string& user_message, const std::vector<std::string>& images = {},
+                      const std::string& model = {}, int max_tokens = 0);
 
     /** Reset history (system prompt and pinned context are preserved). */
     void clear();
 
     /** Read-only view of the current history (for testing / logging). */
-    const std::vector<Message>& history() const noexcept { return history_; }
+    const std::vector<Message>& history() const noexcept {
+        return history_;
+    }
 
 private:
     std::shared_ptr<IChatBackend> backend_;
-    std::vector<Message> history_;      // accumulated turns (excludes pinned)
+    std::vector<Message> history_;  // accumulated turns (excludes pinned)
     std::string system_prompt_;
     std::string pinned_context_;
     int max_history_turns_;
     std::string model_;
-    int  default_max_tokens_{512};
+    int default_max_tokens_{512};
     float temperature_{1.0f};
     float top_p_{1.0f};
-    int  target_image_size_{512};
+    int target_image_size_{512};
     std::string detail_{"low"};
 
     /** Build a full ChatRequest from current state + new user turn. */
-    ChatRequest buildRequest(const Message& user_turn,
-                             const std::string& model,
+    ChatRequest buildRequest(const Message& user_turn, const std::string& model,
                              int max_tokens) const;
 
     /**

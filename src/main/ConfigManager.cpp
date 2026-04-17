@@ -1,7 +1,7 @@
-#include "tritonic/infra/config_manager.hpp"
 #include <opencv2/opencv.hpp>
 #include <sstream>
 #include <stdexcept>
+#include "tritonic/infra/config_manager.hpp"
 
 namespace tritonic::infra {
 
@@ -67,10 +67,13 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
         "{repetition_penalty rp |1.0 | repetition penalty for LLM generation}"
         "{stop_words sw |       | comma-separated stop words for LLM generation}"
         "{backend be   |triton | inference backend: triton or chat}"
-        "{api_endpoint ae |    | full URL for chat backend (e.g. http://localhost:11434/v1/chat/completions)}"
+        "{api_endpoint ae |    | full URL for chat backend (e.g. "
+        "http://localhost:11434/v1/chat/completions)}"
         "{api_key_env ak |     | env-var name containing the API key for chat backend}"
-        "{target_image_size tis |512 | image resize size (px) before base64 encoding for chat backend}"
-        "{interactive ia |false | enable multi-turn interactive chat session (--backend=chat only)}";
+        "{target_image_size tis |512 | image resize size (px) before base64 encoding for chat "
+        "backend}"
+        "{interactive ia |false | enable multi-turn interactive chat session (--backend=chat "
+        "only)}";
 
     cv::CommandLineParser parser(argc, argv, keys);
 

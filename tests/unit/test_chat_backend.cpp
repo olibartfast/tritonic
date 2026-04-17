@@ -1,8 +1,8 @@
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
-#include "chat/IChatBackend.hpp"
 #include "chat/ChatSession.hpp"
+#include "chat/IChatBackend.hpp"
 #include "mocks/MockChatBackend.hpp"
 
 using ::testing::_;
@@ -79,13 +79,12 @@ TEST(ChatSessionTest, FailedTurnDoesNotAddToHistory) {
 TEST(ChatSessionTest, SystemPromptInjectedFirst) {
     auto mock = std::make_shared<MockChatBackend>();
 
-    EXPECT_CALL(*mock, infer(_))
-        .WillOnce([](const ChatRequest& req) {
-            EXPECT_FALSE(req.messages.empty());
-            EXPECT_EQ(req.messages[0].role, Message::Role::System);
-            EXPECT_EQ(req.messages[0].content, "You are a C++ reviewer.");
-            return ok("looks good");
-        });
+    EXPECT_CALL(*mock, infer(_)).WillOnce([](const ChatRequest& req) {
+        EXPECT_FALSE(req.messages.empty());
+        EXPECT_EQ(req.messages[0].role, Message::Role::System);
+        EXPECT_EQ(req.messages[0].content, "You are a C++ reviewer.");
+        return ok("looks good");
+    });
 
     ChatSession session(mock);
     session.setSystemPrompt("You are a C++ reviewer.");
@@ -95,14 +94,13 @@ TEST(ChatSessionTest, SystemPromptInjectedFirst) {
 TEST(ChatSessionTest, PinnedContextInjectedAfterSystem) {
     auto mock = std::make_shared<MockChatBackend>();
 
-    EXPECT_CALL(*mock, infer(_))
-        .WillOnce([](const ChatRequest& req) {
-            ASSERT_GE(req.messages.size(), 3u);
-            EXPECT_EQ(req.messages[0].role, Message::Role::System);
-            EXPECT_EQ(req.messages[1].content, "int x = 42;");
-            EXPECT_EQ(req.messages[2].role, Message::Role::User);
-            return ok("The code looks fine");
-        });
+    EXPECT_CALL(*mock, infer(_)).WillOnce([](const ChatRequest& req) {
+        ASSERT_GE(req.messages.size(), 3u);
+        EXPECT_EQ(req.messages[0].role, Message::Role::System);
+        EXPECT_EQ(req.messages[1].content, "int x = 42;");
+        EXPECT_EQ(req.messages[2].role, Message::Role::User);
+        return ok("The code looks fine");
+    });
 
     ChatSession session(mock);
     session.setSystemPrompt("You are a code reviewer.");
@@ -121,15 +119,17 @@ TEST(ChatSessionTest, PinnedContextNeverEvicted) {
     session.send("turn 2");
     session.send("turn 3");
 
-    EXPECT_CALL(*mock, infer(_))
-        .WillOnce([](const ChatRequest& req) {
-            bool found = false;
-            for (const auto& m : req.messages) {
-                if (m.content == "pinned code") { found = true; break; }
+    EXPECT_CALL(*mock, infer(_)).WillOnce([](const ChatRequest& req) {
+        bool found = false;
+        for (const auto& m : req.messages) {
+            if (m.content == "pinned code") {
+                found = true;
+                break;
             }
-            EXPECT_TRUE(found);
-            return ok("ok");
-        });
+        }
+        EXPECT_TRUE(found);
+        return ok("ok");
+    });
     session.send("turn 4");
 }
 
@@ -165,11 +165,10 @@ TEST(ChatSessionTest, ClearResetsHistory) {
     session.clear();
     EXPECT_TRUE(session.history().empty());
 
-    EXPECT_CALL(*mock, infer(_))
-        .WillOnce([](const ChatRequest& req) {
-            EXPECT_EQ(req.messages[0].role, Message::Role::System);
-            return ok("hi");
-        });
+    EXPECT_CALL(*mock, infer(_)).WillOnce([](const ChatRequest& req) {
+        EXPECT_EQ(req.messages[0].role, Message::Role::System);
+        return ok("hi");
+    });
     session.send("hello again");
 }
 
@@ -180,13 +179,12 @@ TEST(ChatSessionTest, ClearResetsHistory) {
 TEST(ChatSessionTest, ImagesAttachedToUserMessage) {
     auto mock = std::make_shared<MockChatBackend>();
 
-    EXPECT_CALL(*mock, infer(_))
-        .WillOnce([](const ChatRequest& req) {
-            const auto& last = req.messages.back();
-            EXPECT_EQ(last.role, Message::Role::User);
-            EXPECT_THAT(last.images, SizeIs(2));
-            return ok("I see two images");
-        });
+    EXPECT_CALL(*mock, infer(_)).WillOnce([](const ChatRequest& req) {
+        const auto& last = req.messages.back();
+        EXPECT_EQ(last.role, Message::Role::User);
+        EXPECT_THAT(last.images, SizeIs(2));
+        return ok("I see two images");
+    });
 
     ChatSession session(mock);
     session.send("describe", {"img1.jpg", "img2.jpg"});

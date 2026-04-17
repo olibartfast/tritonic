@@ -16,9 +16,8 @@ class ITriton {
 public:
     virtual ~ITriton() = default;
 
-    virtual ModelInfo getModelInfo(
-        const std::string& modelName, const std::string& url,
-        const std::vector<std::vector<int64_t>>& input_sizes = {}) = 0;
+    virtual ModelInfo getModelInfo(const std::string& modelName, const std::string& url,
+                                   const std::vector<std::vector<int64_t>>& input_sizes = {}) = 0;
 
     virtual std::vector<core::Tensor> infer(
         const std::vector<std::vector<uint8_t>>& input_data) = 0;

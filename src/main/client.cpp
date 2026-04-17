@@ -89,15 +89,15 @@ int main(int argc, const char* argv[]) {
                 }
             }
 
-            auto chatBackend = std::make_shared<ChatBackend>(
-                config->GetApiEndpoint(), api_key);
+            auto chatBackend = std::make_shared<ChatBackend>(config->GetApiEndpoint(), api_key);
 
             // Collect images from --source (comma-separated paths or URLs)
             std::vector<std::string> source_images;
             std::istringstream src_stream(config->GetSource());
             std::string token;
             while (std::getline(src_stream, token, ',')) {
-                if (!token.empty()) source_images.push_back(token);
+                if (!token.empty())
+                    source_images.push_back(token);
             }
 
             if (config->GetInteractive()) {
@@ -111,9 +111,12 @@ int main(int argc, const char* argv[]) {
                 std::string line;
                 while (true) {
                     std::cout << "You> " << std::flush;
-                    if (!std::getline(std::cin, line)) break;
-                    if (line == "exit" || line == "quit") break;
-                    if (line.empty()) continue;
+                    if (!std::getline(std::cin, line))
+                        break;
+                    if (line == "exit" || line == "quit")
+                        break;
+                    if (line.empty())
+                        continue;
 
                     // Images only on the first turn if provided via --source
                     std::vector<std::string> turn_images;
@@ -122,8 +125,7 @@ int main(int argc, const char* argv[]) {
                         source_images.clear();  // subsequent turns are text only
                     }
 
-                    ChatResponse resp = session.send(line, turn_images,
-                                                     config->GetModelName(),
+                    ChatResponse resp = session.send(line, turn_images, config->GetModelName(),
                                                      config->GetMaxTokens());
                     if (resp.success) {
                         std::cout << "Bot> " << resp.text << '\n';
@@ -139,16 +141,16 @@ int main(int argc, const char* argv[]) {
                 }
 
                 Message user_msg;
-                user_msg.role    = Message::Role::User;
+                user_msg.role = Message::Role::User;
                 user_msg.content = config->GetTextPrompt();
-                user_msg.images  = source_images;
+                user_msg.images = source_images;
 
                 ChatRequest req;
                 req.messages.push_back(std::move(user_msg));
-                req.model             = config->GetModelName();
-                req.max_tokens        = config->GetMaxTokens();
-                req.temperature       = config->GetTemperature();
-                req.top_p             = config->GetTopP();
+                req.model = config->GetModelName();
+                req.max_tokens = config->GetMaxTokens();
+                req.temperature = config->GetTemperature();
+                req.top_p = config->GetTopP();
                 req.target_image_size = config->GetTargetImageSize();
 
                 logger->Info("Sending chat request to " + config->GetApiEndpoint());
