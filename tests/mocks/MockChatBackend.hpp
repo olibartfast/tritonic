@@ -5,5 +5,5 @@
 
 class MockChatBackend : public IChatBackend {
 public:
-    MOCK_METHOD(ChatResponse, infer, (const ChatRequest& request), (override));
+    MOCK_METHOD(ChatResponse, infer, (const ChatRequest&), (override));
 };
