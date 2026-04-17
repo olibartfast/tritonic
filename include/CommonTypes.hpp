@@ -1,28 +1,14 @@
 #pragma once
-#include <algorithm>
-#include <chrono>
-#include <filesystem>
-#include <fstream>
-#include <opencv2/core.hpp>
-#include <opencv2/imgproc.hpp>
-#include <random>
-#include <string>
-#include <variant>
-#include <vector>
+// Forwarding header — canonical definition is in tritonic/core/types.hpp
+#include "tritonic/core/types.hpp"
 
-// Common types and lightweight includes that don't require heavy dependencies
-// Heavy dependencies like grpc_client.h should only be included where needed
+// Backward-compatibility aliases (global namespace)
+using TensorElement    = tritonic::core::TensorElement;
+using Tensor           = tritonic::core::Tensor;
+using Message          = tritonic::core::Message;
+using ChatRequest      = tritonic::core::ChatRequest;
+using ChatResponse     = tritonic::core::ChatResponse;
+using TritonInferRequest = tritonic::core::TritonInferRequest;
+using BackendRequest   = tritonic::core::BackendRequest;
+using BackendResponse  = tritonic::core::BackendResponse;
 
-using TensorElement = std::variant<float, int32_t, int64_t, uint8_t>;
-
-/**
- * @brief Tensor structure combining data and shape
- */
-struct Tensor {
-    std::vector<TensorElement> data;
-    std::vector<int64_t> shape;
-
-    Tensor() = default;
-    Tensor(std::vector<TensorElement> data_, std::vector<int64_t> shape_)
-        : data(std::move(data_)), shape(std::move(shape_)) {}
-};
