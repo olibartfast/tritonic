@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test script for ChatBackend with Gemma 4 model via OpenRouter API
+# Test script for ChatBackend with Gemma models via OpenRouter API
 #
 # OpenRouter provides free access to various models including Gemma
 # Endpoint: https://openrouter.ai/api/v1/chat/completions
@@ -7,7 +7,8 @@
 # Usage:
 #   1. Get a free API key from https://openrouter.ai/keys
 #   2. Set environment variable: export OPENROUTER_API_KEY="your-key"
-#   3. Run this script: ./scripts/test_chat_backend_gemma.sh
+#   3. (Optional) Run verification: python3 scripts/verify_gemma_api.py
+#   4. Run this script: ./scripts/test_chat_backend_gemma.sh
 
 set -e
 
