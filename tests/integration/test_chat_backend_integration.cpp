@@ -33,13 +33,12 @@ protected:
 
     void SetUp() override {
         if (!isConfigured()) {
-            GTEST_SKIP()
-                << "Skipping integration test: CHAT_API_ENDPOINT not set. "
-                << "Set environment variables to run integration tests:\n"
-                << "  export CHAT_API_ENDPOINT="
-                   "\"https://your-api-endpoint/v1/chat/completions\"\n"
-                << "  export CHAT_API_KEY=\"your-api-key\" (optional)\n"
-                << "  export CHAT_MODEL=\"model-name\" (optional, defaults to empty)";
+            GTEST_SKIP() << "Skipping integration test: CHAT_API_ENDPOINT not set. "
+                         << "Set environment variables to run integration tests:\n"
+                         << "  export CHAT_API_ENDPOINT="
+                            "\"https://your-api-endpoint/v1/chat/completions\"\n"
+                         << "  export CHAT_API_KEY=\"your-api-key\" (optional)\n"
+                         << "  export CHAT_MODEL=\"model-name\" (optional, defaults to empty)";
         }
 
         endpoint_ = getEnv("CHAT_API_ENDPOINT");
@@ -161,7 +160,7 @@ TEST_F(ChatBackendIntegration, MaxTokensLimitsResponse) {
 
         // Response should be relatively short due to token limit
         EXPECT_LE(token_estimate, 30u) << "Response seems too long for max_tokens=10 (estimated "
-                                        << token_estimate << " tokens)";
+                                       << token_estimate << " tokens)";
     }
 }
 
