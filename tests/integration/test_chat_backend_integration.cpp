@@ -36,12 +36,13 @@ protected:
 
     void SetUp() override {
         if (!isConfigured()) {
-            GTEST_SKIP() << "Skipping integration test: CHAT_API_ENDPOINT and CHAT_MODEL must be set. "
-                         << "Set environment variables to run integration tests:\n"
-                         << "  export CHAT_API_ENDPOINT="
-                            "\"https://your-api-endpoint/v1/chat/completions\"\n"
-                         << "  export CHAT_API_KEY=\"your-api-key\" (optional)\n"
-                         << "  export CHAT_MODEL=\"model-name\" (required)";
+            GTEST_SKIP()
+                << "Skipping integration test: CHAT_API_ENDPOINT and CHAT_MODEL must be set. "
+                << "Set environment variables to run integration tests:\n"
+                << "  export CHAT_API_ENDPOINT="
+                   "\"https://your-api-endpoint/v1/chat/completions\"\n"
+                << "  export CHAT_API_KEY=\"your-api-key\" (optional)\n"
+                << "  export CHAT_MODEL=\"model-name\" (required)";
         }
 
         endpoint_ = getEnv("CHAT_API_ENDPOINT");
