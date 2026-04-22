@@ -19,7 +19,9 @@ EXECUTABLE="$BUILD_DIR/tritonic"
 
 # Configuration
 API_ENDPOINT="https://openrouter.ai/api/v1/chat/completions"
-MODEL="google/gemma-2-9b-it"  # Gemma 2 9B Instruct
+# Default to Gemma 4 31B (free tier) - best balance of performance and availability
+# Other options: google/gemma-4-26b-a4b (free), google/gemma-2-9b-it
+MODEL="${GEMMA_MODEL:-google/gemma-4-31b:free}"
 TEST_IMAGE="$REPO_ROOT/tests/test_data/test_image.jpg"
 
 # Check if API key is set

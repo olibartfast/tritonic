@@ -32,10 +32,11 @@ def check_env():
     print(f"✅ API key found: {api_key[:20]}...")
     return api_key
 
-def test_api_connection(api_key):
+def test_api_connection(api_key, model=None):
     """Test basic API connectivity and model availability."""
     endpoint = "https://openrouter.ai/api/v1/chat/completions"
-    model = "google/gemma-2-9b-it"
+    if model is None:
+        model = "google/gemma-4-31b:free"  # Default to Gemma 4 31B (free)
 
     print(f"\n🔄 Testing API connection to OpenRouter...")
     print(f"   Endpoint: {endpoint}")
@@ -116,9 +117,20 @@ def test_api_connection(api_key):
 def list_available_models():
     """List some available Gemma models on OpenRouter."""
     print("\n📋 Available Gemma models on OpenRouter:")
-    print("   • google/gemma-2-9b-it      - Gemma 2 9B Instruct (recommended)")
-    print("   • google/gemma-2-27b-it     - Gemma 2 27B Instruct (more capable)")
+    print("\n   Gemma 4 (Latest - Multimodal with 256K context):")
+    print("   • google/gemma-4-31b:free          - 31B dense model (FREE, recommended)")
+    print("   • google/gemma-4-31b               - 31B dense model (paid tier)")
+    print("   • google/gemma-4-26b-a4b:free      - 26B MoE, 3.8B active (FREE)")
+    print("   • google/gemma-4-26b-a4b           - 26B MoE, 3.8B active (paid tier)")
+    print("\n   Gemma 2 (Previous generation):")
+    print("   • google/gemma-2-9b-it             - 9B Instruct")
+    print("   • google/gemma-2-27b-it            - 27B Instruct")
     print("\n   See all models at: https://openrouter.ai/models")
+    print("\n   💡 Gemma 4 features:")
+    print("      - Multimodal (text, images, video)")
+    print("      - 256K token context window")
+    print("      - Function calling support")
+    print("      - Thinking/reasoning mode")
 
 def main():
     """Main verification flow."""
