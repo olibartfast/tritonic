@@ -12,7 +12,7 @@ The chat backend supports any OpenAI-compatible API endpoint. This includes:
 
 ## Testing with OpenRouter
 
-OpenRouter provides free access to various models including Gemma 2 and Gemma 4.
+OpenRouter provides free access to various models including Gemma 2, Gemma 4, and many others.
 
 ### Prerequisites
 
@@ -30,9 +30,17 @@ OpenRouter provides free access to various models including Gemma 2 and Gemma 4.
 
 ### Available Gemma Models on OpenRouter
 
+**Gemma 4 (Latest - April 2026) - Recommended:**
+- `google/gemma-4-31b:free` - **Best choice** - 31B dense, FREE, multimodal
+- `google/gemma-4-31b` - 31B dense, paid ($0.13/$0.38 per M tokens)
+- `google/gemma-4-26b-a4b:free` - 26B MoE (3.8B active), FREE, multimodal
+- `google/gemma-4-26b-a4b` - 26B MoE, paid ($0.07/$0.35 per M tokens)
+
+Gemma 4 features: Multimodal (text/images/video), 256K context, function calling, thinking mode
+
+**Gemma 2 (Previous generation):**
 - `google/gemma-2-9b-it` - Gemma 2 9B Instruct
 - `google/gemma-2-27b-it` - Gemma 2 27B Instruct
-- `google/gemma-3-27b-it` - Gemma 3 27B Instruct (if available)
 
 Note: OpenRouter model availability may change. Check https://openrouter.ai/models for the latest list.
 
@@ -54,7 +62,7 @@ export OPENROUTER_API_KEY="your-api-key-here"
     --backend=chat \
     --api_endpoint=https://openrouter.ai/api/v1/chat/completions \
     --api_key_env=OPENROUTER_API_KEY \
-    --model=google/gemma-2-9b-it \
+    --model=google/gemma-4-31b:free \
     --text_prompt="Explain what C++ is in one sentence." \
     --max_tokens=100
 ```
@@ -66,25 +74,28 @@ export OPENROUTER_API_KEY="your-api-key-here"
     --backend=chat \
     --api_endpoint=https://openrouter.ai/api/v1/chat/completions \
     --api_key_env=OPENROUTER_API_KEY \
-    --model=google/gemma-2-9b-it \
+    --model=google/gemma-4-31b:free \
     --interactive
 ```
 
 In interactive mode, type your messages and press Enter. Type `exit` or `quit` to end the session.
 
-#### Test 3: Vision-capable model (if supported)
+#### Test 3: Multimodal - Image understanding (Gemma 4)
+
+Gemma 4 models support multimodal input including images:
 
 ```bash
 ./build/tritonic \
     --backend=chat \
     --api_endpoint=https://openrouter.ai/api/v1/chat/completions \
     --api_key_env=OPENROUTER_API_KEY \
-    --model=google/gemma-2-9b-it \
-    --text_prompt="Describe what you see in this image" \
-    --source=/path/to/image.jpg
+    --model=google/gemma-4-31b:free \
+    --text_prompt="Describe what you see in this image in detail" \
+    --source=/path/to/image.jpg \
+    --max_tokens=200
 ```
 
-Note: Vision capabilities depend on the specific model variant. Check model documentation.
+Gemma 4 also supports video input (up to 60 seconds at 1fps).
 
 ## Testing with Google AI Studio (Alternative)
 

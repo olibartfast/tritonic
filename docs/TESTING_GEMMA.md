@@ -43,7 +43,7 @@ OpenRouter provides free access to Gemma models with a simple API key.
     --backend=chat \
     --api_endpoint=https://openrouter.ai/api/v1/chat/completions \
     --api_key_env=OPENROUTER_API_KEY \
-    --model=google/gemma-2-9b-it \
+    --model=google/gemma-4-31b:free \
     --text_prompt="Explain C++ in one sentence" \
     --max_tokens=100
 ```
@@ -54,8 +54,23 @@ OpenRouter provides free access to Gemma models with a simple API key.
     --backend=chat \
     --api_endpoint=https://openrouter.ai/api/v1/chat/completions \
     --api_key_env=OPENROUTER_API_KEY \
-    --model=google/gemma-2-9b-it \
+    --model=google/gemma-4-31b:free \
     --interactive
+```
+
+**Test 3: Multimodal - Image understanding (Gemma 4)**
+
+Gemma 4 models support multimodal input including images:
+
+```bash
+./build/tritonic \
+    --backend=chat \
+    --api_endpoint=https://openrouter.ai/api/v1/chat/completions \
+    --api_key_env=OPENROUTER_API_KEY \
+    --model=google/gemma-4-31b:free \
+    --text_prompt="Describe what you see in this image in detail" \
+    --source=/path/to/image.jpg \
+    --max_tokens=200
 ```
 
 ### Option 3: Integration Tests
@@ -66,7 +81,7 @@ Run automated integration tests (requires API credentials):
 # Set environment variables
 export CHAT_API_ENDPOINT="https://openrouter.ai/api/v1/chat/completions"
 export CHAT_API_KEY="sk-or-v1-..."
-export CHAT_MODEL="google/gemma-2-9b-it"
+export CHAT_MODEL="google/gemma-4-31b:free"
 
 # Build with tests
 cd build
@@ -78,6 +93,25 @@ cmake --build . -j$(nproc)
 ```
 
 ## Available Gemma Models on OpenRouter
+
+### Gemma 4 (Latest - April 2026)
+
+| Model | ID | Parameters | Cost (Free/Paid) | Features |
+|-------|----|-----------:|------------------|----------|
+| **Gemma 4 31B (Free)** | `google/gemma-4-31b:free` | 30.7B | FREE | **Recommended** - Dense, multimodal |
+| Gemma 4 31B | `google/gemma-4-31b` | 30.7B | $0.13/$0.38 per M | Dense, multimodal |
+| Gemma 4 26B A4B (Free) | `google/gemma-4-26b-a4b:free` | 25.2B (3.8B active) | FREE | MoE, multimodal, efficient |
+| Gemma 4 26B A4B | `google/gemma-4-26b-a4b` | 25.2B (3.8B active) | $0.07/$0.35 per M | MoE, multimodal, efficient |
+
+**Gemma 4 Features:**
+- 🎨 **Multimodal**: Text, images, and video (up to 60s at 1fps)
+- 📚 **256K context**: Massive context window
+- 🔧 **Function calling**: Native tool use
+- 🧠 **Thinking mode**: Configurable reasoning
+- 🌍 **Multilingual**: 140+ languages
+- 📄 **Structured output**: JSON, etc.
+
+### Gemma 2 (Previous Generation)
 
 | Model | ID | Description |
 |-------|----|----|
@@ -95,7 +129,7 @@ Check https://openrouter.ai/models for the latest available Gemma models.
 Testing ChatBackend with Gemma 4 Model
 ==========================================
 Endpoint: https://openrouter.ai/api/v1/chat/completions
-Model: google/gemma-2-9b-it
+Model: google/gemma-4-31b:free
 
 Test 1: Text-only conversation
 Prompt: 'What is C++?'
@@ -103,9 +137,9 @@ Prompt: 'What is C++?'
 Configuration:
   Backend: chat (OpenAI-compatible)
   Endpoint: https://openrouter.ai/api/v1/chat/completions
-  Model: google/gemma-2-9b-it
+  Model: google/gemma-4-31b:free
 
-Response: C++ is a general-purpose programming language that extends C with object-oriented features.
+Response: C++ is a general-purpose programming language that extends C with object-oriented features, enabling both low-level memory manipulation and high-level abstractions.
 
 Test 1 completed successfully!
 ```
