@@ -29,7 +29,7 @@ def check_env():
         print("\nGet a free API key at: https://openrouter.ai/keys")
         return None
 
-    print(f"✅ API key found: {api_key[:20]}...")
+    print("✅ OPENROUTER_API_KEY environment variable is set")
     return api_key
 
 def test_api_connection(api_key, model=None):
