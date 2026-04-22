@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
+#include <algorithm>
+#include <cctype>
 #include <cstdlib>
+#include <iostream>
 #include <string>
 #include "chat/ChatBackend.hpp"
 #include "chat/ChatSession.hpp"
@@ -11,12 +14,12 @@
  * Set environment variables before running:
  *   - CHAT_API_ENDPOINT (e.g., "https://openrouter.ai/api/v1/chat/completions")
  *   - CHAT_API_KEY (optional, for authenticated endpoints)
- *   - CHAT_MODEL (e.g., "google/gemma-2-9b-it")
+ *   - CHAT_MODEL (e.g., "google/gemma-4-31b:free")
  *
  * Example:
  *   export CHAT_API_ENDPOINT="https://openrouter.ai/api/v1/chat/completions"
  *   export CHAT_API_KEY="sk-..."
- *   export CHAT_MODEL="google/gemma-2-9b-it"
+ *   export CHAT_MODEL="google/gemma-4-31b:free"
  *   ./build/tritonic_integration_tests --gtest_filter="ChatBackendIntegration.*"
  */
 
@@ -28,22 +31,22 @@ protected:
     }
 
     static bool isConfigured() {
-        return !getEnv("CHAT_API_ENDPOINT").empty();
+        return !getEnv("CHAT_API_ENDPOINT").empty() && !getEnv("CHAT_MODEL").empty();
     }
 
     void SetUp() override {
         if (!isConfigured()) {
-            GTEST_SKIP() << "Skipping integration test: CHAT_API_ENDPOINT not set. "
+            GTEST_SKIP() << "Skipping integration test: CHAT_API_ENDPOINT and CHAT_MODEL must be set. "
                          << "Set environment variables to run integration tests:\n"
                          << "  export CHAT_API_ENDPOINT="
                             "\"https://your-api-endpoint/v1/chat/completions\"\n"
                          << "  export CHAT_API_KEY=\"your-api-key\" (optional)\n"
-                         << "  export CHAT_MODEL=\"model-name\" (optional, defaults to empty)";
+                         << "  export CHAT_MODEL=\"model-name\" (required)";
         }
 
         endpoint_ = getEnv("CHAT_API_ENDPOINT");
         api_key_ = getEnv("CHAT_API_KEY");
-        model_ = getEnv("CHAT_MODEL", "");
+        model_ = getEnv("CHAT_MODEL");
     }
 
     std::string endpoint_;
@@ -99,7 +102,7 @@ TEST_F(ChatBackendIntegration, SessionMultipleTurns) {
         // Response should mention "Alice" (case-insensitive)
         std::string lower_response = r2.text;
         std::transform(lower_response.begin(), lower_response.end(), lower_response.begin(),
-                       ::tolower);
+                       [](unsigned char c) { return std::tolower(c); });
         EXPECT_NE(lower_response.find("alice"), std::string::npos)
             << "Expected model to remember name 'Alice' from previous turn";
     }
@@ -108,7 +111,7 @@ TEST_F(ChatBackendIntegration, SessionMultipleTurns) {
     EXPECT_GE(session.history().size(), 4u);  // 2 user messages + 2 assistant responses
 }
 
-TEST_F(ChatBackendIntegration, SystemPromptRespected) {
+TEST_F(ChatBackendIntegration, SystemPromptBehavior) {
     ASSERT_FALSE(endpoint_.empty());
 
     auto backend = std::make_shared<ChatBackend>(endpoint_, api_key_);
@@ -124,10 +127,11 @@ TEST_F(ChatBackendIntegration, SystemPromptRespected) {
 
     if (response.success) {
         std::cout << "Response with system prompt: " << response.text << std::endl;
-        // Check if response follows the system prompt (this is a soft check as not all models
-        // strictly follow instructions)
+        // Note: Not all models strictly follow system prompt instructions
+        // This test validates the system prompt is sent, not that it's perfectly followed
         if (response.text.find("UNDERSTOOD:") == std::string::npos) {
-            std::cout << "Note: Model did not strictly follow system prompt" << std::endl;
+            std::cout << "Note: Model did not strictly follow system prompt (this is common)"
+                      << std::endl;
         }
     }
 }

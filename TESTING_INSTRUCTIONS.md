@@ -90,7 +90,7 @@ cd ..
     --backend=chat \
     --api_endpoint=https://openrouter.ai/api/v1/chat/completions \
     --api_key_env=OPENROUTER_API_KEY \
-    --model=google/gemma-2-9b-it \
+    --model=google/gemma-4-31b:free \
     --interactive
 ```
 
@@ -98,7 +98,7 @@ cd ..
 ```bash
 export CHAT_API_ENDPOINT="https://openrouter.ai/api/v1/chat/completions"
 export CHAT_API_KEY="$OPENROUTER_API_KEY"
-export CHAT_MODEL="google/gemma-2-9b-it"
+export CHAT_MODEL="google/gemma-4-31b:free"
 ./build/tritonic_integration_tests --gtest_filter="ChatBackendIntegration.*"
 ```
 
@@ -117,10 +117,10 @@ After successful testing, document:
 
 ```
 ==========================================
-Testing ChatBackend with Gemma Model
+Testing ChatBackend with Gemma 4 Model
 ==========================================
 Endpoint: https://openrouter.ai/api/v1/chat/completions
-Model: google/gemma-2-9b-it
+Model: google/gemma-4-31b:free
 
 Test 1: Text-only conversation
 Prompt: 'What is C++?'
@@ -128,7 +128,7 @@ Prompt: 'What is C++?'
 Configuration:
   Backend: chat (OpenAI-compatible)
   Endpoint: https://openrouter.ai/api/v1/chat/completions
-  Model: google/gemma-2-9b-it
+  Model: google/gemma-4-31b:free
 
 Response: C++ is a general-purpose programming language that extends C with object-oriented features...
 

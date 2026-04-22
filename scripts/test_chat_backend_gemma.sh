@@ -22,7 +22,6 @@ API_ENDPOINT="https://openrouter.ai/api/v1/chat/completions"
 # Default to Gemma 4 31B (free tier) - best balance of performance and availability
 # Other options: google/gemma-4-26b-a4b (free), google/gemma-2-9b-it
 MODEL="${GEMMA_MODEL:-google/gemma-4-31b:free}"
-TEST_IMAGE="$REPO_ROOT/tests/test_data/test_image.jpg"
 
 # Check if API key is set
 if [ -z "$OPENROUTER_API_KEY" ]; then
@@ -66,19 +65,27 @@ echo ""
 echo "Test 1 completed successfully!"
 echo ""
 
-# Test 2: Interactive mode (if supported)
-echo "=========================================="
-echo "Test 2: Interactive mode"
-echo "You can now chat with Gemma. Type 'exit' to quit."
-echo "=========================================="
-echo ""
+# Test 2: Interactive mode (only if stdin is a TTY or RUN_INTERACTIVE=1)
+if [ "${RUN_INTERACTIVE:-}" = "1" ] || [ -t 0 ]; then
+    echo "=========================================="
+    echo "Test 2: Interactive mode"
+    echo "You can now chat with Gemma. Type 'exit' to quit."
+    echo "=========================================="
+    echo ""
 
-"$EXECUTABLE" \
-    --backend=chat \
-    --api_endpoint="$API_ENDPOINT" \
-    --api_key_env=OPENROUTER_API_KEY \
-    --model="$MODEL" \
-    --interactive
+    "$EXECUTABLE" \
+        --backend=chat \
+        --api_endpoint="$API_ENDPOINT" \
+        --api_key_env=OPENROUTER_API_KEY \
+        --model="$MODEL" \
+        --interactive
+else
+    echo "=========================================="
+    echo "Test 2: Interactive mode skipped"
+    echo "Skipping interactive test because stdin is not a TTY."
+    echo "Set RUN_INTERACTIVE=1 to force this test."
+    echo "=========================================="
+fi
 
 echo ""
 echo "All tests completed!"
