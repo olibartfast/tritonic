@@ -87,7 +87,12 @@ This document summarizes the testing infrastructure created for the tritonic cha
 ## Supported Models
 
 ### OpenRouter (Free Tier)
-- `google/gemma-2-9b-it` - Gemma 2 9B Instruct (Recommended)
+**Gemma 4 (Latest - April 2026):**
+- `google/gemma-4-31b:free` - **Recommended** - 31B dense, multimodal
+- `google/gemma-4-26b-a4b:free` - 26B MoE (3.8B active), multimodal
+
+**Gemma 2 (Previous generation):**
+- `google/gemma-2-9b-it` - Gemma 2 9B Instruct
 - `google/gemma-2-27b-it` - Gemma 2 27B Instruct
 
 ### Ollama (Local)

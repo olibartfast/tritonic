@@ -95,7 +95,7 @@ def test_api_connection(api_key, model=None):
             error_json = json.loads(error_body)
             if 'error' in error_json:
                 print(f"\n   API Error: {error_json['error']}")
-        except:
+        except json.JSONDecodeError:
             pass
 
         if e.code == 401:
