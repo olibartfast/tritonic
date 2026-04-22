@@ -32,10 +32,19 @@ ctest --output-on-failure
 # or: ./build/tritonic_unit_tests
 ```
 
-**Pre-commit hooks:**
+**Code formatting and git hooks:**
 ```bash
+# Install git hook for automatic formatting on commit (RECOMMENDED)
+./scripts/setup/install_git_hooks.sh
+
+# Or manually format all files before committing
+./scripts/format_all.sh
+
+# Or use the legacy pre-commit setup (requires Python)
 ./scripts/setup/pre_commit_setup.sh
 ```
+
+> **Important:** Install the git hook to avoid CI format check failures. The hook automatically formats C++ files before each commit.
 
 ## Architecture
 
