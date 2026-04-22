@@ -224,32 +224,30 @@ if(BUILD_TESTING)
         )
     endif()
     
-    # Create integration test executable if integration tests exist  
+    # Create integration test executable if integration tests exist
     if(INTEGRATION_TEST_SOURCES)
         add_executable(tritonic_integration_tests
             ${TEST_MAIN}
             ${INTEGRATION_TEST_SOURCES}
-            src/triton/Triton.cpp
-            src/main/App.cpp
             ${INFRA_SOURCES}
+            ${CHAT_SOURCES}
         )
         tritonic_apply_strict_warnings(tritonic_integration_tests)
-        
+
         target_include_directories(tritonic_integration_tests PRIVATE
             ${PROJECT_SOURCE_DIR}/include
             ${PROJECT_SOURCE_DIR}/src
-            ${PROJECT_SOURCE_DIR}/src/triton
+            ${PROJECT_SOURCE_DIR}/src/chat
+            ${PROJECT_SOURCE_DIR}/src/common
+            ${PROJECT_SOURCE_DIR}/tests
             ${PROJECT_SOURCE_DIR}/tests/mocks
             ${OpenCV_INCLUDE_DIRS}
         )
-        
+
         target_link_libraries(tritonic_integration_tests PRIVATE
             gtest gtest_main gmock
-            vision-core::vision-core
-            grpcclient httpclient
             ${OpenCV_LIBS}
             CURL::libcurl
-            ${PROTOBUF_LIBRARIES}
         )
         
         add_test(NAME IntegrationTests COMMAND tritonic_integration_tests)
