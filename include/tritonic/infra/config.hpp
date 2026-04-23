@@ -237,6 +237,12 @@ public:
     void SetApiEndpoint(const std::string& v) {
         api_endpoint_ = v;
     }
+    const std::string& GetApiService() const noexcept {
+        return api_service_;
+    }
+    void SetApiService(const std::string& v) {
+        api_service_ = v;
+    }
     const std::string& GetApiKeyEnv() const noexcept {
         return api_key_env_;
     }
@@ -298,6 +304,7 @@ private:
 
     std::string backend_{"triton"};
     std::string api_endpoint_;
+    std::string api_service_;
     std::string api_key_env_;
     int target_image_size_{512};
     bool interactive_{false};

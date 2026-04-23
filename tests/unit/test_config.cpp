@@ -241,3 +241,19 @@ TEST(ConfigManagerTest, ParsesMultimodalAndLlmArgs) {
     EXPECT_FLOAT_EQ(config->GetRepetitionPenalty(), 1.1f);
     EXPECT_EQ(config->GetStopWords(), "</s>,DONE");
 }
+
+TEST(ConfigManagerTest, ParsesChatServiceArgs) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic",
+                          "--backend=chat",
+                          "--api_service=openrouter",
+                          "--api_key_env=OPENROUTER_API_KEY",
+                          "--target_image_size=768"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    auto config = mgr.LoadFromCommandLine(argc, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetBackend(), "chat");
+    EXPECT_EQ(config->GetApiService(), "openrouter");
+    EXPECT_EQ(config->GetApiKeyEnv(), "OPENROUTER_API_KEY");
+    EXPECT_EQ(config->GetTargetImageSize(), 768);
+}
