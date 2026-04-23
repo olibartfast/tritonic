@@ -244,11 +244,8 @@ TEST(ConfigManagerTest, ParsesMultimodalAndLlmArgs) {
 
 TEST(ConfigManagerTest, ParsesChatServiceArgs) {
     ConfigManager mgr;
-    const char* argv[] = {"tritonic",
-                          "--backend=chat",
-                          "--api_service=openrouter",
-                          "--api_key_env=OPENROUTER_API_KEY",
-                          "--target_image_size=768"};
+    const char* argv[] = {"tritonic", "--backend=chat", "--api_service=openrouter",
+                          "--api_key_env=OPENROUTER_API_KEY", "--target_image_size=768"};
     int argc = sizeof(argv) / sizeof(argv[0]);
     auto config = mgr.LoadFromCommandLine(argc, argv);
     ASSERT_NE(config, nullptr);
