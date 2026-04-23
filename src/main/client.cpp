@@ -138,8 +138,7 @@ int main(int argc, const char* argv[]) {
 
             const auto resolvedEndpoint = ResolveApiEndpoint(*config);
             if (!resolvedEndpoint) {
-                logger->Error(
-                    "--api_endpoint or --api_service is required when --backend=chat");
+                logger->Error("--api_endpoint or --api_service is required when --backend=chat");
                 return 1;
             }
 
