@@ -1,5 +1,8 @@
+#include <cctype>
 #include <iostream>
+#include <optional>
 #include <sstream>
+#include <string_view>
 #include "App.hpp"
 #include "Config.hpp"
 #include "ConfigManager.hpp"
@@ -8,6 +11,67 @@
 #include "chat/ChatBackend.hpp"
 #include "chat/ChatSession.hpp"
 #include "chat/IChatBackend.hpp"
+
+namespace {
+
+std::string ToLower(std::string value) {
+    for (char& ch : value) {
+        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    }
+    return value;
+}
+
+std::optional<std::string> ResolveApiEndpoint(const InferenceConfig& config) {
+    if (!config.GetApiEndpoint().empty()) {
+        return config.GetApiEndpoint();
+    }
+
+    const std::string service = ToLower(config.GetApiService());
+    if (service.empty()) {
+        return std::nullopt;
+    }
+
+    if (service == "openai") {
+        return "https://api.openai.com/v1/chat/completions";
+    }
+    if (service == "openrouter") {
+        return "https://openrouter.ai/api/v1/chat/completions";
+    }
+    if (service == "together") {
+        return "https://api.together.xyz/v1/chat/completions";
+    }
+    if (service == "zai") {
+        return "https://api.z.ai/api/paas/v4/chat/completions";
+    }
+    throw std::invalid_argument("Unsupported --api_service value: " + config.GetApiService());
+}
+
+std::string ResolveApiKeyEnv(const InferenceConfig& config) {
+    if (!config.GetApiKeyEnv().empty()) {
+        return config.GetApiKeyEnv();
+    }
+
+    const std::string service = ToLower(config.GetApiService());
+    if (service == "openrouter") {
+        return "OPENROUTER_API_KEY";
+    }
+    if (service == "together") {
+        return "TOGETHER_API_KEY";
+    }
+    if (service == "zai") {
+        return "ZAI_API_KEY";
+    }
+    if (service == "openai") {
+        return "OPENAI_API_KEY";
+    }
+    return {};
+}
+
+bool IsKnownTextOnlyModel(std::string_view model_name) {
+    return model_name == "glm-5.1";
+}
+
+}  // namespace
 
 int main(int argc, const char* argv[]) {
     try {
@@ -71,25 +135,34 @@ int main(int argc, const char* argv[]) {
         if (config->GetBackend() == "chat") {
             // --- Chat (OpenAI-compatible) backend ---
             logger->Info("Backend: chat (OpenAI-compatible)");
-            logger->Info("  Endpoint: " + config->GetApiEndpoint());
 
-            if (config->GetApiEndpoint().empty()) {
-                logger->Error("--api_endpoint is required when --backend=chat");
+            const auto resolvedEndpoint = ResolveApiEndpoint(*config);
+            if (!resolvedEndpoint) {
+                logger->Error(
+                    "--api_endpoint or --api_service is required when --backend=chat");
                 return 1;
             }
 
+            const std::string apiEndpoint = *resolvedEndpoint;
+            logger->Info("  Endpoint: " + apiEndpoint);
+
+            const std::string apiKeyEnv = ResolveApiKeyEnv(*config);
+            if (!config->GetApiService().empty()) {
+                logger->Info("  API Service: " + config->GetApiService());
+            }
+
             std::string api_key;
-            if (!config->GetApiKeyEnv().empty()) {
-                const char* val = std::getenv(config->GetApiKeyEnv().c_str());
+            if (!apiKeyEnv.empty()) {
+                const char* val = std::getenv(apiKeyEnv.c_str());
                 if (val) {
                     api_key = val;
                 } else {
-                    logger->Warn("Env var '" + config->GetApiKeyEnv() +
+                    logger->Warn("Env var '" + apiKeyEnv +
                                  "' is not set — proceeding without API key");
                 }
             }
 
-            auto chatBackend = std::make_shared<ChatBackend>(config->GetApiEndpoint(), api_key);
+            auto chatBackend = std::make_shared<ChatBackend>(apiEndpoint, api_key);
 
             // Collect images from --source (comma-separated paths or URLs)
             std::vector<std::string> source_images;
@@ -98,6 +171,13 @@ int main(int argc, const char* argv[]) {
             while (std::getline(src_stream, token, ',')) {
                 if (!token.empty())
                     source_images.push_back(token);
+            }
+
+            if (!source_images.empty() && IsKnownTextOnlyModel(config->GetModelName())) {
+                logger->Error("Model '" + config->GetModelName() +
+                              "' is text-only. For multimodal GLM requests, use GLM-4.6V "
+                              "with --api_service=zai instead.");
+                return 1;
             }
 
             if (config->GetInteractive()) {
@@ -153,7 +233,7 @@ int main(int argc, const char* argv[]) {
                 req.top_p = config->GetTopP();
                 req.target_image_size = config->GetTargetImageSize();
 
-                logger->Info("Sending chat request to " + config->GetApiEndpoint());
+                logger->Info("Sending chat request to " + apiEndpoint);
                 ChatResponse resp = chatBackend->infer(req);
 
                 if (resp.success) {

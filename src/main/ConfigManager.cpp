@@ -69,6 +69,7 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
         "{backend be   |triton | inference backend: triton or chat}"
         "{api_endpoint ae |    | full URL for chat backend (e.g. "
         "http://localhost:11434/v1/chat/completions)}"
+        "{api_service as |     | chat API service preset (openai, openrouter, together, zai)}"
         "{api_key_env ak |     | env-var name containing the API key for chat backend}"
         "{target_image_size tis |512 | image resize size (px) before base64 encoding for chat "
         "backend}"
@@ -114,6 +115,7 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
     config->SetStopWords(parser.get<cv::String>("stop_words"));
     config->SetBackend(parser.get<cv::String>("backend"));
     config->SetApiEndpoint(parser.get<cv::String>("api_endpoint"));
+    config->SetApiService(parser.get<cv::String>("api_service"));
     config->SetApiKeyEnv(parser.get<cv::String>("api_key_env"));
     config->SetTargetImageSize(parser.get<int>("target_image_size"));
     config->SetInteractive(parser.get<bool>("interactive"));
