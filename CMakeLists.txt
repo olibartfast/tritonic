@@ -51,6 +51,7 @@ FetchContent_MakeAvailable(vision-core)
 
 option(WITH_SHOW_FRAME "Option description" OFF)
 option(WITH_WRITE_FRAME "Option description" ON)
+option(WITH_CHAT_BACKEND "Build OpenAI-compatible chat backend (requires CURL, already a dep)" ON)
 option(TRITONIC_STRICT_WARNINGS "Enable strict compiler warnings for tritonic targets." OFF)
 
 function(tritonic_apply_strict_warnings target_name)
@@ -90,7 +91,18 @@ set(SOURCES
     ${PROJECT_SOURCE_DIR}/src/main/client.cpp
     ${PROJECT_SOURCE_DIR}/src/main/App.cpp
     # Add any additional tritonic-specific source files here
-)  
+)
+
+# Chat backend (OpenAI-compatible) — CURL is already a required dep
+set(CHAT_SOURCES)
+if(WITH_CHAT_BACKEND)
+    list(APPEND CHAT_SOURCES
+        ${PROJECT_SOURCE_DIR}/src/chat/ChatBackend.cpp
+        ${PROJECT_SOURCE_DIR}/src/chat/ChatSession.cpp
+    )
+    add_definitions(-DWITH_CHAT_BACKEND)
+    message(STATUS "Chat backend enabled")
+endif()
 
 # Set the source files
 set(TRITON_SOURCES 
@@ -108,6 +120,7 @@ add_executable(${PROJECT_NAME}
     ${SOURCES}
     ${TRITON_SOURCES}
     ${INFRA_SOURCES}
+    ${CHAT_SOURCES}
 )
 tritonic_apply_strict_warnings(${PROJECT_NAME})
 
@@ -120,6 +133,7 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/utils
     ${PROJECT_SOURCE_DIR}/src/triton
+    ${PROJECT_SOURCE_DIR}/src/chat
     # vision-core includes are provided automatically through target_link_libraries
 )
 
@@ -174,13 +188,17 @@ if(BUILD_TESTING)
             ${UNIT_TEST_SOURCES}
             src/triton/Triton.cpp
             ${INFRA_SOURCES}
+            ${CHAT_SOURCES}
         )
         tritonic_apply_strict_warnings(tritonic_unit_tests)
-        
+
         target_include_directories(tritonic_unit_tests PRIVATE
             ${PROJECT_SOURCE_DIR}/include
             ${PROJECT_SOURCE_DIR}/src
             ${PROJECT_SOURCE_DIR}/src/triton
+            ${PROJECT_SOURCE_DIR}/src/chat
+            ${PROJECT_SOURCE_DIR}/src/common
+            ${PROJECT_SOURCE_DIR}/tests
             ${PROJECT_SOURCE_DIR}/tests/mocks
             ${TRITON_CLIENT_BUILD_DIR}/include
             ${OpenCV_INCLUDE_DIRS}
@@ -206,32 +224,30 @@ if(BUILD_TESTING)
         )
     endif()
     
-    # Create integration test executable if integration tests exist  
+    # Create integration test executable if integration tests exist
     if(INTEGRATION_TEST_SOURCES)
         add_executable(tritonic_integration_tests
             ${TEST_MAIN}
             ${INTEGRATION_TEST_SOURCES}
-            src/triton/Triton.cpp
-            src/main/App.cpp
             ${INFRA_SOURCES}
+            ${CHAT_SOURCES}
         )
         tritonic_apply_strict_warnings(tritonic_integration_tests)
-        
+
         target_include_directories(tritonic_integration_tests PRIVATE
             ${PROJECT_SOURCE_DIR}/include
             ${PROJECT_SOURCE_DIR}/src
-            ${PROJECT_SOURCE_DIR}/src/triton
+            ${PROJECT_SOURCE_DIR}/src/chat
+            ${PROJECT_SOURCE_DIR}/src/common
+            ${PROJECT_SOURCE_DIR}/tests
             ${PROJECT_SOURCE_DIR}/tests/mocks
             ${OpenCV_INCLUDE_DIRS}
         )
-        
+
         target_link_libraries(tritonic_integration_tests PRIVATE
             gtest gtest_main gmock
-            vision-core::vision-core
-            grpcclient httpclient
             ${OpenCV_LIBS}
             CURL::libcurl
-            ${PROTOBUF_LIBRARIES}
         )
         
         add_test(NAME IntegrationTests COMMAND tritonic_integration_tests)

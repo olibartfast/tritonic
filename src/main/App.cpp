@@ -1,11 +1,88 @@
 #include "App.hpp"
+#include <cctype>
 #include <chrono>
 #include <deque>
 #include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <random>
 #include <sstream>
 #include <thread>
 #include "vision-core/core/task_factory.hpp"
+
+namespace {
+std::string NormalizeModelType(const std::string& modelType) {
+    std::string normalized;
+    normalized.reserve(modelType.size());
+    for (char c : modelType) {
+        if (c != '-' && c != '_' && c != ' ') {
+            normalized += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        }
+    }
+    return normalized;
+}
+
+std::string ReadTextFile(const std::string& path) {
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open text input file: " + path);
+    }
+    return std::string(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+}
+
+std::string EscapeJsonString(const std::string& value) {
+    std::string escaped;
+    escaped.reserve(value.size());
+    for (char c : value) {
+        switch (c) {
+            case '\\':
+                escaped += "\\\\";
+                break;
+            case '"':
+                escaped += "\\\"";
+                break;
+            case '\n':
+                escaped += "\\n";
+                break;
+            case '\r':
+                escaped += "\\r";
+                break;
+            case '\t':
+                escaped += "\\t";
+                break;
+            default:
+                escaped += c;
+                break;
+        }
+    }
+    return escaped;
+}
+
+std::string BuildSamplingParameters(const InferenceConfig& config) {
+    std::ostringstream oss;
+    oss << "{\"max_tokens\":" << config.GetMaxTokens()
+        << ",\"temperature\":" << config.GetTemperature() << ",\"top_p\":" << config.GetTopP();
+    if (config.GetRepetitionPenalty() != 1.0f) {
+        oss << ",\"repetition_penalty\":" << config.GetRepetitionPenalty();
+    }
+    if (!config.GetStopWords().empty()) {
+        oss << ",\"stop\":[";
+        bool first = true;
+        std::istringstream stream(config.GetStopWords());
+        std::string word;
+        while (std::getline(stream, word, ',')) {
+            if (!first) {
+                oss << ',';
+            }
+            first = false;
+            oss << '"' << EscapeJsonString(word) << '"';
+        }
+        oss << ']';
+    }
+    oss << '}';
+    return oss.str();
+}
+}  // namespace
 
 App::App(std::shared_ptr<ITriton> triton, std::shared_ptr<InferenceConfig> config,
          std::shared_ptr<Logger> logger)
@@ -62,6 +139,13 @@ int App::run() {
         logger_->Info("Getting model info for: " + config_->GetModelName());
         TritonModelInfo modelInfo = tritonClient_->getModelInfo(
             config_->GetModelName(), config_->GetServerAddress(), config_->GetInputSizes());
+
+        if (isTextGenerationModelType(config_->GetModelType())) {
+            logger_->Info("Text-generation model detected: " + config_->GetModelType());
+            processTextGeneration(modelInfo);
+            logger_->Info("Application completed successfully");
+            return 0;
+        }
 
         // Create task instance
         logger_->Info("Creating task instance for model type: " + config_->GetModelType());
@@ -164,9 +248,88 @@ std::vector<vision_core::Result> App::processSource(const std::vector<cv::Mat>& 
     std::vector<vision_core::Tensor> vision_tensors;
     vision_tensors.reserve(tensors.size());
     for (const auto& tensor : tensors) {
-        vision_tensors.emplace_back(tensor.data, tensor.shape);
+        std::vector<vision_core::TensorElement> data;
+        data.reserve(tensor.data.size());
+        for (const auto& element : tensor.data) {
+            if (std::holds_alternative<float>(element)) {
+                data.emplace_back(std::get<float>(element));
+            } else if (std::holds_alternative<int32_t>(element)) {
+                data.emplace_back(std::get<int32_t>(element));
+            } else if (std::holds_alternative<int64_t>(element)) {
+                data.emplace_back(std::get<int64_t>(element));
+            } else if (std::holds_alternative<uint8_t>(element)) {
+                data.emplace_back(std::get<uint8_t>(element));
+            } else {
+                throw std::runtime_error(
+                    "String tensors are only supported by the text-generation path.");
+            }
+        }
+        vision_tensors.emplace_back(std::move(data), tensor.shape);
     }
     return task_->postprocess(cv::Size(source.front().cols, source.front().rows), vision_tensors);
+}
+
+bool App::isTextGenerationModelType(const std::string& modelType) {
+    const std::string normalized = NormalizeModelType(modelType);
+    return normalized == "vllm" || normalized == "llm" || normalized == "llama" ||
+           normalized == "mistral" || normalized == "qwen" || normalized == "phi" ||
+           normalized == "gemma" || normalized == "chatglm" || normalized == "textgeneration";
+}
+
+void App::processTextGeneration(const TritonModelInfo& modelInfo) {
+    std::string prompt = config_->GetTextPrompt();
+    if (prompt.empty() && !config_->GetTextInput().empty()) {
+        prompt = ReadTextFile(config_->GetTextInput());
+    }
+    if (prompt.empty()) {
+        prompt = config_->GetSource();
+    }
+    if (prompt.empty()) {
+        throw std::runtime_error(
+            "No text input provided. Use --text_prompt, --text_input, or --source.");
+    }
+
+    const std::string samplingParameters = BuildSamplingParameters(*config_);
+    logger_->Debug("Sampling parameters: " + samplingParameters);
+
+    std::vector<std::vector<std::string>> stringInputs;
+    stringInputs.reserve(modelInfo.input_names.size());
+
+    for (size_t i = 0; i < modelInfo.input_names.size(); ++i) {
+        const std::string& name = modelInfo.input_names[i];
+        if (name == "text_input" || name == "prompt") {
+            stringInputs.push_back({prompt});
+        } else if (name == "sampling_parameters") {
+            stringInputs.push_back({samplingParameters});
+        } else if (name == "stream") {
+            stringInputs.push_back({"false"});
+        } else if (name == "exclude_input_in_output") {
+            stringInputs.push_back({"true"});
+        } else if (name == "image" && config_->GetEnableMultimodal()) {
+            throw std::runtime_error(
+                "Multimodal image input is not supported in tritonic yet. "
+                "This requires upstream vision-core task contracts.");
+        } else {
+            stringInputs.push_back({""});
+        }
+    }
+
+    auto start = std::chrono::steady_clock::now();
+    const auto results = tritonClient_->inferText(stringInputs);
+    auto end = std::chrono::steady_clock::now();
+    const auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    logger_->Info("Text generation completed in " + std::to_string(diff) + " ms");
+
+    for (const auto& tensor : results) {
+        for (const auto& element : tensor.data) {
+            if (std::holds_alternative<std::string>(element)) {
+                const std::string& text = std::get<std::string>(element);
+                logger_->Info("Generated text: " + text);
+                std::cout << text << std::endl;
+            }
+        }
+    }
 }
 
 void App::processImages(const std::vector<std::string>& sourceNames) {

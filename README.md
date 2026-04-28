@@ -1,15 +1,21 @@
 ![Alt text](data/tritonic.jpeg)
 
-# TritonIC - C++ Triton Inference Client for Computer Vision Models
+# TritonIC - C++ Inference Client
 
 [![CI](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml)
 
-This C++ application enables machine learning tasks (e.g. object detection, classification, optical flow ...) using the Nvidia Triton Server. Triton manages multiple framework backends for streamlined model deployment.
+TritonIC is a C++ application that supports two complementary inference modes:
+
+- **Triton backend** — computer vision tasks (object detection, segmentation, classification, optical flow, pose, depth) via the [NVIDIA Triton Inference Server](https://github.com/triton-inference-server/server) over HTTP or gRPC.
+- **Chat backend** — text and multimodal generation via any OpenAI-compatible `/v1/chat/completions` endpoint (Ollama, llama.cpp, SGLang, vLLM, OpenAI, etc.).
+
+The two backends are complementary: use Triton for real-time computer vision at high throughput; use the Chat backend for VLMs and LLMs without a Triton server.
 
 > 🚧 Status: Under Development — expect frequent updates.
 
 ## Table of Contents
 - [Project Structure](#project-structure)
+- [Architecture](#architecture)
 - [Tested Models](#tested-models)
 - [Build Client Libraries](#build-client-libraries)
 - [Dependencies](#dependencies)
@@ -18,6 +24,8 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 - [Notes](#notes)
 - [Deploying Models](#deploying-models)
 - [Running Inference](#running-inference)
+  - [Triton backend](#command-line-inference-on-video-or-image)
+  - [Chat backend](#chat-backend-openai-compatible)
 - [Docker Support](#docker-support)
 - [Kubernetes Deployment](#kubernetes-deployment)
 - [Demo](#demo)
@@ -28,8 +36,18 @@ This C++ application enables machine learning tasks (e.g. object detection, clas
 
 ```
 tritonic/
-├── src/                          # Source code (main app, triton client, tasks, utils)
-├── include/                      # Header files
+├── src/
+│   ├── main/                     # Entry point (client.cpp), App, Logger, ConfigManager
+│   ├── triton/                   # Triton client (Triton.hpp/.cpp, forwarding headers)
+│   ├── chat/                     # OpenAI-compatible backend (ChatBackend, ChatSession)
+│   └── common/                   # Shared forwarding headers
+├── include/
+│   ├── tritonic/                 # Canonical namespaced headers
+│   │   ├── core/                 # types.hpp, interfaces.hpp
+│   │   ├── triton/               # model_info.hpp, itriton.hpp, triton_backend.hpp
+│   │   ├── chat/                 # ichat_backend.hpp
+│   │   └── infra/                # logger.hpp, config.hpp, config_manager.hpp
+│   └── *.hpp                     # Backward-compat forwarding headers
 ├── deploy/                       # Model export scripts (per task type)
 ├── scripts/                      # Docker, setup, and utility scripts
 ├── config/                       # Configuration files
@@ -41,6 +59,23 @@ tritonic/
 
 **CMake Fetched Dependencies:**
 - [vision-core](https://github.com/olibartfast/vision-core) - Model pre/post processing and task management
+
+## Architecture
+
+TritonIC selects an inference backend at startup via `--backend`:
+
+| `--backend` | Requires | Best for |
+|-------------|----------|----------|
+| `triton` (default) | NVIDIA Triton server | CV tasks — detection, segmentation, classification, optical flow, pose, depth |
+| `chat` | Any OpenAI-compatible server | LLMs, VLMs, multimodal chat |
+
+The two modes are **not competing** — Triton handles binary tensor workloads at real-time throughput, while the Chat backend handles text/image generation over a REST API. Choose based on your model and server.
+
+Both implement the common `tritonic::core::IInferenceBackend` interface (Strategy pattern), enabling clean dependency injection and unit testing without live servers.
+
+> Note: "backend" here refers to *tritonic's* server selection (`--backend=triton` vs `--backend=chat`). This is distinct from the Triton server's own *framework backends* (TensorRT, ONNX Runtime, etc.), which are configured server-side.
+
+For full code structure and namespace layout see [AGENTS.md](AGENTS.md).
 
 ## Tested Models
 
@@ -190,14 +225,6 @@ cmake --build .
 
 *Other tasks are in TODO list.*
 
-## Architecture
-
-TritonIC uses a modular architecture:
-
-- **[vision-core](https://github.com/olibartfast/vision-core)**: Handles all model-specific preprocessing and postprocessing logic, task management, and computer vision algorithms. Automatically fetched as a CMake dependency via `FetchContent`.
-
-- **Local infrastructure** (`include/Logger.hpp`, `include/Config.hpp`, `include/ConfigManager.hpp`): Provides logging (`Logger`, `LoggerManager`, `LogLevel`) and CLI configuration parsing (`InferenceConfig`, `ConfigManager`) as plain types with no external dependency.
-
 ## Notes
 
 Ensure the model export versions match those supported by your Triton release. Check Triton releases [here](https://github.com/triton-inference-server/server/releases).
@@ -342,7 +369,86 @@ To view all available parameters, run:
 | Tensorflow Classifier  | `tensorflow-classifier` |      |
 | ViT Classifier         | `vit-classifier`       |       |
 | RAFT Optical Flow      | `raft`                 |       |
+| VideoMAE               | `videomae`             | 16-frame sliding window video |
+| ViViT                  | `vivit`                | Video Transformer |
+| TimeSformer            | `timesformer`          | Video Transformer |
+| ViTPose                | `vitpose`              | Pose estimation (COCO 17 keypoints) |
+| Depth Anything V2      | `depth_anything_v2`    | Monocular depth estimation |
 
+### Chat Backend (OpenAI-compatible)
+
+Skip Triton entirely and query any OpenAI-compatible server. Works with Ollama, llama.cpp, SGLang, vLLM, OpenAI, Together AI, OpenRouter, and Z.AI.
+
+**Single-turn with an image:**
+```bash
+./tritonic \
+    --backend=chat \
+    --api_endpoint=http://localhost:11434/v1/chat/completions \
+    --model=llava:7b \
+    --text_prompt="Describe what you see" \
+    --source=/path/to/image.jpg
+```
+
+**Interactive multi-turn session:**
+```bash
+./tritonic \
+    --backend=chat \
+    --api_endpoint=http://localhost:11434/v1/chat/completions \
+    --model=llava:7b \
+    --text_prompt="You are a helpful assistant" \
+    --interactive
+```
+
+**OpenRouter multimodal with Kimi K2.6:**
+```bash
+export OPENROUTER_API_KEY=...
+
+./tritonic \
+    --backend=chat \
+    --api_service=openrouter \
+    --model=moonshotai/kimi-k2.6 \
+    --text_prompt="Describe the scene and read any visible text." \
+    --source=/path/to/image.jpg
+```
+
+**Together AI text-only with GLM-5.1:**
+```bash
+export TOGETHER_API_KEY=...
+
+./tritonic \
+    --backend=chat \
+    --api_service=together \
+    --model=zai-org/GLM-5.1 \
+    --text_prompt="Summarize the design tradeoffs in this architecture."
+```
+
+**Z.AI multimodal with GLM-4.6V:**
+```bash
+export ZAI_API_KEY=...
+
+./tritonic \
+    --backend=chat \
+    --api_service=zai \
+    --model=glm-4.6v \
+    --text_prompt="Describe the image and extract the key objects." \
+    --source=/path/to/image.jpg
+```
+
+`GLM-5.1` is available on Together AI and Z.AI, but it is text-only. For GLM-family image input, use `GLM-4.6V`.
+
+**Chat CLI parameters:**
+
+| Parameter | Short | Default | Description |
+|-----------|-------|---------|-------------|
+| `--backend` | `be` | `triton` | `triton` or `chat` |
+| `--api_endpoint` | `ae` | — | Full URL, e.g. `http://localhost:11434/v1/chat/completions` |
+| `--api_service` | `as` | — | Service preset: `openai`, `openrouter`, `together`, `zai` |
+| `--api_key_env` | `ak` | — | Env-var name that holds the API key (e.g. `OPENAI_API_KEY`) |
+| `--text_prompt` | `tp` | — | System prompt (interactive) or user prompt (single-turn) |
+| `--max_tokens` | `mxt` | `256` | Max tokens to generate |
+| `--temperature` | `temp` | `1.0` | Sampling temperature |
+| `--target_image_size` | `tis` | `512` | Longest edge (px) before base64 encoding |
+| `--interactive` | `ia` | `false` | Enable multi-turn REPL |
 
 ## Docker Support
 For detailed instructions on installing Docker and the NVIDIA Container Toolkit, refer to the [Docker Setup Document](docs/guides/Docker_setup.md).

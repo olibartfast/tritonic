@@ -24,6 +24,13 @@ TEST(InferenceConfigTest, DefaultValues) {
     EXPECT_EQ(config.GetLogLevel(), "info");
     EXPECT_TRUE(config.GetLogFile().empty());
     EXPECT_TRUE(config.GetInputSizes().empty());
+    EXPECT_FALSE(config.GetEnableMultimodal());
+    EXPECT_TRUE(config.GetTextPrompt().empty());
+    EXPECT_EQ(config.GetMaxTokens(), 256);
+    EXPECT_FLOAT_EQ(config.GetTemperature(), 1.0f);
+    EXPECT_FLOAT_EQ(config.GetTopP(), 1.0f);
+    EXPECT_FLOAT_EQ(config.GetRepetitionPenalty(), 1.0f);
+    EXPECT_TRUE(config.GetStopWords().empty());
 }
 
 TEST(InferenceConfigTest, ServerSettersGetters) {
@@ -171,4 +178,79 @@ TEST(ConfigManagerTest, ParsesConfidenceAndNms) {
     ASSERT_NE(config, nullptr);
     EXPECT_FLOAT_EQ(config->GetConfidenceThreshold(), 0.7f);
     EXPECT_FLOAT_EQ(config->GetNmsThreshold(), 0.3f);
+}
+
+TEST(InferenceConfigTest, MultimodalSettersGetters) {
+    InferenceConfig config;
+    config.SetEnableMultimodal(true);
+    config.SetTextInput("/tmp/prompt.txt");
+    config.SetAudioInput("/tmp/audio.wav");
+    config.SetTextPrompt("Describe this image");
+    config.SetModalityCombination("weighted");
+    config.SetTextWeight(0.5f);
+    config.SetImageWeight(0.8f);
+    config.SetAudioWeight(0.3f);
+
+    EXPECT_TRUE(config.GetEnableMultimodal());
+    EXPECT_EQ(config.GetTextInput(), "/tmp/prompt.txt");
+    EXPECT_EQ(config.GetAudioInput(), "/tmp/audio.wav");
+    EXPECT_EQ(config.GetTextPrompt(), "Describe this image");
+    EXPECT_EQ(config.GetModalityCombination(), "weighted");
+    EXPECT_FLOAT_EQ(config.GetTextWeight(), 0.5f);
+    EXPECT_FLOAT_EQ(config.GetImageWeight(), 0.8f);
+    EXPECT_FLOAT_EQ(config.GetAudioWeight(), 0.3f);
+}
+
+TEST(InferenceConfigTest, LlmSettersGetters) {
+    InferenceConfig config;
+    config.SetMaxTokens(512);
+    config.SetTemperature(0.7f);
+    config.SetTopP(0.9f);
+    config.SetRepetitionPenalty(1.2f);
+    config.SetStopWords("</s>,DONE");
+
+    EXPECT_EQ(config.GetMaxTokens(), 512);
+    EXPECT_FLOAT_EQ(config.GetTemperature(), 0.7f);
+    EXPECT_FLOAT_EQ(config.GetTopP(), 0.9f);
+    EXPECT_FLOAT_EQ(config.GetRepetitionPenalty(), 1.2f);
+    EXPECT_EQ(config.GetStopWords(), "</s>,DONE");
+}
+
+TEST(ConfigManagerTest, ParsesMultimodalAndLlmArgs) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic",
+                          "--enable_multimodal=true",
+                          "--text_prompt=What is in this image?",
+                          "--text_input=/tmp/prompt.txt",
+                          "--audio_input=/tmp/audio.wav",
+                          "--max_tokens=128",
+                          "--temperature=0.5",
+                          "--top_p=0.8",
+                          "--repetition_penalty=1.1",
+                          "--stop_words=</s>,DONE"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    auto config = mgr.LoadFromCommandLine(argc, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_TRUE(config->GetEnableMultimodal());
+    EXPECT_EQ(config->GetTextPrompt(), "What is in this image?");
+    EXPECT_EQ(config->GetTextInput(), "/tmp/prompt.txt");
+    EXPECT_EQ(config->GetAudioInput(), "/tmp/audio.wav");
+    EXPECT_EQ(config->GetMaxTokens(), 128);
+    EXPECT_FLOAT_EQ(config->GetTemperature(), 0.5f);
+    EXPECT_FLOAT_EQ(config->GetTopP(), 0.8f);
+    EXPECT_FLOAT_EQ(config->GetRepetitionPenalty(), 1.1f);
+    EXPECT_EQ(config->GetStopWords(), "</s>,DONE");
+}
+
+TEST(ConfigManagerTest, ParsesChatServiceArgs) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--backend=chat", "--api_service=openrouter",
+                          "--api_key_env=OPENROUTER_API_KEY", "--target_image_size=768"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    auto config = mgr.LoadFromCommandLine(argc, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetBackend(), "chat");
+    EXPECT_EQ(config->GetApiService(), "openrouter");
+    EXPECT_EQ(config->GetApiKeyEnv(), "OPENROUTER_API_KEY");
+    EXPECT_EQ(config->GetTargetImageSize(), 768);
 }
