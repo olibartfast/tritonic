@@ -41,5 +41,32 @@ TEST(TritonInterfaceTest, TritonModelInfoHasExpectedFields) {
     EXPECT_EQ(modelInfo.max_batch_size_, 1);
 }
 
+TEST(TritonInterfaceTest, TritonModelInfoStoresOutputMetadata) {
+    TritonModelInfo modelInfo;
+    modelInfo.output_names = {"text_output"};
+    modelInfo.output_datatypes = {"BYTES"};
+    modelInfo.output_shapes = {{-1}};
+    modelInfo.input_datatypes = {"BYTES", "BOOL"};
+    modelInfo.input_types = {TritonModelInfo::kStringTypeSentinel, CV_8U};
+
+    EXPECT_EQ(modelInfo.output_datatypes[0], "BYTES");
+    EXPECT_EQ(modelInfo.output_shapes[0][0], -1);
+    EXPECT_EQ(modelInfo.input_types[0], TritonModelInfo::kStringTypeSentinel);
+    EXPECT_EQ(modelInfo.input_types[1], CV_8U);
+}
+
+TEST(TensorElementTest, SupportsStringVariant) {
+    TensorElement element = std::string("hello");
+    EXPECT_TRUE(std::holds_alternative<std::string>(element));
+    EXPECT_EQ(std::get<std::string>(element), "hello");
+}
+
+TEST(TensorTest, StoresStringData) {
+    Tensor tensor({std::string("generated text")}, {1});
+    ASSERT_EQ(tensor.data.size(), 1u);
+    EXPECT_TRUE(std::holds_alternative<std::string>(tensor.data[0]));
+    EXPECT_EQ(std::get<std::string>(tensor.data[0]), "generated text");
+}
+
 // Note: Concrete Triton class tests should be in integration tests
 // where heavy dependencies are acceptable

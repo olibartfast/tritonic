@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [develop]
   pull_request:
-    branches: [master]
+    branches: [develop]
 
 jobs:
   format-check:
@@ -15,8 +15,31 @@ jobs:
 
       - name: Check formatting
         run: |
-          find include src tests -type f \( -name '*.cpp' -o -name '*.hpp' \) | \
-            xargs clang-format --dry-run --Werror
+          echo "🔍 Checking C++ code formatting..."
+          echo ""
+
+          # Run clang-format check
+          if ! find include src tests -type f \( -name '*.cpp' -o -name '*.hpp' \) | \
+            xargs clang-format --dry-run --Werror; then
+
+            echo ""
+            echo "❌ Code formatting issues detected!"
+            echo ""
+            echo "To fix these issues locally, run ONE of the following:"
+            echo ""
+            echo "  1. Auto-format all files:"
+            echo "     ./scripts/format_all.sh"
+            echo ""
+            echo "  2. Install git hook for automatic formatting on commit:"
+            echo "     ./scripts/setup/install_git_hooks.sh"
+            echo ""
+            echo "  3. Manually format specific files:"
+            echo "     clang-format -i path/to/file.cpp"
+            echo ""
+            exit 1
+          fi
+
+          echo "✅ All files are properly formatted!"
 
   clang-tidy:
     name: Clang-Tidy
