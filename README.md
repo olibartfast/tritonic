@@ -115,6 +115,11 @@ For full code structure and namespace layout see [AGENTS.md](AGENTS.md).
 
 - [RAFT](https://pytorch.org/vision/stable/models/raft.html)
 
+## Open Vocabulary Detection
+
+- [OWLv2](https://huggingface.co/google/owlv2-base-patch16-ensemble)
+- [OWL-ViT](https://huggingface.co/google/owlvit-base-patch32)
+
 
 ## Build Client Libraries
 
@@ -222,6 +227,7 @@ cmake --build .
 - [Classification](https://github.com/olibartfast/vision-core/blob/master/export/classification/Classification.md)
 - [Instance Segmentation](https://github.com/olibartfast/vision-core/blob/master/export/segmentation/InstanceSegmentation.md)
 - [Optical Flow](https://github.com/olibartfast/vision-core/blob/master/export/optical_flow/OpticalFlow.md)
+- [Open Vocabulary Detection](https://github.com/olibartfast/vision-core/blob/master/export/open_vocab_detection/OpenVocabDetection.md)
 
 *Other tasks are in TODO list.*
 
@@ -374,6 +380,8 @@ To view all available parameters, run:
 | TimeSformer            | `timesformer`          | Video Transformer |
 | ViTPose                | `vitpose`              | Pose estimation (COCO 17 keypoints) |
 | Depth Anything V2      | `depth_anything_v2`    | Monocular depth estimation |
+| OWLv2                  | `owlv2`                | Open-vocabulary detection |
+| OWL-ViT                | `owlvit`               | Open-vocabulary detection |
 
 ### Chat Backend (OpenAI-compatible)
 
