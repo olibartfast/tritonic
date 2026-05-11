@@ -103,7 +103,7 @@ For full code structure and namespace layout see [AGENTS.md](AGENTS.md).
 - [YOLOv8/YOLO11/YOLO26](https://github.com/ultralytics/ultralytics)
 - [YOLOv10](https://github.com/THU-MIG/yolov10)
 - [YOLOv12](https://github.com/sunsmarterjie/yolov12)
-- [RF-DETR](https://github.com/roboflow/rf-detr)
+- [RF-DETR-Seg](https://github.com/roboflow/rf-detr)
 
 ## Classification
 
@@ -119,6 +119,23 @@ For full code structure and namespace layout see [AGENTS.md](AGENTS.md).
 
 - [OWLv2](https://huggingface.co/google/owlv2-base-patch16-ensemble)
 - [OWL-ViT](https://huggingface.co/google/owlvit-base-patch32)
+- [Grounding DINO](https://github.com/IDEA-Research/GroundingDINO)
+
+## Pose Estimation
+
+- [YOLOv5 Pose](https://github.com/ultralytics/yolov5)
+- [YOLOv8/YOLO11/YOLO26 Pose](https://github.com/ultralytics/ultralytics)
+- [ViTPose](https://github.com/ViTAE-Transformer/ViTPose)
+
+## Video Classification
+
+- [VideoMAE](https://github.com/MCG-NJU/VideoMAE)
+- [ViViT](https://github.com/google-research/scenic/tree/main/scenic/projects/vivit)
+- [TimeSformer](https://github.com/facebookresearch/TimeSformer)
+
+## Depth Estimation
+
+- [Depth Anything V2](https://github.com/ibaiGorordo/Depth-Anything-V2)
 
 
 ## Build Client Libraries
@@ -228,6 +245,9 @@ cmake --build .
 - [Instance Segmentation](https://github.com/olibartfast/vision-core/blob/master/export/segmentation/InstanceSegmentation.md)
 - [Optical Flow](https://github.com/olibartfast/vision-core/blob/master/export/optical_flow/OpticalFlow.md)
 - [Open Vocabulary Detection](https://github.com/olibartfast/vision-core/blob/master/export/open_vocab_detection/OpenVocabDetection.md)
+- [Pose Estimation](https://github.com/olibartfast/vision-core/blob/master/export/pose_estimation/PoseEstimation.md)
+- [Video Classification](https://github.com/olibartfast/vision-core/blob/master/export/video_classification/VideoClassification.md)
+- [Depth Estimation](https://github.com/olibartfast/vision-core/blob/master/export/depth_estimation/DepthEstimation.md)
 
 *Other tasks are in TODO list.*
 
@@ -382,6 +402,15 @@ To view all available parameters, run:
 | Depth Anything V2      | `depth_anything_v2`    | Monocular depth estimation |
 | OWLv2                  | `owlv2`                | Open-vocabulary detection |
 | OWL-ViT                | `owlvit`               | Open-vocabulary detection |
+| Grounding DINO         | `grounding_dino`       | Open-vocabulary detection |
+| ViTPose                | `vitpose`              | Pose estimation (COCO 17 keypoints) |
+| YOLOv5 Pose            | `yolov5pose`           | Pose estimation |
+| YOLOv8 Pose            | `yolov8pose`           | Pose estimation |
+| YOLO11 Pose            | `yolo11pose`           | Pose estimation |
+| YOLO26 Pose            | `yolo26pose`           | Pose estimation |
+| VideoMAE               | `videomae`             | 16-frame sliding window video |
+| ViViT                  | `vivit`                | Video Transformer |
+| TimeSformer            | `timesformer`          | Video Transformer |
 
 ### Chat Backend (OpenAI-compatible)
 
