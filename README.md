@@ -137,6 +137,11 @@ For full code structure and namespace layout see [AGENTS.md](AGENTS.md).
 
 - [Depth Anything V2](https://github.com/ibaiGorordo/Depth-Anything-V2)
 
+## Image Understanding (VLM)
+
+- [Gemma 4](https://ai.google.dev/gemma/docs) and compatible vision-language models via llama.cpp (image captioning, visual Q&A)
+- LLaVA, LLaMA3-V, and other multimodal models via OpenAI-compatible endpoints
+
 
 ## Build Client Libraries
 
