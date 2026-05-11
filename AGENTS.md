@@ -203,6 +203,8 @@ For dynamic input sizes: `--input_sizes="c,h,w"` (e.g., `"3,640,640"` or `"3,640
 | **Optical Flow** | `raft` | Pass two images as `img1.jpg,img2.jpg` |
 | **Pose Estimation** | `vitpose` | ViTPose (COCO 17 keypoints) |
 | **Depth Estimation** | `depth_anything_v2` | Depth Anything V2 |
+| **Open Vocabulary Detection** | `owlv2` | OWLv2 open-vocabulary detection |
+| | `owlvit` | OWL-ViT open-vocabulary detection |
 
 `TaskFactory::normalizeModelType()` strips spaces, hyphens, underscores and lowercases before matching.
 
