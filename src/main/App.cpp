@@ -653,6 +653,13 @@ void App::renderPrediction(cv::Mat& frame, const vision_core::Result& prediction
             depth.normalized_depth.convertTo(depth_8u, CV_8UC1, 255.0);
             cv::applyColorMap(depth_8u, frame, cv::COLORMAP_INFERNO);
         }
+    } else if (std::holds_alternative<vision_core::OpenVocabDetection>(prediction)) {
+        const auto& det = std::get<vision_core::OpenVocabDetection>(prediction);
+        cv::Rect safeBbox = det.bbox & cv::Rect(0, 0, frame.cols, frame.rows);
+        if (safeBbox.width > 0 && safeBbox.height > 0) {
+            cv::rectangle(frame, safeBbox, cv::Scalar(0, 255, 0), 2);
+            drawLabel(frame, det.label, det.score, safeBbox.x, safeBbox.y - 1);
+        }
     }
 }
 
