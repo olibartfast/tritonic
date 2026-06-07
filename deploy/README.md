@@ -21,11 +21,11 @@ deploy/
 ```
 
 ## Export a model
-For detailed export instructions, see: [vision-core export documentation](https://github.com/olibartfast/vision-core/blob/master/export/README.md)
+For detailed export instructions, see: [neuriplo-tasks export documentation](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/README.md)
 ```bash
-# Using vision-core export tools
-git clone https://github.com/olibartfast/vision-core.git
-cd vision-core/export/detection/yolo
+# Using neuriplo-tasks export tools
+git clone https://github.com/olibartfast/neuriplo-tasks.git
+cd neuriplo-tasks/export/detection/yolo
 python export.py --model yolov8n.pt
 
 
@@ -46,7 +46,7 @@ The remaining files in this directory provide:
 
 ## Usage Workflow
 
-1. **Export Model**: Use vision-core export tools or manually to create ONNX/TensorRT models
+1. **Export Model**: Use neuriplo-tasks export tools or manually to create ONNX/TensorRT models
 2. **Deploy to Triton**: Use scripts in this directory to set up Triton model repository
 3. **Configure**: Edit `config.pbtxt` files for your specific model requirements
 4. **Run**: Start Triton server with your model repository
