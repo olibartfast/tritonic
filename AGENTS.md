@@ -117,7 +117,7 @@ Old flat `include/*.hpp` and `src/*/` headers are forwarding headers with backwa
 
 ### External dependencies (CMake FetchContent)
 
-- **vision-core** (`github.com/olibartfast/vision-core`) — all model pre/postprocessing and `TaskFactory`. Add new model types there, not in tritonic.
+- **neuriplo-tasks** (`github.com/olibartfast/neuriplo-tasks`) — all model pre/postprocessing and `TaskFactory`. Add new model types there, not in tritonic.
 
 CMake auto-detects offline mode via ping and sets `FETCHCONTENT_FULLY_DISCONNECTED` accordingly.
 
@@ -133,7 +133,7 @@ CMake auto-detects offline mode via ping and sets `FETCHCONTENT_FULLY_DISCONNECT
 
 - **C++20**, `CMAKE_CXX_STANDARD 20`
 - New code goes in the appropriate `tritonic::` namespace; update the matching `include/tritonic/` header
-- New tasks/model types belong in **vision-core**, not here
+- New tasks/model types belong in **neuriplo-tasks**, not here
 - `BackendRequest = std::variant<TritonInferRequest, ChatRequest>` — use `std::get_if` / `std::visit` to dispatch
 - `ChatBackend` has no `nlohmann/json` or `cpp-base64` dependency — keep it that way
 - `ChatSession::send()` appends to history **only on success**
@@ -203,6 +203,8 @@ For dynamic input sizes: `--input_sizes="c,h,w"` (e.g., `"3,640,640"` or `"3,640
 | **Optical Flow** | `raft` | Pass two images as `img1.jpg,img2.jpg` |
 | **Pose Estimation** | `vitpose` | ViTPose (COCO 17 keypoints) |
 | **Depth Estimation** | `depth_anything_v2` | Depth Anything V2 |
+| **Open Vocabulary Detection** | `owlv2` | OWLv2 open-vocabulary detection |
+| | `owlvit` | OWL-ViT open-vocabulary detection |
 
 `TaskFactory::normalizeModelType()` strips spaces, hyphens, underscores and lowercases before matching.
 
