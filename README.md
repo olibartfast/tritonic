@@ -58,7 +58,7 @@ tritonic/
 ```
 
 **CMake Fetched Dependencies:**
-- [vision-core](https://github.com/olibartfast/vision-core) - Model pre/post processing and task management
+- [neuriplo-tasks](https://github.com/olibartfast/neuriplo-tasks) - Model pre/post processing and task management
 
 ## Architecture
 
@@ -245,14 +245,14 @@ cmake --build .
 ## Tasks
 
 ### Export Instructions
-- [Object Detection](https://github.com/olibartfast/vision-core/blob/master/export/detection/ObjectDetection.md)
-- [Classification](https://github.com/olibartfast/vision-core/blob/master/export/classification/Classification.md)
-- [Instance Segmentation](https://github.com/olibartfast/vision-core/blob/master/export/segmentation/InstanceSegmentation.md)
-- [Optical Flow](https://github.com/olibartfast/vision-core/blob/master/export/optical_flow/OpticalFlow.md)
-- [Open Vocabulary Detection](https://github.com/olibartfast/vision-core/blob/master/export/open_vocab_detection/OpenVocabDetection.md)
-- [Pose Estimation](https://github.com/olibartfast/vision-core/blob/master/export/pose_estimation/PoseEstimation.md)
-- [Video Classification](https://github.com/olibartfast/vision-core/blob/master/export/video_classification/VideoClassification.md)
-- [Depth Estimation](https://github.com/olibartfast/vision-core/blob/master/export/depth_estimation/DepthEstimation.md)
+- [Object Detection](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/detection/ObjectDetection.md)
+- [Classification](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/classification/Classification.md)
+- [Instance Segmentation](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/segmentation/InstanceSegmentation.md)
+- [Optical Flow](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/optical_flow/OpticalFlow.md)
+- [Open Vocabulary Detection](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/open_vocab_detection/OpenVocabDetection.md)
+- [Pose Estimation](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/pose_estimation/PoseEstimation.md)
+- [Video Classification](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/video_classification/VideoClassification.md)
+- [Depth Estimation](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/depth_estimation/DepthEstimation.md)
 
 *Other tasks are in TODO list.*
 

@@ -15,7 +15,7 @@ endif()
 
 message(STATUS "Using Triton Client Build Dir: ${TRITON_CLIENT_BUILD_DIR}")
 
-# Fetch vision-core repository for tasks
+# Fetch neuriplo-tasks repository for tasks
 include(FetchContent)
 
 # Auto-detect offline mode by testing network connectivity
@@ -36,17 +36,17 @@ endif()
 
 # Set GIT_CONFIG to allow credential helper or use token from environment
 if(DEFINED ENV{GITHUB_TOKEN})
-  set(VISION_CORE_REPO "https://$ENV{GITHUB_TOKEN}@github.com/olibartfast/vision-core.git")
+  set(NEURIPLO_TASKS_REPO "https://$ENV{GITHUB_TOKEN}@github.com/olibartfast/neuriplo-tasks.git")
 else()
-  set(VISION_CORE_REPO "https://github.com/olibartfast/vision-core.git")
+  set(NEURIPLO_TASKS_REPO "https://github.com/olibartfast/neuriplo-tasks.git")
 endif()
 
 FetchContent_Declare(
-  vision-core
-  GIT_REPOSITORY ${VISION_CORE_REPO}
+  neuriplo-tasks
+  GIT_REPOSITORY ${NEURIPLO_TASKS_REPO}
   GIT_TAG master
 )
-FetchContent_MakeAvailable(vision-core)
+FetchContent_MakeAvailable(neuriplo-tasks)
 
 
 option(WITH_SHOW_FRAME "Option description" OFF)
@@ -134,7 +134,7 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/src/utils
     ${PROJECT_SOURCE_DIR}/src/triton
     ${PROJECT_SOURCE_DIR}/src/chat
-    # vision-core includes are provided automatically through target_link_libraries
+    # neuriplo-tasks includes are provided automatically through target_link_libraries
 )
 
 # Set link directories for the target
@@ -147,7 +147,7 @@ target_link_directories(${PROJECT_NAME}
 # Link libraries for the target
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-    vision-core::vision-core
+    neuriplo-tasks::neuriplo-tasks
     grpcclient
     httpclient
     ${OpenCV_LIBS}

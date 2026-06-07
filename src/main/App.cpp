@@ -8,7 +8,8 @@
 #include <random>
 #include <sstream>
 #include <thread>
-#include "vision-core/core/task_factory.hpp"
+#include "neuriplo/tasks/core/opencv_interop.hpp"
+#include "neuriplo/tasks/core/task_factory.hpp"
 
 namespace {
 std::string NormalizeModelType(const std::string& modelType) {
@@ -149,19 +150,19 @@ int App::run() {
 
         // Create task instance
         logger_->Info("Creating task instance for model type: " + config_->GetModelType());
-        auto visionCoreModelInfo = convertToVisionCoreModelInfo(modelInfo);
-        vision_core::TaskConfig taskConfig;
+        auto neuriploTasksModelInfo = convertToNeuriploTasksModelInfo(modelInfo);
+        neuriplo_tasks::TaskConfig taskConfig;
         taskConfig.confidence_threshold = config_->GetConfidenceThreshold();
         taskConfig.nms_threshold = config_->GetNmsThreshold();
-        task_ = vision_core::TaskFactory::createTaskInstance(config_->GetModelType(),
-                                                             visionCoreModelInfo, taskConfig);
+        task_ = neuriplo_tasks::TaskFactory::createTaskInstance(config_->GetModelType(),
+                                                                neuriploTasksModelInfo, taskConfig);
 
         if (!task_) {
             throw std::runtime_error("Failed to create task instance");
         }
 
         // Extract frame buffer size for video classification from 5D input shape [B, T, C, H, W]
-        if (task_->getTaskType() == vision_core::TaskType::VideoClassification &&
+        if (task_->getTaskType() == neuriplo_tasks::TaskType::VideoClassification &&
             !modelInfo.input_shapes.empty()) {
             const auto& shape = modelInfo.input_shapes[0];
             if (shape.size() == 5) {
@@ -210,7 +211,7 @@ int App::run() {
         if (!video_list.empty()) {
             logger_->Info("Processing videos");
             for (const auto& sourceName : video_list) {
-                if (task_->getTaskType() == vision_core::TaskType::VideoClassification) {
+                if (task_->getTaskType() == neuriplo_tasks::TaskType::VideoClassification) {
                     processVideoClassification(sourceName);
                 } else {
                     processVideo(sourceName);
@@ -230,25 +231,26 @@ int App::run() {
     }
 }
 
-vision_core::ModelInfo App::convertToVisionCoreModelInfo(const TritonModelInfo& triton_info) {
-    vision_core::ModelInfo model_info;
+neuriplo_tasks::ModelInfo App::convertToNeuriploTasksModelInfo(const TritonModelInfo& triton_info) {
+    neuriplo_tasks::ModelInfo model_info;
     model_info.input_shapes = triton_info.input_shapes;
     model_info.input_formats = triton_info.input_formats;
     model_info.input_names = triton_info.input_names;
     model_info.output_names = triton_info.output_names;
+    model_info.output_shapes = triton_info.output_shapes;
     model_info.input_types = triton_info.input_types;
     model_info.max_batch_size_ = triton_info.max_batch_size_;
     model_info.batch_size_ = triton_info.batch_size_;
     return model_info;
 }
 
-std::vector<vision_core::Result> App::processSource(const std::vector<cv::Mat>& source) {
+std::vector<neuriplo_tasks::Result> App::processSource(const std::vector<cv::Mat>& source) {
     const auto input_data = task_->preprocess(source);
     auto tensors = tritonClient_->infer(input_data);
-    std::vector<vision_core::Tensor> vision_tensors;
+    std::vector<neuriplo_tasks::Tensor> vision_tensors;
     vision_tensors.reserve(tensors.size());
     for (const auto& tensor : tensors) {
-        std::vector<vision_core::TensorElement> data;
+        std::vector<neuriplo_tasks::TensorElement> data;
         data.reserve(tensor.data.size());
         for (const auto& element : tensor.data) {
             if (std::holds_alternative<float>(element)) {
@@ -308,7 +310,7 @@ void App::processTextGeneration(const TritonModelInfo& modelInfo) {
         } else if (name == "image" && config_->GetEnableMultimodal()) {
             throw std::runtime_error(
                 "Multimodal image input is not supported in tritonic yet. "
-                "This requires upstream vision-core task contracts.");
+                "This requires upstream neuriplo-tasks task contracts.");
         } else {
             stringInputs.push_back({""});
         }
@@ -333,7 +335,7 @@ void App::processTextGeneration(const TritonModelInfo& modelInfo) {
 }
 
 void App::processImages(const std::vector<std::string>& sourceNames) {
-    if (task_->getTaskType() == vision_core::TaskType::OpticalFlow) {
+    if (task_->getTaskType() == neuriplo_tasks::TaskType::OpticalFlow) {
         logger_->Info("Processing optical flow for image pairs");
         for (size_t i = 0; i < sourceNames.size() - 1; i++) {
             std::vector<std::string> flowInputs = {sourceNames[i], sourceNames[i + 1]};
@@ -352,7 +354,7 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
                 continue;
 
             auto start = std::chrono::steady_clock::now();
-            std::vector<vision_core::Result> predictions = processSource(images);
+            std::vector<neuriplo_tasks::Result> predictions = processSource(images);
             auto end = std::chrono::steady_clock::now();
             auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
             logger_->Info("Infer time for " + std::to_string(images.size()) +
@@ -360,9 +362,10 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
 
             cv::Mat& image = images[0];
             for (const auto& prediction : predictions) {
-                if (std::holds_alternative<vision_core::OpticalFlow>(prediction)) {
-                    vision_core::OpticalFlow flow = std::get<vision_core::OpticalFlow>(prediction);
-                    flow.flow.copyTo(image);
+                if (std::holds_alternative<neuriplo_tasks::OpticalFlow>(prediction)) {
+                    neuriplo_tasks::OpticalFlow flow =
+                        std::get<neuriplo_tasks::OpticalFlow>(prediction);
+                    neuriplo_tasks::toCvMat(flow.flow).copyTo(image);
                 }
             }
 
@@ -374,7 +377,7 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             logger_->Info("Saving frame to: " + processedFrameFilename);
             cv::imwrite(processedFrameFilename, image);
         }
-    } else if (task_->getTaskType() == vision_core::TaskType::VideoClassification) {
+    } else if (task_->getTaskType() == neuriplo_tasks::TaskType::VideoClassification) {
         logger_->Info("Processing video classification for image set (" +
                       std::to_string(sourceNames.size()) + " frames)");
         std::vector<cv::Mat> frames;
@@ -390,15 +393,15 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             return;
 
         auto start = std::chrono::steady_clock::now();
-        std::vector<vision_core::Result> predictions = processSource(frames);
+        std::vector<neuriplo_tasks::Result> predictions = processSource(frames);
         auto end = std::chrono::steady_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         logger_->Info("Infer time for " + std::to_string(frames.size()) +
                       " frames: " + std::to_string(diff) + " ms");
 
         for (const auto& prediction : predictions) {
-            if (std::holds_alternative<vision_core::VideoClassification>(prediction)) {
-                const auto& vc = std::get<vision_core::VideoClassification>(prediction);
+            if (std::holds_alternative<neuriplo_tasks::VideoClassification>(prediction)) {
+                const auto& vc = std::get<neuriplo_tasks::VideoClassification>(prediction);
                 std::string label =
                     vc.action_label.empty()
                         ? (class_names_.empty() ? "Unknown"
@@ -418,15 +421,15 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             }
 
             auto start = std::chrono::steady_clock::now();
-            std::vector<vision_core::Result> predictions = processSource({image});
+            std::vector<neuriplo_tasks::Result> predictions = processSource({image});
             auto end = std::chrono::steady_clock::now();
             auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
             logger_->Info("Infer time for 1 image: " + std::to_string(diff) + " ms");
 
             std::string sourceDir = sourceName.substr(0, sourceName.find_last_of("/\\"));
             for (const auto& prediction : predictions) {
-                if (std::holds_alternative<vision_core::Classification>(prediction)) {
-                    const auto& c = std::get<vision_core::Classification>(prediction);
+                if (std::holds_alternative<neuriplo_tasks::Classification>(prediction)) {
+                    const auto& c = std::get<neuriplo_tasks::Classification>(prediction);
                     logger_->Info("Image " + sourceName + ": " +
                                   class_names_[static_cast<int>(c.class_id)] + ": " +
                                   std::to_string(c.class_confidence));
@@ -477,9 +480,9 @@ void App::processVideo(const std::string& sourceName) {
 
     while (true) {
         auto start = std::chrono::steady_clock::now();
-        std::vector<vision_core::Result> predictions;
+        std::vector<neuriplo_tasks::Result> predictions;
 
-        if (task_->getTaskType() == vision_core::TaskType::OpticalFlow) {
+        if (task_->getTaskType() == neuriplo_tasks::TaskType::OpticalFlow) {
             if (!previous_frame.empty()) {
                 // Process optical flow between previous and current frame
                 std::vector<cv::Mat> frame_pair = {previous_frame, current_frame};
@@ -496,13 +499,13 @@ void App::processVideo(const std::string& sourceName) {
 
         if (config_->GetShowFrame() || config_->GetWriteFrame()) {
             // Create visualization frame
-            if (task_->getTaskType() == vision_core::TaskType::OpticalFlow) {
+            if (task_->getTaskType() == neuriplo_tasks::TaskType::OpticalFlow) {
                 visualization_frame = cv::Mat::zeros(current_frame.size(), current_frame.type());
                 for (const auto& prediction : predictions) {
-                    if (std::holds_alternative<vision_core::OpticalFlow>(prediction)) {
-                        vision_core::OpticalFlow flow =
-                            std::get<vision_core::OpticalFlow>(prediction);
-                        flow.flow.copyTo(visualization_frame);
+                    if (std::holds_alternative<neuriplo_tasks::OpticalFlow>(prediction)) {
+                        neuriplo_tasks::OpticalFlow flow =
+                            std::get<neuriplo_tasks::OpticalFlow>(prediction);
+                        neuriplo_tasks::toCvMat(flow.flow).copyTo(visualization_frame);
                     }
                 }
             } else {
@@ -574,14 +577,14 @@ void App::processVideoClassification(const std::string& sourceName) {
         if ((int)frame_buffer.size() == num_frames_) {
             auto start = std::chrono::steady_clock::now();
             std::vector<cv::Mat> frames(frame_buffer.begin(), frame_buffer.end());
-            std::vector<vision_core::Result> predictions = processSource(frames);
+            std::vector<neuriplo_tasks::Result> predictions = processSource(frames);
             auto end = std::chrono::steady_clock::now();
             auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
             logger_->Info("Infer time: " + std::to_string(diff) + " ms");
 
             for (const auto& prediction : predictions) {
-                if (std::holds_alternative<vision_core::VideoClassification>(prediction)) {
-                    const auto& vc = std::get<vision_core::VideoClassification>(prediction);
+                if (std::holds_alternative<neuriplo_tasks::VideoClassification>(prediction)) {
+                    const auto& vc = std::get<neuriplo_tasks::VideoClassification>(prediction);
                     last_label =
                         vc.action_label.empty()
                             ? (class_names_.empty() ? "Unknown"
@@ -607,21 +610,23 @@ void App::processVideoClassification(const std::string& sourceName) {
     }
 }
 
-void App::renderPrediction(cv::Mat& frame, const vision_core::Result& prediction) {
-    if (std::holds_alternative<vision_core::Classification>(prediction)) {
-        const auto& c = std::get<vision_core::Classification>(prediction);
+void App::renderPrediction(cv::Mat& frame, const neuriplo_tasks::Result& prediction) {
+    if (std::holds_alternative<neuriplo_tasks::Classification>(prediction)) {
+        const auto& c = std::get<neuriplo_tasks::Classification>(prediction);
         drawLabel(frame, class_names_[static_cast<int>(c.class_id)], c.class_confidence, 30, 30);
-    } else if (std::holds_alternative<vision_core::Detection>(prediction)) {
-        const auto& det = std::get<vision_core::Detection>(prediction);
-        cv::Rect safeBbox = det.bbox & cv::Rect(0, 0, frame.cols, frame.rows);
+    } else if (std::holds_alternative<neuriplo_tasks::Detection>(prediction)) {
+        const auto& det = std::get<neuriplo_tasks::Detection>(prediction);
+        cv::Rect safeBbox =
+            neuriplo_tasks::toCvRect(det.bbox) & cv::Rect(0, 0, frame.cols, frame.rows);
         if (safeBbox.width > 0 && safeBbox.height > 0) {
             cv::rectangle(frame, safeBbox, colors_[static_cast<int>(det.class_id)], 2);
             drawLabel(frame, class_names_[static_cast<int>(det.class_id)], det.class_confidence,
                       safeBbox.x, safeBbox.y - 1);
         }
-    } else if (std::holds_alternative<vision_core::InstanceSegmentation>(prediction)) {
-        const auto& seg = std::get<vision_core::InstanceSegmentation>(prediction);
-        cv::Rect safeBbox = seg.bbox & cv::Rect(0, 0, frame.cols, frame.rows);
+    } else if (std::holds_alternative<neuriplo_tasks::InstanceSegmentation>(prediction)) {
+        const auto& seg = std::get<neuriplo_tasks::InstanceSegmentation>(prediction);
+        cv::Rect safeBbox =
+            neuriplo_tasks::toCvRect(seg.bbox) & cv::Rect(0, 0, frame.cols, frame.rows);
         if (safeBbox.width > 0 && safeBbox.height > 0) {
             cv::rectangle(frame, safeBbox, colors_[static_cast<int>(seg.class_id)], 2);
             drawLabel(frame, class_names_[static_cast<int>(seg.class_id)], seg.class_confidence,
@@ -629,7 +634,7 @@ void App::renderPrediction(cv::Mat& frame, const vision_core::Result& prediction
 
             cv::Mat mask;
             if (!seg.mask.empty()) {
-                mask = seg.mask;
+                mask = neuriplo_tasks::toCvMat(seg.mask);
             } else if (!seg.mask_data.empty()) {
                 mask = cv::Mat(seg.mask_height, seg.mask_width, CV_8UC1,
                                const_cast<uint8_t*>(seg.mask_data.data()));
@@ -644,18 +649,19 @@ void App::renderPrediction(cv::Mat& frame, const vision_core::Result& prediction
                     cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
             }
         }
-    } else if (std::holds_alternative<vision_core::PoseEstimation>(prediction)) {
-        drawPose(frame, std::get<vision_core::PoseEstimation>(prediction));
-    } else if (std::holds_alternative<vision_core::DepthEstimation>(prediction)) {
-        const auto& depth = std::get<vision_core::DepthEstimation>(prediction);
+    } else if (std::holds_alternative<neuriplo_tasks::PoseEstimation>(prediction)) {
+        drawPose(frame, std::get<neuriplo_tasks::PoseEstimation>(prediction));
+    } else if (std::holds_alternative<neuriplo_tasks::DepthEstimation>(prediction)) {
+        const auto& depth = std::get<neuriplo_tasks::DepthEstimation>(prediction);
         if (!depth.normalized_depth.empty()) {
             cv::Mat depth_8u;
-            depth.normalized_depth.convertTo(depth_8u, CV_8UC1, 255.0);
+            neuriplo_tasks::toCvMat(depth.normalized_depth).convertTo(depth_8u, CV_8UC1, 255.0);
             cv::applyColorMap(depth_8u, frame, cv::COLORMAP_INFERNO);
         }
-    } else if (std::holds_alternative<vision_core::OpenVocabDetection>(prediction)) {
-        const auto& det = std::get<vision_core::OpenVocabDetection>(prediction);
-        cv::Rect safeBbox = det.bbox & cv::Rect(0, 0, frame.cols, frame.rows);
+    } else if (std::holds_alternative<neuriplo_tasks::OpenVocabDetection>(prediction)) {
+        const auto& det = std::get<neuriplo_tasks::OpenVocabDetection>(prediction);
+        cv::Rect safeBbox =
+            neuriplo_tasks::toCvRect(det.bbox) & cv::Rect(0, 0, frame.cols, frame.rows);
         if (safeBbox.width > 0 && safeBbox.height > 0) {
             cv::rectangle(frame, safeBbox, cv::Scalar(0, 255, 0), 2);
             drawLabel(frame, det.label, det.score, safeBbox.x, safeBbox.y - 1);
@@ -663,7 +669,7 @@ void App::renderPrediction(cv::Mat& frame, const vision_core::Result& prediction
     }
 }
 
-void App::drawPose(cv::Mat& image, const vision_core::PoseEstimation& pose,
+void App::drawPose(cv::Mat& image, const neuriplo_tasks::PoseEstimation& pose,
                    float confidence_threshold) {
     // COCO 17-keypoint skeleton connections
     static const std::vector<std::pair<int, int>> kSkeleton = {
