@@ -129,6 +129,13 @@ CMake auto-detects offline mode via ping and sets `FETCHCONTENT_FULLY_DISCONNECT
 
 `ITriton` and `IChatBackend` interfaces enable unit tests without live servers. `tests/mocks/MockTriton.hpp` and `tests/mocks/MockChatBackend.hpp` provide GMock implementations.
 
+## Hyperlink verification
+
+When editing `README.md` or any documentation with hyperlinks:
+- Verify all relative links resolve to existing files in the repo.
+- Verify absolute GitHub URLs are reachable (use `curl -sI <url>` or a quick fetch).
+- Prefer absolute GitHub blob/tree URLs over fragile cross-repo relative paths.
+
 ## Conventions
 
 - **C++20**, `CMAKE_CXX_STANDARD 20`
