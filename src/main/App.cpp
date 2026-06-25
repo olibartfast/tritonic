@@ -1,4 +1,5 @@
 #include "App.hpp"
+#include <algorithm>
 #include <cctype>
 #include <chrono>
 #include <deque>
@@ -8,6 +9,8 @@
 #include <random>
 #include <sstream>
 #include <thread>
+#include "neuriplo/tasks/core/batch_postprocess.hpp"
+#include "neuriplo/tasks/core/batch_preprocess.hpp"
 #include "neuriplo/tasks/core/opencv_interop.hpp"
 #include "neuriplo/tasks/core/task_factory.hpp"
 
@@ -141,6 +144,10 @@ int App::run() {
         TritonModelInfo modelInfo = tritonClient_->getModelInfo(
             config_->GetModelName(), config_->GetServerAddress(), config_->GetInputSizes());
 
+        // Cache batch metadata for the batched image pipeline (neuriplo-tasks v0.5.0).
+        max_batch_size_ = modelInfo.max_batch_size_;
+        base_input_shapes_ = modelInfo.input_shapes;
+
         if (isTextGenerationModelType(config_->GetModelType())) {
             logger_->Info("Text-generation model detected: " + config_->GetModelType());
             processTextGeneration(modelInfo);
@@ -247,6 +254,12 @@ neuriplo_tasks::ModelInfo App::convertToNeuriploTasksModelInfo(const TritonModel
 std::vector<neuriplo_tasks::Result> App::processSource(const std::vector<cv::Mat>& source) {
     const auto input_data = task_->preprocess(source);
     auto tensors = tritonClient_->infer(input_data);
+    auto vision_tensors = toNeuriploTensors(tensors);
+    return task_->postprocess(cv::Size(source.front().cols, source.front().rows), vision_tensors);
+}
+
+std::vector<neuriplo_tasks::Tensor> App::toNeuriploTensors(
+    const std::vector<Tensor>& tensors) const {
     std::vector<neuriplo_tasks::Tensor> vision_tensors;
     vision_tensors.reserve(tensors.size());
     for (const auto& tensor : tensors) {
@@ -268,7 +281,172 @@ std::vector<neuriplo_tasks::Result> App::processSource(const std::vector<cv::Mat
         }
         vision_tensors.emplace_back(std::move(data), tensor.shape);
     }
-    return task_->postprocess(cv::Size(source.front().cols, source.front().rows), vision_tensors);
+    return vision_tensors;
+}
+
+bool App::isBatchableImageTask() const {
+    if (!task_ || max_batch_size_ <= 1) {
+        return false;
+    }
+    // Only independent-image families benefit from batched inference (see
+    // neuriplo-tasks docs/batch_support_matrix.md). Temporal/multi-input tasks
+    // (optical flow, video classification, gaussian splatting) are excluded.
+    const auto type = task_->getTaskType();
+    return type == neuriplo_tasks::TaskType::Classification ||
+           type == neuriplo_tasks::TaskType::Detection ||
+           type == neuriplo_tasks::TaskType::InstanceSegmentation ||
+           type == neuriplo_tasks::TaskType::PoseEstimation ||
+           type == neuriplo_tasks::TaskType::DepthEstimation ||
+           type == neuriplo_tasks::TaskType::OpenVocabDetection;
+}
+
+std::vector<std::vector<uint8_t>> App::stackBatchBuffers(
+    const neuriplo_tasks::BatchPreprocessOutput& pre, int batch_size) const {
+    const auto num_inputs = task_->getModelInfo().input_names.size();
+
+    // Pattern A (classification, YOLO, RF-DETR, depth, pose tensor): preprocess emits
+    // one buffer per image. Concatenate them into a single Triton input buffer.
+    if (static_cast<int>(pre.buffers.size()) == batch_size && num_inputs == 1) {
+        std::vector<uint8_t> stacked;
+        for (const auto& buf : pre.buffers) {
+            stacked.insert(stacked.end(), buf.begin(), buf.end());
+        }
+        return {std::move(stacked)};
+    }
+
+    // Pattern B (RT-DETR, EdgeCrafter, open-vocab): preprocess already concatenated
+    // per-image buffers into one buffer per model input node.
+    if (pre.buffers.size() == num_inputs) {
+        return pre.buffers;
+    }
+
+    // Unexpected layout — fall back to concatenating everything per input index.
+    return pre.buffers;
+}
+
+void App::applyBatchedInputShapes(int batch_size) {
+    if (base_input_shapes_.empty()) {
+        return;
+    }
+    std::vector<std::vector<int64_t>> shapes = base_input_shapes_;
+    for (auto& shape : shapes) {
+        if (!shape.empty()) {
+            shape[0] = batch_size;
+        }
+    }
+    tritonClient_->setInputShapes(shapes);
+}
+
+std::vector<neuriplo_tasks::Tensor> App::sliceTensorsAxis0(
+    const std::vector<neuriplo_tasks::Tensor>& tensors, int index, int batch_size) const {
+    std::vector<neuriplo_tasks::Tensor> out;
+    out.reserve(tensors.size());
+    for (const auto& tensor : tensors) {
+        if (batch_size > 1 && !tensor.shape.empty() && tensor.shape[0] == batch_size) {
+            const auto total = static_cast<int64_t>(tensor.data.size());
+            const int64_t stride = total / batch_size;
+            const int64_t begin = static_cast<int64_t>(index) * stride;
+            auto sub = std::vector<neuriplo_tasks::TensorElement>(
+                tensor.data.begin() + begin, tensor.data.begin() + begin + stride);
+            auto shape = tensor.shape;
+            shape[0] = 1;
+            out.emplace_back(std::move(sub), std::move(shape));
+        } else {
+            // Tensor not batched on axis 0 — pass through unchanged.
+            out.push_back(tensor);
+        }
+    }
+    return out;
+}
+
+std::vector<std::vector<neuriplo_tasks::Result>> App::postprocessBatched(
+    const std::vector<Tensor>& tensors, const std::vector<cv::Mat>& images, int batch_size) {
+    auto vision_tensors = toNeuriploTensors(tensors);
+    std::vector<std::vector<neuriplo_tasks::Result>> per_image(images.size());
+
+    // Strict 1:1 families (classification): batchPostprocess returns exactly one result
+    // per batch index. Map result[k] onto image[k].
+    if (task_->getTaskType() == neuriplo_tasks::TaskType::Classification && !images.empty()) {
+        auto post = neuriplo_tasks::batchPostprocess(*task_, images.front().size(), vision_tensors,
+                                                     batch_size);
+        if (neuriplo_tasks::postprocessResultsMatchBatchSize(post) &&
+            static_cast<int>(post.results.size()) == static_cast<int>(images.size())) {
+            for (size_t k = 0; k < images.size(); ++k) {
+                per_image[k].push_back(post.results[k]);
+            }
+            return per_image;
+        }
+        // Mismatch → fall through to per-image slicing.
+    }
+
+    // Variable-count / spatial families (detection, segmentation, pose, depth, open-vocab):
+    // slice the batched output tensors per image and postprocess each at its own frame size,
+    // preserving exact per-image coordinate mapping.
+    for (size_t k = 0; k < images.size(); ++k) {
+        auto slice = sliceTensorsAxis0(vision_tensors, static_cast<int>(k), batch_size);
+        per_image[k] = task_->postprocess(cv::Size(images[k].cols, images[k].rows), slice);
+    }
+    return per_image;
+}
+
+void App::processImagesBatched(const std::vector<std::string>& sourceNames) {
+    const int cap = std::max(1, max_batch_size_);
+    logger_->Info("Processing " + std::to_string(sourceNames.size()) +
+                  " images in batches of up to " + std::to_string(cap));
+
+    for (size_t start = 0; start < sourceNames.size(); start += static_cast<size_t>(cap)) {
+        const size_t end = std::min(start + static_cast<size_t>(cap), sourceNames.size());
+
+        std::vector<cv::Mat> images;
+        std::vector<std::string> chunk_names;
+        images.reserve(end - start);
+        for (size_t i = start; i < end; ++i) {
+            cv::Mat img = cv::imread(sourceNames[i]);
+            if (img.empty()) {
+                logger_->Error("Could not open or read the image: " + sourceNames[i]);
+                continue;
+            }
+            images.push_back(img);
+            chunk_names.push_back(sourceNames[i]);
+        }
+        if (images.empty()) {
+            continue;
+        }
+        const int batch_size = static_cast<int>(images.size());
+
+        auto infer_start = std::chrono::steady_clock::now();
+
+        neuriplo_tasks::BatchRequest request{images};
+        auto pre = neuriplo_tasks::batchPreprocess(*task_, request);
+        auto stacked = stackBatchBuffers(pre, batch_size);
+        applyBatchedInputShapes(batch_size);
+        auto tensors = tritonClient_->infer(stacked);
+        auto per_image = postprocessBatched(tensors, images, pre.batch_size);
+
+        auto infer_end = std::chrono::steady_clock::now();
+        const auto diff =
+            std::chrono::duration_cast<std::chrono::milliseconds>(infer_end - infer_start).count();
+        logger_->Info("Infer time for " + std::to_string(batch_size) +
+                      " images: " + std::to_string(diff) + " ms");
+
+        for (size_t k = 0; k < images.size(); ++k) {
+            cv::Mat& image = images[k];
+            for (const auto& prediction : per_image[k]) {
+                renderPrediction(image, prediction);
+            }
+
+            std::string sourceDir = chunk_names[k].substr(0, chunk_names[k].find_last_of("/\\"));
+            std::string outputDir = sourceDir + "/output";
+            std::filesystem::create_directories(outputDir);
+            std::string processedFrameFilename =
+                outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
+            logger_->Info("Saving frame to: " + processedFrameFilename);
+            cv::imwrite(processedFrameFilename, image);
+        }
+    }
+
+    // Restore N=1 shapes so the subsequent video path uses single-image inference.
+    applyBatchedInputShapes(1);
 }
 
 bool App::isTextGenerationModelType(const std::string& modelType) {
@@ -413,6 +591,10 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
         }
     } else {
         logger_->Info("Processing individual images");
+        if (isBatchableImageTask()) {
+            processImagesBatched(sourceNames);
+            return;
+        }
         for (const auto& sourceName : sourceNames) {
             cv::Mat image = cv::imread(sourceName);
             if (image.empty()) {
