@@ -109,6 +109,27 @@ Old flat `include/*.hpp` and `src/*/` headers are forwarding headers with backwa
 3. Routing by task type: `OpticalFlow` → `processImages()` with pairs; `VideoClassification` → `processVideoClassification()` with deque frame buffer; others → `processVideo()` or `processImages()`
 4. Core loop: `task_->preprocess(frames)` → `tritonClient_->infer(input_data)` → `task_->postprocess(size, tensors)`
 
+### Batched image inference (neuriplo-tasks ≥ v0.5.0)
+
+`processImages()` runs the per-image loop by default. When the task is an
+independent-image family (classification, detection, instance segmentation,
+pose, depth, open-vocab) **and** `ModelInfo.max_batch_size_ > 1`, it dispatches
+to `processImagesBatched()`, which uses the neuriplo-tasks Track B helpers:
+
+- `batchPreprocess(*task_, {images})` → per-image buffers + `batch_size`
+- `stackBatchBuffers()` concatenates per-image buffers into one Triton input per
+  node (Pattern A: classification/YOLO/RF-DETR/depth/pose) or passes the
+  already-stacked buffers through (Pattern B: RT-DETR/EdgeCrafter/open-vocab)
+- `applyBatchedInputShapes(N)` sets `input_shapes[i][0] = N` via
+  `ITriton::setInputShapes()` before a single batched `infer()` call, then
+  restores `N = 1` so the subsequent video path stays single-image
+- `postprocessBatched()` maps results back per image: classification uses
+  `batchPostprocess()` (strict 1:1); variable-count/spatial families slice the
+  output tensors along axis 0 and `postprocess()` each image at its own frame size
+
+Temporal/multi-input tasks (optical flow, video classification, gaussian
+splatting) are **not** batched — see `neuriplo-tasks` `docs/batch_support_matrix.md`.
+
 ### Data flow (Chat backend)
 
 - `client.cpp` instantiates `ChatBackend(endpoint, api_key)`
