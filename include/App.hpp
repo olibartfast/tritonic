@@ -9,6 +9,7 @@
 #include "ConfigManager.hpp"
 #include "ITriton.hpp"
 #include "Logger.hpp"
+#include "neuriplo/tasks/core/batch_types.hpp"
 #include "neuriplo/tasks/core/result_types.hpp"
 #include "neuriplo/tasks/core/task_interface.hpp"
 
@@ -26,13 +27,27 @@ private:
     std::unique_ptr<neuriplo_tasks::TaskInterface> task_;
     std::vector<std::string> class_names_;
     std::vector<cv::Scalar> colors_;
-    int num_frames_{16};  // Frame buffer size for video classification tasks
+    int num_frames_{16};     // Frame buffer size for video classification tasks
+    int max_batch_size_{1};  // Engine batch cap from model config
+    std::vector<std::vector<int64_t>> base_input_shapes_;  // Per-input shapes at N=1 ([1,C,H,W])
 
     neuriplo_tasks::ModelInfo convertToNeuriploTasksModelInfo(const TritonModelInfo& triton_info);
 
     std::vector<neuriplo_tasks::Result> processSource(const std::vector<cv::Mat>& source);
 
     void processImages(const std::vector<std::string>& sourceNames);
+
+    // Batched image pipeline (neuriplo-tasks v0.5.0 batch utilities).
+    bool isBatchableImageTask() const;
+    void processImagesBatched(const std::vector<std::string>& sourceNames);
+    std::vector<std::vector<uint8_t>> stackBatchBuffers(
+        const neuriplo_tasks::BatchPreprocessOutput& pre, int batch_size) const;
+    void applyBatchedInputShapes(int batch_size);
+    std::vector<neuriplo_tasks::Tensor> toNeuriploTensors(const std::vector<Tensor>& tensors) const;
+    std::vector<neuriplo_tasks::Tensor> sliceTensorsAxis0(
+        const std::vector<neuriplo_tasks::Tensor>& tensors, int index, int batch_size) const;
+    std::vector<std::vector<neuriplo_tasks::Result>> postprocessBatched(
+        const std::vector<Tensor>& tensors, const std::vector<cv::Mat>& images, int batch_size);
 
     void processVideo(const std::string& sourceName);
 
