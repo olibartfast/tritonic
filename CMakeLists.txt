@@ -1,7 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(tritonic)
-message(STATUS ${PROJECT_NAME})
+# Read version from VERSION file (single source of truth, read by CMake).
+# A `-dev` suffix (e.g. `0.1.0-dev`) marks unreleased work on `develop`.
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" PROJECT_VERSION_RAW)
+string(STRIP "${PROJECT_VERSION_RAW}" PROJECT_VERSION_RAW)
+string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" PROJECT_SEMVER "${PROJECT_VERSION_RAW}")
+
+project(tritonic VERSION ${PROJECT_SEMVER})
+message(STATUS "${PROJECT_NAME} ${PROJECT_VERSION}")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
