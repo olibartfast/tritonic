@@ -58,7 +58,7 @@ tritonic/
 ```
 
 **CMake Fetched Dependencies:**
-- [neuriplo-tasks](https://github.com/olibartfast/neuriplo-tasks) - Model pre/post processing and task management
+- [neuriplo-tasks](https://github.com/olibartfast/neuriplo-tasks) (v0.5.0) — model pre/post processing and task management
 
 ## Architecture
 
@@ -126,6 +126,9 @@ For full code structure and namespace layout see [AGENTS.md](AGENTS.md).
 - [YOLOv5 Pose](https://github.com/ultralytics/yolov5)
 - [YOLOv8/YOLO11/YOLO26 Pose](https://github.com/ultralytics/ultralytics)
 - [ViTPose](https://github.com/ViTAE-Transformer/ViTPose)
+- [RF-DETR Keypoints](https://github.com/roboflow/rf-detr) (single-stage person keypoints, 17 COCO keypoints)
+- [YOLOv5 Pose](https://github.com/ultralytics/yolov5)
+- [YOLOv8/YOLO11/YOLO26 Pose](https://github.com/ultralytics/ultralytics)
 
 ## Video Classification
 
@@ -372,7 +375,7 @@ Check [`.vscode/launch.json`](.vscode/launch.json) for additional configuration 
 - **`<http or grpc>`**: Communication protocol (`http` or `grpc`)
 - **`<triton-ip>`**: IP address of your Triton server
 - **`<8000 for http, 8001 for grpc>`**: Port number
-- **`<batch or b >`**: Batch size, currently only 1 is supported
+- **`<batch or b >`**: Batch size. For compatible independent-image models (classification, detection, segmentation, pose, depth, open-vocab) with `max_batch_size > 1` in the model config, automatic batching groups images into a single inference call.
 - **`<input_sizes or -is>`**: Input sizes input for dynamic axes. Semi-colon separated list format: CHW;CHW;... (e.g., '3,224,224' for single input or '3,224,224;3,224,224' for two inputs, '3,640,640;2' for rtdetr/dfine models)
 
 
@@ -408,14 +411,11 @@ To view all available parameters, run:
 | OWLv2                  | `owlv2`                | Open-vocabulary detection |
 | OWL-ViT                | `owlvit`               | Open-vocabulary detection |
 | Grounding DINO         | `grounding_dino`       | Open-vocabulary detection |
-| ViTPose                | `vitpose`              | Pose estimation (COCO 17 keypoints) |
+| RF-DETR Keypoints      | `rfdetr_keypoints`     | Single-stage person keypoints (17 COCO) |
 | YOLOv5 Pose            | `yolov5pose`           | Pose estimation |
 | YOLOv8 Pose            | `yolov8pose`           | Pose estimation |
 | YOLO11 Pose            | `yolo11pose`           | Pose estimation |
 | YOLO26 Pose            | `yolo26pose`           | Pose estimation |
-| VideoMAE               | `videomae`             | 16-frame sliding window video |
-| ViViT                  | `vivit`                | Video Transformer |
-| TimeSformer            | `timesformer`          | Video Transformer |
 
 ### Chat Backend (OpenAI-compatible)
 
