@@ -1,0 +1,39 @@
+name: tritonic
+role: inference-client
+
+default_branches:
+  integration: develop
+  release: master
+
+entrypoints:
+  configure:
+    - cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+  build:
+    - cmake --build build --parallel
+  test:
+    - ctest --test-dir build --output-on-failure
+
+owned_paths:
+  - include/
+  - src/
+  - tests/
+  - CMakeLists.txt
+  - AGENTS.md
+  - VERSION
+  - CHANGELOG.md
+
+allowed_change_classes:
+  - feature
+  - bugfix
+  - docs-sync
+  - build-change
+  - test-fix
+
+forbidden_change_classes:
+  - large-refactor-without-tests
+  - breaking-backend-interface
+
+constraints:
+  preserve_backend_interface: true
+  keep_neuriplo_tasks_external: true
+  review_shape_dtype_changes: mandatory
