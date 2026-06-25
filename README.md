@@ -1,4 +1,4 @@
-![Alt text](data/tritonic.jpeg)
+![Alt text](data/tritonic_logo_2.png)
 
 # TritonIC - C++ Inference Client
 
