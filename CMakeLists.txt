@@ -44,7 +44,7 @@ endif()
 FetchContent_Declare(
   neuriplo-tasks
   GIT_REPOSITORY ${NEURIPLO_TASKS_REPO}
-  GIT_TAG master
+  GIT_TAG v0.5.0
 )
 FetchContent_MakeAvailable(neuriplo-tasks)
 
