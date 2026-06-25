@@ -7,6 +7,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-06-25
+
 ### Added
 - Versioning infrastructure: `VERSION` file (read by CMake), `CHANGELOG.md`,
   and a gitflow release workflow documented in `docs/Versioning.md`.
@@ -20,3 +22,4 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
   task and batch-ready postprocessors/preprocess strategies.
 
 [Unreleased]: https://github.com/olibartfast/tritonic/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/olibartfast/tritonic/releases/tag/v0.1.0
