@@ -1,0 +1,83 @@
+name: Publish GitHub Release
+
+on:
+  push:
+    branches: [develop, master]
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  publish-release:
+    name: Publish release from changelog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Publish missing releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          git fetch --force --tags origin '+refs/heads/master:refs/remotes/origin/master'
+
+          mapfile -t tags < <(git tag --list 'v*.*.*' --sort=version:refname)
+
+          if [[ "${#tags[@]}" -eq 0 ]]; then
+            echo "No release tags found."
+            exit 0
+          fi
+
+          for tag in "${tags[@]}"; do
+            version="${tag#v}"
+            tag_commit="$(git rev-list -n 1 "$tag")"
+
+            if ! git merge-base --is-ancestor "$tag_commit" origin/master; then
+              echo "::error::Release tag $tag is not reachable from master."
+              exit 1
+            fi
+
+            if gh release view "$tag" --repo "$REPO" >/dev/null 2>&1; then
+              echo "Release $tag already exists."
+              continue
+            fi
+
+            worktree="$(mktemp -d)"
+            git archive "$tag" | tar -x -C "$worktree"
+
+            if [[ ! -f "$worktree/VERSION" ]]; then
+              echo "::error::VERSION is missing in $tag."
+              exit 1
+            fi
+            actual_version="$(tr -d '[:space:]' < "$worktree/VERSION")"
+            if [[ "$actual_version" != "$version" ]]; then
+              echo "::error::VERSION in $tag is $actual_version, expected $version."
+              exit 1
+            fi
+
+            notes_file="$(mktemp)"
+            awk -v version="$version" '
+              $0 == "## [" version "]" { capture = 1; next }
+              capture && /^## \[/ { exit }
+              capture { print }
+            ' "$worktree/CHANGELOG.md" | sed '/./,$!d' > "$notes_file"
+
+            if [[ ! -s "$notes_file" ]]; then
+              echo "::error::No CHANGELOG.md section found for $tag."
+              exit 1
+            fi
+
+            gh release create "$tag" \
+              --repo "$REPO" \
+              --title "$tag" \
+              --notes-file "$notes_file" \
+              --verify-tag
+
+            echo "Published release $tag."
+          done
