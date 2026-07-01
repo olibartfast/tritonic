@@ -7,6 +7,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-01
+
 ### Added
 - Added `--inference_timeout=<ms>` for chat CURL calls, Triton infer requests, and model-load readiness waits.
 
@@ -27,5 +29,6 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
 - Pinned `neuriplo-tasks` to **v0.5.0**, which adds the `RfDetrPose` keypoint
   task and batch-ready postprocessors/preprocess strategies.
 
-[Unreleased]: https://github.com/olibartfast/tritonic/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/olibartfast/tritonic/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/olibartfast/tritonic/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/olibartfast/tritonic/releases/tag/v0.1.0
