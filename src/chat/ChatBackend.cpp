@@ -11,8 +11,8 @@
 // Construction
 // ---------------------------------------------------------------------------
 
-ChatBackend::ChatBackend(std::string endpoint, std::string api_key)
-    : endpoint_(std::move(endpoint)), api_key_(std::move(api_key)) {
+ChatBackend::ChatBackend(std::string endpoint, std::string api_key, int timeout_ms)
+    : endpoint_(std::move(endpoint)), api_key_(std::move(api_key)), timeout_ms_(timeout_ms) {
     if (endpoint_.empty()) {
         throw std::invalid_argument("ChatBackend: endpoint must not be empty");
     }
@@ -47,7 +47,11 @@ ChatResponse ChatBackend::infer(const ChatRequest& request) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_buf);
     curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buf.data());
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);
+    if (timeout_ms_ > 0) {
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, static_cast<long>(timeout_ms_));
+    } else {
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);
+    }
 
     CURLcode res = curl_easy_perform(curl);
 

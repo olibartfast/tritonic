@@ -116,18 +116,16 @@ void Triton::loadModel(const std::string& modelName) {
         throw std::runtime_error("Failed to load model '" + modelName + "': " + err.Message());
     }
 
-    // Wait for model to be ready with timeout
-    int max_retries = 30;  // 30 seconds timeout
-    int retry_count = 0;
+    const int timeout_ms = inference_timeout_ms_ > 0 ? inference_timeout_ms_ : 30000;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
 
-    while (retry_count < max_retries) {
+    while (std::chrono::steady_clock::now() < deadline) {
         if (isModelReady(modelName)) {
             logger->Info("Model '" + modelName + "' loaded successfully");
             return;
         }
 
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        retry_count++;
     }
 
     throw std::runtime_error("Timeout waiting for model '" + modelName + "' to be ready");
@@ -616,6 +614,9 @@ std::vector<Tensor> Triton::infer(const std::vector<std::vector<uint8_t>>& input
 
     tc::InferOptions options(model_name_);
     options.model_version_ = model_version_;
+    if (inference_timeout_ms_ > 0) {
+        options.client_timeout_ = static_cast<uint64_t>(inference_timeout_ms_) * 1000ULL;
+    }
 
     if (input_data.size() != model_info_.input_names.size()) {
         throw std::runtime_error("Mismatch in number of inputs. Expected " +
@@ -695,6 +696,9 @@ std::vector<Tensor> Triton::inferText(const std::vector<std::vector<std::string>
 
     tc::InferOptions options(model_name_);
     options.model_version_ = model_version_;
+    if (inference_timeout_ms_ > 0) {
+        options.client_timeout_ = static_cast<uint64_t>(inference_timeout_ms_) * 1000ULL;
+    }
 
     if (string_inputs.size() != model_info_.input_names.size()) {
         throw std::runtime_error("Mismatch in number of inputs. Expected " +
@@ -1139,6 +1143,9 @@ std::vector<Tensor> Triton::inferWithSharedMemory(
 
     tc::InferOptions options(model_name_);
     options.model_version_ = model_version_;
+    if (inference_timeout_ms_ > 0) {
+        options.client_timeout_ = static_cast<uint64_t>(inference_timeout_ms_) * 1000ULL;
+    }
 
     // Perform inference
     tc::InferResult* result;

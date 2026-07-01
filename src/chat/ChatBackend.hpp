@@ -28,7 +28,7 @@ public:
      * @param endpoint  Full URL, e.g. "http://localhost:11434/v1/chat/completions"
      * @param api_key   Bearer token; may be empty for unauthenticated local servers.
      */
-    explicit ChatBackend(std::string endpoint, std::string api_key = {});
+    explicit ChatBackend(std::string endpoint, std::string api_key = {}, int timeout_ms = 0);
     ~ChatBackend() override = default;
 
     // IChatBackend — typed, used by ChatSession
@@ -43,6 +43,7 @@ public:
 private:
     std::string endpoint_;
     std::string api_key_;
+    int timeout_ms_{0};
 
     static std::string encodeImageToBase64(const std::string& image_path, int target_size);
     static bool isUrl(const std::string& s) noexcept;

@@ -89,6 +89,12 @@ public:
     void SetBatchSize(int v) {
         batch_size_ = v;
     }
+    int GetInferenceTimeoutMs() const noexcept {
+        return inference_timeout_ms_;
+    }
+    void SetInferenceTimeoutMs(int v) noexcept {
+        inference_timeout_ms_ = v;
+    }
 
     // Processing
     bool GetShowFrame() const noexcept {
@@ -276,6 +282,7 @@ private:
     std::string source_;
     std::string labels_file_;
     int batch_size_{1};
+    int inference_timeout_ms_{0};
 
     bool show_frame_{false};
     bool write_frame_{true};

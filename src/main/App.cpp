@@ -390,7 +390,8 @@ std::vector<std::vector<neuriplo_tasks::Result>> App::postprocessBatched(
 }
 
 void App::processImagesBatched(const std::vector<std::string>& sourceNames) {
-    const int cap = std::max(1, max_batch_size_);
+    const int requested = std::max(1, config_->GetBatchSize());
+    const int cap = std::max(1, std::min(requested, max_batch_size_));
     logger_->Info("Processing " + std::to_string(sourceNames.size()) +
                   " images in batches of up to " + std::to_string(cap));
 
