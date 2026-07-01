@@ -63,7 +63,7 @@ jobs:
 
             notes_file="$(mktemp)"
             awk -v version="$version" '
-              $0 == "## [" version "]" { capture = 1; next }
+              $0 ~ "^## \\[" version "\\]" { capture = 1; next }
               capture && /^## \[/ { exit }
               capture { print }
             ' "$worktree/CHANGELOG.md" | sed '/./,$!d' > "$notes_file"
