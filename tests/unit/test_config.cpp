@@ -15,6 +15,7 @@ TEST(InferenceConfigTest, DefaultValues) {
     EXPECT_TRUE(config.GetSource().empty());
     EXPECT_TRUE(config.GetLabelsFile().empty());
     EXPECT_EQ(config.GetBatchSize(), 1);
+    EXPECT_EQ(config.GetInferenceTimeoutMs(), 0);
     EXPECT_FALSE(config.GetShowFrame());
     EXPECT_TRUE(config.GetWriteFrame());
     EXPECT_FLOAT_EQ(config.GetConfidenceThreshold(), 0.5f);
@@ -59,12 +60,16 @@ TEST(InferenceConfigTest, ProcessingSettersGetters) {
     InferenceConfig config;
     config.SetSource("/data/video.mp4");
     config.SetLabelsFile("/data/coco.names");
+    config.SetBatchSize(4);
+    config.SetInferenceTimeoutMs(2500);
     config.SetShowFrame(true);
     config.SetWriteFrame(false);
     config.SetConfidenceThreshold(0.7f);
     config.SetNmsThreshold(0.3f);
     EXPECT_EQ(config.GetSource(), "/data/video.mp4");
     EXPECT_EQ(config.GetLabelsFile(), "/data/coco.names");
+    EXPECT_EQ(config.GetBatchSize(), 4);
+    EXPECT_EQ(config.GetInferenceTimeoutMs(), 2500);
     EXPECT_TRUE(config.GetShowFrame());
     EXPECT_FALSE(config.GetWriteFrame());
     EXPECT_FLOAT_EQ(config.GetConfidenceThreshold(), 0.7f);
@@ -178,6 +183,16 @@ TEST(ConfigManagerTest, ParsesConfidenceAndNms) {
     ASSERT_NE(config, nullptr);
     EXPECT_FLOAT_EQ(config->GetConfidenceThreshold(), 0.7f);
     EXPECT_FLOAT_EQ(config->GetNmsThreshold(), 0.3f);
+}
+
+TEST(ConfigManagerTest, ParsesBatchAndTimeout) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--batch_size=4", "--inference_timeout=2500"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    auto config = mgr.LoadFromCommandLine(argc, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetBatchSize(), 4);
+    EXPECT_EQ(config->GetInferenceTimeoutMs(), 2500);
 }
 
 TEST(InferenceConfigTest, MultimodalSettersGetters) {

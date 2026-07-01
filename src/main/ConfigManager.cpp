@@ -44,6 +44,7 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
         "{port pt        |8000  | inference server port}"
         "{input_sizes is |      | input sizes for dynamic axes (format: 'c,h,w;c,h,w')}"
         "{batch_size bs  |1     | batch size}"
+        "{inference_timeout it |0 | inference timeout in milliseconds (0 = no timeout)}"
         "{show_frame sf  |false | show processed frames}"
         "{write_frame wf |true  | write processed frames to disk}"
         "{confidence_threshold ct |0.5 | confidence threshold}"
@@ -91,6 +92,7 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
     config->SetServerAddress(parser.get<cv::String>("serverAddress"));
     config->SetPort(parser.get<int>("port"));
     config->SetBatchSize(parser.get<int>("batch_size"));
+    config->SetInferenceTimeoutMs(parser.get<int>("inference_timeout"));
     config->SetShowFrame(parser.get<bool>("show_frame"));
     config->SetWriteFrame(parser.get<bool>("write_frame"));
     config->SetConfidenceThreshold(parser.get<float>("confidence_threshold"));
