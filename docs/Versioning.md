@@ -54,6 +54,10 @@ appropriate section. Example:
 
 ## Release workflow
 
+Mandatory rule: releases must use the GitFlow path below. Do not create
+release tags directly from `develop`; every release tag must be created from
+`master` after merging a `release/X.Y.Z` branch.
+
 1. **Create a release branch** from `develop`:
    ```
    git checkout -b release/0.2.0 develop
