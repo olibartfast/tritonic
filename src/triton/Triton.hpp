@@ -91,20 +91,23 @@ private:
     std::vector<std::unique_ptr<SharedMemoryRegion>> output_shm_regions_;
     SharedMemoryType shared_memory_type_;
     int cuda_device_id_;
+    int inference_timeout_ms_{0};
 
     void updateInputTypes();
 
 public:
     Triton(const std::string& url, ProtocolType protocol, std::string modelName,
            std::string modelVersion = "", bool verbose = false,
-           SharedMemoryType shm_type = SharedMemoryType::SYSTEM_SHARED_MEMORY, int cuda_device = 0)
+           SharedMemoryType shm_type = SharedMemoryType::SYSTEM_SHARED_MEMORY, int cuda_device = 0,
+           int inference_timeout_ms = 0)
         : url_{url},
           verbose_{verbose},
           protocol_{protocol},
           model_name_{modelName},
           model_version_{modelVersion},
           shared_memory_type_{shm_type},
-          cuda_device_id_{cuda_device} {
+          cuda_device_id_{cuda_device},
+          inference_timeout_ms_{inference_timeout_ms} {
         // cppcheck-suppress virtualCallInConstructor
         createTritonClient();
     }

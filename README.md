@@ -375,7 +375,8 @@ Check [`.vscode/launch.json`](.vscode/launch.json) for additional configuration 
 - **`<http or grpc>`**: Communication protocol (`http` or `grpc`)
 - **`<triton-ip>`**: IP address of your Triton server
 - **`<8000 for http, 8001 for grpc>`**: Port number
-- **`<batch or b >`**: Batch size. For compatible independent-image models (classification, detection, segmentation, pose, depth, open-vocab) with `max_batch_size > 1` in the model config, automatic batching groups images into a single inference call.
+- **`<batch or b >`**: Batch size. For compatible independent-image models (classification, detection, segmentation, pose, depth, open-vocab) with `max_batch_size > 1` in the model config, automatic batching groups up to this many images into a single inference call, capped by the model `max_batch_size`.
+- **`<inference_timeout or it>`**: Inference timeout in milliseconds. `0` keeps the backend default; positive values apply to chat HTTP requests, Triton infer requests, and model-load readiness waits.
 - **`<input_sizes or -is>`**: Input sizes input for dynamic axes. Semi-colon separated list format: CHW;CHW;... (e.g., '3,224,224' for single input or '3,224,224;3,224,224' for two inputs, '3,640,640;2' for rtdetr/dfine models)
 
 
@@ -491,6 +492,7 @@ export ZAI_API_KEY=...
 | `--temperature` | `temp` | `1.0` | Sampling temperature |
 | `--target_image_size` | `tis` | `512` | Longest edge (px) before base64 encoding |
 | `--interactive` | `ia` | `false` | Enable multi-turn REPL |
+| `--inference_timeout` | `it` | `0` | Request timeout in milliseconds (`0` keeps backend default) |
 
 ## Docker Support
 For detailed instructions on installing Docker and the NVIDIA Container Toolkit, refer to the [Docker Setup Document](docs/guides/Docker_setup.md).

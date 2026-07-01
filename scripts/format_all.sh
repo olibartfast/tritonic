@@ -35,7 +35,7 @@ for dir in include src tests; do
         while IFS= read -r -d '' file; do
             echo "  Formatting: $file"
             clang-format -i "$file"
-            ((FILES_FORMATTED++))
+            ((++FILES_FORMATTED))
         done < <(find "$dir" -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0)
     fi
 done

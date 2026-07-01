@@ -7,6 +7,12 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Added `--inference_timeout=<ms>` for chat CURL calls, Triton infer requests, and model-load readiness waits.
+
+### Changed
+- Batched image inference now respects the configured `--batch_size`, capped by the model `max_batch_size`.
+
 ## [0.1.0] - 2026-06-25
 
 ### Added
