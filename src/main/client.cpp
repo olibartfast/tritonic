@@ -161,7 +161,8 @@ int main(int argc, const char* argv[]) {
                 }
             }
 
-            auto chatBackend = std::make_shared<ChatBackend>(apiEndpoint, api_key);
+            auto chatBackend = std::make_shared<ChatBackend>(apiEndpoint, api_key,
+                                                             config->GetInferenceTimeoutMs());
 
             // Collect images from --source (comma-separated paths or URLs)
             std::vector<std::string> source_images;
@@ -260,8 +261,9 @@ int main(int argc, const char* argv[]) {
 
         std::string url = config->GetServerAddress() + ":" + std::to_string(port);
 
-        auto triton = std::make_shared<Triton>(url, protocol, config->GetModelName(),
-                                               config->GetModelVersion(), config->GetVerbose());
+        auto triton = std::make_shared<Triton>(
+            url, protocol, config->GetModelName(), config->GetModelVersion(), config->GetVerbose(),
+            SharedMemoryType::SYSTEM_SHARED_MEMORY, 0, config->GetInferenceTimeoutMs());
 
         // Create and run App
         std::shared_ptr<InferenceConfig> configPtr = std::move(config);
