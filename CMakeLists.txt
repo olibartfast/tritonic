@@ -52,7 +52,7 @@ set(NEURIPLO_TASKS_WITH_OPENCV ON CACHE BOOL "" FORCE)
 FetchContent_Declare(
   neuriplo-tasks
   GIT_REPOSITORY ${NEURIPLO_TASKS_REPO}
-  GIT_TAG feat/remove-opencv-stb
+  GIT_TAG v0.6.0
 )
 FetchContent_MakeAvailable(neuriplo-tasks)
 
