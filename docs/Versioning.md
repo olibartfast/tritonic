@@ -92,20 +92,20 @@ release tags directly from `develop`; every release tag must be created from
    git push origin master --tags
    ```
 
-5. **Create the GitHub Release** for the tag — **mandatory, never skip**:
-   Extract the release section from `CHANGELOG.md` (everything under
-   `## [X.Y.Z]` down to the next `## [` header) and pass it via `--notes`:
-   ```
-   gh release create v0.2.0 --repo olibartfast/tritonic --title "v0.2.0" \
-     --notes "$(sed -n '/^## \[0\.2\.0\]/,/^## \[/{ /^## \[/!p}' CHANGELOG.md | sed '/^$/N;/^\n$/d')"
-   ```
+5. **GitHub Release publication is automatic and mandatory.**
+   `.github/workflows/publish-github-release.yml` runs on `vX.Y.Z` tag pushes
+   and on `develop`/`master` pushes. It creates missing GitHub Releases
+   for valid `vX.Y.Z` tags from each version's `CHANGELOG.md` section using
+   `GITHUB_TOKEN`.
 
    Never use `--generate-notes` — it produces commit-based notes that bypass
    the curated `CHANGELOG.md`. The changelog is the single source of truth.
 
    Every tag must have a corresponding release. There must never be a tag
    visible on GitHub without a matching release entry. If you discover a
-   missing release (tag exists, release does not), create it immediately.
+   missing release (tag exists, release does not), push `develop` or `master`
+   after ensuring the workflow is present; the workflow validates tags against
+   `master` and backfills missing releases.
 
 6. **Bump develop** — merge back and set the next dev version:
    ```

@@ -7,6 +7,19 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-15
+
+### Added
+- Automatic GitHub Release publication from curated changelog sections for
+  version tags reachable from `master`.
+
+### Changed
+- Migrated the neuriplo-tasks boundary from OpenCV types to native
+  `vision::Image`, `vision::Size`, and `vision::PixelType` values while
+  retaining OpenCV inside tritonic through the optional adapter target.
+- Pinned neuriplo-tasks to `v0.6.0` and linked
+  `neuriplo-tasks::vision-opencv`.
+
 ## [0.2.0] - 2026-07-01
 
 ### Added
@@ -29,6 +42,7 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
 - Pinned `neuriplo-tasks` to **v0.5.0**, which adds the `RfDetrPose` keypoint
   task and batch-ready postprocessors/preprocess strategies.
 
-[Unreleased]: https://github.com/olibartfast/tritonic/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/olibartfast/tritonic/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/olibartfast/tritonic/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/olibartfast/tritonic/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/olibartfast/tritonic/releases/tag/v0.1.0
