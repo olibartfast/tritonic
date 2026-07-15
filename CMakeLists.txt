@@ -47,10 +47,12 @@ else()
   set(NEURIPLO_TASKS_REPO "https://github.com/olibartfast/neuriplo-tasks.git")
 endif()
 
+set(NEURIPLO_TASKS_WITH_OPENCV ON CACHE BOOL "" FORCE)
+
 FetchContent_Declare(
   neuriplo-tasks
   GIT_REPOSITORY ${NEURIPLO_TASKS_REPO}
-  GIT_TAG v0.5.0
+  GIT_TAG v0.6.0
 )
 FetchContent_MakeAvailable(neuriplo-tasks)
 
@@ -154,6 +156,7 @@ target_link_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
     neuriplo-tasks::neuriplo-tasks
+    neuriplo-tasks::vision-opencv
     grpcclient
     httpclient
     ${OpenCV_LIBS}

@@ -15,6 +15,36 @@
 #include "neuriplo/tasks/core/task_factory.hpp"
 
 namespace {
+neuriplo_tasks::vision::Image ToTaskImage(const cv::Mat& image) {
+    return neuriplo_tasks::vision::opencv::copyFromCvMat(image);
+}
+
+std::vector<neuriplo_tasks::vision::Image> ToTaskImages(const std::vector<cv::Mat>& images) {
+    std::vector<neuriplo_tasks::vision::Image> converted;
+    converted.reserve(images.size());
+    for (const auto& image : images) {
+        converted.push_back(ToTaskImage(image));
+    }
+    return converted;
+}
+
+neuriplo_tasks::vision::Size ToTaskSize(const cv::Mat& image) {
+    return {image.cols, image.rows};
+}
+
+neuriplo_tasks::vision::PixelType ToTaskPixelType(int cv_type) {
+    switch (cv_type) {
+        case CV_8U:
+            return neuriplo_tasks::vision::PixelType::UInt8;
+        case CV_32F:
+            return neuriplo_tasks::vision::PixelType::Float32;
+        case CV_32S:
+            return neuriplo_tasks::vision::PixelType::Int32;
+        default:
+            throw std::invalid_argument("Unsupported Triton input type for neuriplo-tasks");
+    }
+}
+
 std::string NormalizeModelType(const std::string& modelType) {
     std::string normalized;
     normalized.reserve(modelType.size());
@@ -245,17 +275,20 @@ neuriplo_tasks::ModelInfo App::convertToNeuriploTasksModelInfo(const TritonModel
     model_info.input_names = triton_info.input_names;
     model_info.output_names = triton_info.output_names;
     model_info.output_shapes = triton_info.output_shapes;
-    model_info.input_types = triton_info.input_types;
+    model_info.input_types.reserve(triton_info.input_types.size());
+    for (const int input_type : triton_info.input_types) {
+        model_info.input_types.push_back(ToTaskPixelType(input_type));
+    }
     model_info.max_batch_size_ = triton_info.max_batch_size_;
     model_info.batch_size_ = triton_info.batch_size_;
     return model_info;
 }
 
 std::vector<neuriplo_tasks::Result> App::processSource(const std::vector<cv::Mat>& source) {
-    const auto input_data = task_->preprocess(source);
+    const auto input_data = task_->preprocess(ToTaskImages(source));
     auto tensors = tritonClient_->infer(input_data);
     auto vision_tensors = toNeuriploTensors(tensors);
-    return task_->postprocess(cv::Size(source.front().cols, source.front().rows), vision_tensors);
+    return task_->postprocess(ToTaskSize(source.front()), vision_tensors);
 }
 
 std::vector<neuriplo_tasks::Tensor> App::toNeuriploTensors(
@@ -367,8 +400,8 @@ std::vector<std::vector<neuriplo_tasks::Result>> App::postprocessBatched(
     // Strict 1:1 families (classification): batchPostprocess returns exactly one result
     // per batch index. Map result[k] onto image[k].
     if (task_->getTaskType() == neuriplo_tasks::TaskType::Classification && !images.empty()) {
-        auto post = neuriplo_tasks::batchPostprocess(*task_, images.front().size(), vision_tensors,
-                                                     batch_size);
+        auto post = neuriplo_tasks::batchPostprocess(*task_, ToTaskSize(images.front()),
+                                                     vision_tensors, batch_size);
         if (neuriplo_tasks::postprocessResultsMatchBatchSize(post) &&
             static_cast<int>(post.results.size()) == static_cast<int>(images.size())) {
             for (size_t k = 0; k < images.size(); ++k) {
@@ -384,7 +417,7 @@ std::vector<std::vector<neuriplo_tasks::Result>> App::postprocessBatched(
     // preserving exact per-image coordinate mapping.
     for (size_t k = 0; k < images.size(); ++k) {
         auto slice = sliceTensorsAxis0(vision_tensors, static_cast<int>(k), batch_size);
-        per_image[k] = task_->postprocess(cv::Size(images[k].cols, images[k].rows), slice);
+        per_image[k] = task_->postprocess(ToTaskSize(images[k]), slice);
     }
     return per_image;
 }
@@ -417,7 +450,7 @@ void App::processImagesBatched(const std::vector<std::string>& sourceNames) {
 
         auto infer_start = std::chrono::steady_clock::now();
 
-        neuriplo_tasks::BatchRequest request{images};
+        neuriplo_tasks::BatchRequest request{ToTaskImages(images)};
         auto pre = neuriplo_tasks::batchPreprocess(*task_, request);
         auto stacked = stackBatchBuffers(pre, batch_size);
         applyBatchedInputShapes(batch_size);
