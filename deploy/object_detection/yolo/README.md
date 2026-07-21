@@ -2,6 +2,9 @@
 
 This directory contains scripts for exporting YOLO models (v5, v6, v7, v8, v9, v10, v11, v12, NAS) to ONNX and TensorRT formats for deployment with Triton Inference Server.
 
+For server-side DALI and native CUDA preprocessing, see the
+[YOLO GPU preprocessing ensemble contract](ensemble/README.md).
+
 ## Quick Start
 
 ### Ultralytics Models (v8, v9, v10, v11, v12)

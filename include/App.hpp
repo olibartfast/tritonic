@@ -34,6 +34,7 @@ private:
     neuriplo_tasks::ModelInfo convertToNeuriploTasksModelInfo(const TritonModelInfo& triton_info);
 
     std::vector<neuriplo_tasks::Result> processSource(const std::vector<cv::Mat>& source);
+    std::vector<neuriplo_tasks::Result> processEncodedImage(const std::string& sourceName);
 
     void processImages(const std::vector<std::string>& sourceNames);
 

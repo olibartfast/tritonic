@@ -24,6 +24,8 @@ TEST(InferenceConfigTest, DefaultValues) {
     EXPECT_EQ(config.GetCudaDeviceId(), 0);
     EXPECT_EQ(config.GetLogLevel(), "info");
     EXPECT_TRUE(config.GetLogFile().empty());
+    EXPECT_EQ(config.GetInputMode(), "preprocessed");
+    EXPECT_TRUE(config.GetTaskModel().empty());
     EXPECT_TRUE(config.GetInputSizes().empty());
     EXPECT_FALSE(config.GetEnableMultimodal());
     EXPECT_TRUE(config.GetTextPrompt().empty());
@@ -193,6 +195,35 @@ TEST(ConfigManagerTest, ParsesBatchAndTimeout) {
     ASSERT_NE(config, nullptr);
     EXPECT_EQ(config->GetBatchSize(), 4);
     EXPECT_EQ(config->GetInferenceTimeoutMs(), 2500);
+}
+
+TEST(ConfigManagerTest, ParsesEncodedImageMode) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--input_mode=encoded-image", "--model_type=yolo",
+                          "--model=yolo_dali_ensemble", "--task_model=yolo_trt"};
+    auto config = mgr.LoadFromCommandLine(5, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetInputMode(), "encoded-image");
+    EXPECT_EQ(config->GetTaskModel(), "yolo_trt");
+}
+
+TEST(ConfigManagerTest, RejectsUnknownInputMode) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--input_mode=raw"};
+    EXPECT_THROW(mgr.LoadFromCommandLine(2, argv), std::invalid_argument);
+}
+
+TEST(ConfigManagerTest, EncodedImageRequiresTaskModel) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--input_mode=encoded-image", "--model_type=yolo"};
+    EXPECT_THROW(mgr.LoadFromCommandLine(3, argv), std::invalid_argument);
+}
+
+TEST(ConfigManagerTest, EncodedImageRejectsUnsupportedCombination) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--input_mode=encoded-image", "--model_type=yoloseg",
+                          "--task_model=yolo_trt"};
+    EXPECT_THROW(mgr.LoadFromCommandLine(4, argv), std::invalid_argument);
 }
 
 TEST(InferenceConfigTest, MultimodalSettersGetters) {

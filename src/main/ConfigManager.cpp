@@ -1,9 +1,24 @@
+#include <algorithm>
+#include <cctype>
 #include <opencv2/opencv.hpp>
 #include <sstream>
 #include <stdexcept>
 #include "tritonic/infra/config_manager.hpp"
 
 namespace tritonic::infra {
+
+namespace {
+std::string Normalize(const std::string& value) {
+    std::string normalized;
+    normalized.reserve(value.size());
+    for (const char c : value) {
+        if (c != '-' && c != '_' && c != ' ') {
+            normalized.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+        }
+    }
+    return normalized;
+}
+}  // namespace
 
 ConfigManager::ConfigManager() = default;
 ConfigManager::~ConfigManager() = default;
@@ -43,6 +58,8 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
         "{serverAddress sa |localhost | inference server address}"
         "{port pt        |8000  | inference server port}"
         "{input_sizes is |      | input sizes for dynamic axes (format: 'c,h,w;c,h,w')}"
+        "{input_mode im |preprocessed | input transport: preprocessed or encoded-image}"
+        "{task_model tm |      | inner Triton model used for task metadata in encoded-image mode}"
         "{batch_size bs  |1     | batch size}"
         "{inference_timeout it |0 | inference timeout in milliseconds (0 = no timeout)}"
         "{show_frame sf  |false | show processed frames}"
@@ -92,6 +109,8 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
     config->SetServerAddress(parser.get<cv::String>("serverAddress"));
     config->SetPort(parser.get<int>("port"));
     config->SetBatchSize(parser.get<int>("batch_size"));
+    config->SetInputMode(parser.get<cv::String>("input_mode"));
+    config->SetTaskModel(parser.get<cv::String>("task_model"));
     config->SetInferenceTimeoutMs(parser.get<int>("inference_timeout"));
     config->SetShowFrame(parser.get<bool>("show_frame"));
     config->SetWriteFrame(parser.get<bool>("write_frame"));
@@ -125,6 +144,41 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
     if (parser.has("input_sizes")) {
         std::string s = parser.get<cv::String>("input_sizes");
         config->SetInputSizes(ParseInputSizes(s));
+    }
+
+    const std::string inputMode = Normalize(config->GetInputMode());
+    if (inputMode == "preprocessed") {
+        config->SetInputMode("preprocessed");
+    } else if (inputMode == "encodedimage") {
+        config->SetInputMode("encoded-image");
+    } else {
+        throw std::invalid_argument(
+            "--input_mode must be either 'preprocessed' or 'encoded-image'");
+    }
+
+    if (config->GetInputMode() == "encoded-image") {
+        if (Normalize(config->GetBackend()) != "triton") {
+            throw std::invalid_argument("--input_mode=encoded-image requires --backend=triton");
+        }
+        if (Normalize(config->GetModelType()) != "yolo") {
+            throw std::invalid_argument(
+                "--input_mode=encoded-image currently supports only --model_type=yolo");
+        }
+        if (config->GetTaskModel().empty()) {
+            throw std::invalid_argument("--task_model is required when --input_mode=encoded-image");
+        }
+        if (config->GetBatchSize() != 1) {
+            throw std::invalid_argument(
+                "--input_mode=encoded-image currently requires --batch_size=1");
+        }
+        if (Normalize(config->GetSharedMemoryType()) != "none") {
+            throw std::invalid_argument(
+                "--input_mode=encoded-image currently requires --shared_memory_type=none");
+        }
+        if (!config->GetInputSizes().empty()) {
+            throw std::invalid_argument(
+                "--input_sizes must not be set with --input_mode=encoded-image");
+        }
     }
 
     return config;

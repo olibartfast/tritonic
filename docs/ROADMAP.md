@@ -180,29 +180,14 @@ Each step is atomic: one PR, one testable unit of work.
 
 ## Phase 6 — Model Ensemble Awareness
 
-### 6.1 — Add ensemble types
-**File:** `include/tritonic/core/types.hpp`
-**Action:** Add:
-- `EnsembleRequest` — vector of model steps with input/output tensor names.
-- `EnsembleResponse` — map of output name → Tensor.
+Triton exposes an ensemble as a normal model, so no client-side ensemble request
+or response API is required. The implementation work is server-side GPU
+preprocessing plus a Tritonic encoded-image input path.
 
-### 6.2 — Extend ITriton with ensemble infer
-**File:** `include/tritonic/triton/itriton.hpp`
-**Action:** Add:
-- `virtual std::vector<core::Tensor> inferEnsemble(const std::string& ensembleName, ...) = 0;`
-
-### 6.3 — Implement ensemble infer
-**File:** `src/triton/Triton.cpp`
-**Action:**
-- Treat ensemble as a model: call `Infer()` on the ensemble model name.
-- Triton handles routing internally — client just sends input tensors and receives output tensors.
-- Validate ensemble model exists via `isModelInRepository()`.
-
-### 6.4 — CLI for ensemble
-**File:** `src/main/ConfigManager.cpp`
-**Action:** Add `--ensemble` flag to select ensemble model.
-
-**Verification:** Test with a pre-post ensemble model (e.g., YOLO preprocessing + inference + NMS).
+The atomic implementation plan is in
+[YOLO Ensemble Inference Roadmap](ENSEMBLE_INFERENCE_ROADMAP.md). It delivers a
+DALI preprocessing ensemble first, then separately gates native C++/CUDA
+preprocessing and measured GPU postprocessing.
 
 ---
 

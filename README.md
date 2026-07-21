@@ -58,7 +58,7 @@ tritonic/
 ```
 
 **CMake Fetched Dependencies:**
-- [neuriplo-tasks](https://github.com/olibartfast/neuriplo-tasks) (v0.5.0) — model pre/post processing and task management
+- [neuriplo-tasks](https://github.com/olibartfast/neuriplo-tasks) (v0.6.0) — model pre/post processing and task management
 
 ## Architecture
 
@@ -76,6 +76,11 @@ Both implement the common `tritonic::core::IInferenceBackend` interface (Strateg
 > Note: "backend" here refers to *tritonic's* server selection (`--backend=triton` vs `--backend=chat`). This is distinct from the Triton server's own *framework backends* (TensorRT, ONNX Runtime, etc.), which are configured server-side.
 
 For full code structure and namespace layout see [AGENTS.md](AGENTS.md).
+
+The YOLO DALI ensemble can accept original JPEG bytes and run decode,
+letterboxing, normalization, and TensorRT inference on the server. See the
+[reproducible GPU-preprocessing workflow](deploy/object_detection/yolo/ensemble/README.md)
+and its [atomic implementation roadmap](docs/ENSEMBLE_INFERENCE_ROADMAP.md).
 
 ## Tested Models
 

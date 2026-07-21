@@ -69,6 +69,18 @@ public:
     void SetInputSizes(const std::vector<std::vector<int64_t>>& v) {
         input_sizes_ = v;
     }
+    const std::string& GetInputMode() const noexcept {
+        return input_mode_;
+    }
+    void SetInputMode(const std::string& v) {
+        input_mode_ = v;
+    }
+    const std::string& GetTaskModel() const noexcept {
+        return task_model_;
+    }
+    void SetTaskModel(const std::string& v) {
+        task_model_ = v;
+    }
 
     // Input/Output
     const std::string& GetSource() const noexcept {
@@ -278,6 +290,8 @@ private:
     std::string model_version_;
     std::string model_type_;
     std::vector<std::vector<int64_t>> input_sizes_;
+    std::string input_mode_{"preprocessed"};
+    std::string task_model_;
 
     std::string source_;
     std::string labels_file_;
