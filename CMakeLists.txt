@@ -219,6 +219,8 @@ if(BUILD_TESTING)
         
         target_link_libraries(tritonic_unit_tests PRIVATE
             gtest gtest_main gmock
+            neuriplo-tasks::neuriplo-tasks
+            neuriplo-tasks::vision-opencv
             grpcclient
             httpclient
             ${OpenCV_LIBS}
@@ -232,6 +234,16 @@ if(BUILD_TESTING)
             PROPERTIES TIMEOUT 60
         )
     endif()
+
+    add_executable(yolo_preprocess_baseline
+        tests/tools/yolo_preprocess_baseline.cpp
+    )
+    tritonic_apply_strict_warnings(yolo_preprocess_baseline)
+    target_link_libraries(yolo_preprocess_baseline PRIVATE
+        neuriplo-tasks::neuriplo-tasks
+        neuriplo-tasks::vision-opencv
+        ${OpenCV_LIBS}
+    )
     
     # Create integration test executable if integration tests exist
     if(INTEGRATION_TEST_SOURCES)

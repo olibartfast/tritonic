@@ -186,10 +186,10 @@ TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& m
         for (const auto& dim : input.shape()) {
             shape.push_back(dim);
         }
-        // No dynamic shape handling here (input_sizes not passed in this signature)
-        if (info.max_batch_size_ > 0 && shape.size() < 4) {
-            shape.insert(shape.begin(), 1);  // Insert batch size
-        }
+        // gRPC metadata already includes the dynamic batch axis. Resolve that
+        // axis to N=1 without prefixing another dimension.
+        if (info.max_batch_size_ > 0 && !shape.empty() && shape.front() == -1)
+            shape.front() = 1;
         info.input_shapes.push_back(shape);
 
         // Data type
@@ -203,7 +203,7 @@ TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& m
             info.input_types.push_back(CV_32S);
         } else if (datatype == "INT64") {
             info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
-        } else if (datatype == "BOOL") {
+        } else if (datatype == "UINT8" || datatype == "BOOL") {
             info.input_types.push_back(CV_8U);
         } else if (datatype == "BYTES" || datatype == "STRING") {
             info.input_types.push_back(TritonModelInfo::kStringTypeSentinel);
@@ -323,7 +323,7 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
             info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
             logger->Warn("Warning: INT64 type detected for input '" + info.input_names.back() +
                          "'. Will be mapped to CV_32S.");
-        } else if (datatype == "BOOL") {
+        } else if (datatype == "UINT8" || datatype == "BOOL") {
             info.input_types.push_back(CV_8U);
         } else if (datatype == "BYTES" || datatype == "STRING") {
             info.input_types.push_back(TritonModelInfo::kStringTypeSentinel);
@@ -424,7 +424,7 @@ void Triton::updateInputTypes() {
             model_info_.input_types[i] = TritonModelInfo::kStringTypeSentinel;
             continue;
         }
-        if (datatype == "BOOL") {
+        if (datatype == "UINT8" || datatype == "BOOL") {
             model_info_.input_types[i] = CV_8U;
             continue;
         }

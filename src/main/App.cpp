@@ -13,6 +13,7 @@
 #include "neuriplo/tasks/core/batch_preprocess.hpp"
 #include "neuriplo/tasks/core/opencv_interop.hpp"
 #include "neuriplo/tasks/core/task_factory.hpp"
+#include "tritonic/core/encoded_image.hpp"
 
 namespace {
 neuriplo_tasks::vision::Image ToTaskImage(const cv::Mat& image) {
@@ -170,9 +171,32 @@ int App::run() {
             logger_->Info("Model is ready.");
         }
 
-        logger_->Info("Getting model info for: " + config_->GetModelName());
+        const bool encodedImageMode = config_->GetInputMode() == "encoded-image";
+        TritonModelInfo taskModelInfo;
+        if (encodedImageMode) {
+            logger_->Info("Getting task metadata from: " + config_->GetTaskModel());
+            if (!tritonClient_->isModelInRepository(config_->GetTaskModel())) {
+                throw std::runtime_error("Task model " + config_->GetTaskModel() +
+                                         " not found in Triton repository.");
+            }
+            if (!tritonClient_->isModelReady(config_->GetTaskModel())) {
+                tritonClient_->loadModel(config_->GetTaskModel());
+            }
+            taskModelInfo = tritonClient_->getModelInfo(config_->GetTaskModel(),
+                                                        config_->GetServerAddress(), {});
+        }
+
+        logger_->Info("Getting request model info for: " + config_->GetModelName());
+        std::vector<std::vector<int64_t>> requestInputSizes = config_->GetInputSizes();
+        if (encodedImageMode && config_->GetProtocol() == "http") {
+            requestInputSizes = {{1}};
+        }
         TritonModelInfo modelInfo = tritonClient_->getModelInfo(
-            config_->GetModelName(), config_->GetServerAddress(), config_->GetInputSizes());
+            config_->GetModelName(), config_->GetServerAddress(), requestInputSizes);
+        if (encodedImageMode) {
+            tritonic::core::ValidateEncodedImageModels(modelInfo, taskModelInfo);
+        }
+        const TritonModelInfo& processingModelInfo = encodedImageMode ? taskModelInfo : modelInfo;
 
         // Cache batch metadata for the batched image pipeline (neuriplo-tasks v0.5.0).
         max_batch_size_ = modelInfo.max_batch_size_;
@@ -187,7 +211,7 @@ int App::run() {
 
         // Create task instance
         logger_->Info("Creating task instance for model type: " + config_->GetModelType());
-        auto neuriploTasksModelInfo = convertToNeuriploTasksModelInfo(modelInfo);
+        auto neuriploTasksModelInfo = convertToNeuriploTasksModelInfo(processingModelInfo);
         neuriplo_tasks::TaskConfig taskConfig;
         taskConfig.confidence_threshold = config_->GetConfidenceThreshold();
         taskConfig.nms_threshold = config_->GetNmsThreshold();
@@ -200,8 +224,8 @@ int App::run() {
 
         // Extract frame buffer size for video classification from 5D input shape [B, T, C, H, W]
         if (task_->getTaskType() == neuriplo_tasks::TaskType::VideoClassification &&
-            !modelInfo.input_shapes.empty()) {
-            const auto& shape = modelInfo.input_shapes[0];
+            !processingModelInfo.input_shapes.empty()) {
+            const auto& shape = processingModelInfo.input_shapes[0];
             if (shape.size() == 5) {
                 num_frames_ = static_cast<int>(shape[1]);
             }
@@ -229,6 +253,22 @@ int App::run() {
                 logger_->Debug("Added video file: " + sourceName);
             } else {
                 logger_->Warn("Unknown file type: " + sourceName);
+            }
+        }
+
+        if (encodedImageMode) {
+            if (!video_list.empty()) {
+                throw std::runtime_error(
+                    "--input_mode=encoded-image currently supports JPEG still images only");
+            }
+            for (const auto& image : image_list) {
+                std::string extension = std::filesystem::path(image).extension().string();
+                std::transform(extension.begin(), extension.end(), extension.begin(),
+                               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                if (extension != ".jpg" && extension != ".jpeg") {
+                    throw std::runtime_error(
+                        "--input_mode=encoded-image currently supports JPEG files only: " + image);
+                }
             }
         }
 
@@ -291,6 +331,13 @@ std::vector<neuriplo_tasks::Result> App::processSource(const std::vector<cv::Mat
     return task_->postprocess(ToTaskSize(source.front()), vision_tensors);
 }
 
+std::vector<neuriplo_tasks::Result> App::processEncodedImage(const std::string& sourceName) {
+    auto request = tritonic::core::BuildEncodedImageRequest(sourceName);
+    tritonClient_->setInputShapes(request.shapes);
+    auto tensors = tritonClient_->infer(request.inputs);
+    return task_->postprocess({request.width, request.height}, toNeuriploTensors(tensors));
+}
+
 std::vector<neuriplo_tasks::Tensor> App::toNeuriploTensors(
     const std::vector<Tensor>& tensors) const {
     std::vector<neuriplo_tasks::Tensor> vision_tensors;
@@ -318,7 +365,7 @@ std::vector<neuriplo_tasks::Tensor> App::toNeuriploTensors(
 }
 
 bool App::isBatchableImageTask() const {
-    if (!task_ || max_batch_size_ <= 1) {
+    if (config_->GetInputMode() == "encoded-image" || !task_ || max_batch_size_ <= 1) {
         return false;
     }
     // Only independent-image families benefit from batched inference (see
@@ -630,14 +677,19 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             return;
         }
         for (const auto& sourceName : sourceNames) {
-            cv::Mat image = cv::imread(sourceName);
-            if (image.empty()) {
-                logger_->Error("Could not open or read the image: " + sourceName);
-                continue;
+            const bool encodedImageMode = config_->GetInputMode() == "encoded-image";
+            cv::Mat image;
+            if (!encodedImageMode || config_->GetWriteFrame() || config_->GetShowFrame()) {
+                image = cv::imread(sourceName);
+                if (image.empty()) {
+                    logger_->Error("Could not open or read the image: " + sourceName);
+                    continue;
+                }
             }
 
             auto start = std::chrono::steady_clock::now();
-            std::vector<neuriplo_tasks::Result> predictions = processSource({image});
+            std::vector<neuriplo_tasks::Result> predictions =
+                encodedImageMode ? processEncodedImage(sourceName) : processSource({image});
             auto end = std::chrono::steady_clock::now();
             auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
             logger_->Info("Infer time for 1 image: " + std::to_string(diff) + " ms");
@@ -653,12 +705,14 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
                 renderPrediction(image, prediction);
             }
 
-            std::string outputDir = sourceDir + "/output";
-            std::filesystem::create_directories(outputDir);
-            std::string processedFrameFilename =
-                outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
-            logger_->Info("Saving frame to: " + processedFrameFilename);
-            cv::imwrite(processedFrameFilename, image);
+            if (config_->GetWriteFrame()) {
+                std::string outputDir = sourceDir + "/output";
+                std::filesystem::create_directories(outputDir);
+                std::string processedFrameFilename =
+                    outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
+                logger_->Info("Saving frame to: " + processedFrameFilename);
+                cv::imwrite(processedFrameFilename, image);
+            }
         }
     }
 }
@@ -832,6 +886,11 @@ void App::renderPrediction(cv::Mat& frame, const neuriplo_tasks::Result& predict
         drawLabel(frame, class_names_[static_cast<int>(c.class_id)], c.class_confidence, 30, 30);
     } else if (std::holds_alternative<neuriplo_tasks::Detection>(prediction)) {
         const auto& det = std::get<neuriplo_tasks::Detection>(prediction);
+        logger_->Debug("Detection: class_id=" + std::to_string(static_cast<int>(det.class_id)) +
+                       " confidence=" + std::to_string(det.class_confidence) + " bbox=[" +
+                       std::to_string(det.bbox.x) + "," + std::to_string(det.bbox.y) + "," +
+                       std::to_string(det.bbox.width) + "," + std::to_string(det.bbox.height) +
+                       "]");
         cv::Rect safeBbox =
             neuriplo_tasks::toCvRect(det.bbox) & cv::Rect(0, 0, frame.cols, frame.rows);
         if (safeBbox.width > 0 && safeBbox.height > 0) {

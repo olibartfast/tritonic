@@ -1,0 +1,57 @@
+{
+  "contract": {
+    "dependency": "neuriplo-tasks v0.6.0",
+    "shape": [
+      1,
+      3,
+      640,
+      640
+    ],
+    "datatype": "FP32",
+    "format": "NCHW",
+    "color": "RGB",
+    "scale": "1/255",
+    "padding": 0
+  },
+  "environment": {
+    "opencv": "4.6.0"
+  },
+  "fixtures": [
+    {
+      "source": "data/images/bus.jpg",
+      "source_sha256": "33b198a1d2839bb9ac4c65d61f9e852196793cae9a0781360859425f6022b69c",
+      "width": 810,
+      "height": 1080,
+      "tensor": "bus.fp32",
+      "tensor_bytes": 4915200,
+      "tensor_sha256": "0c8dd9a10eafd68e1dddf2384f6a7464ad7f87022a6e98b23b13512d472a0e78"
+    },
+    {
+      "source": "data/images/horses.jpg",
+      "source_sha256": "c8f0a677a1356569e2ce71d2fa88c1030c0ae57ecf5e14170e02d9a86a20dcb4",
+      "width": 773,
+      "height": 512,
+      "tensor": "horses.fp32",
+      "tensor_bytes": 4915200,
+      "tensor_sha256": "66ba86e541b10b1fd7a8384cf189287859ef6761b7177bfd1e54f08e95c920e1"
+    },
+    {
+      "source": "data/images/person.jpg",
+      "source_sha256": "cdcbab947e46110fc2b77784ac54ddbbab2640f1e44cb5e91fc8984a9793a7d1",
+      "width": 640,
+      "height": 424,
+      "tensor": "person.fp32",
+      "tensor_bytes": 4915200,
+      "tensor_sha256": "66e65db764199f8a3f5b63dd7abd96a4038ffe043a01543c952efdba7ebbd885"
+    },
+    {
+      "source": "data/images/mug.jpg",
+      "source_sha256": "8461bab2b8c2ea98bb381ce4d69d86252aed3be7952c921147a0737bca1cd50c",
+      "width": 1280,
+      "height": 960,
+      "tensor": "mug.fp32",
+      "tensor_bytes": 4915200,
+      "tensor_sha256": "a246eaebe6444bcb8107d1de3469b11112605d645dadbc59d849269553675309"
+    }
+  ]
+}
