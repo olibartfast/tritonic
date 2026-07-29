@@ -563,6 +563,12 @@ std::vector<Tensor> Triton::getInferResults(tc::InferResult* result, const size_
             for (size_t i = 0; i < elementCount; ++i) {
                 infer_result.emplace_back(longData[i]);
             }
+        } else if (output_datatype == "UINT8") {
+            const uint8_t* byteData = reinterpret_cast<const uint8_t*>(outputData);
+            infer_result.reserve(outputByteSize);
+            for (size_t i = 0; i < outputByteSize; ++i) {
+                infer_result.emplace_back(byteData[i]);
+            }
         } else if (output_datatype == "BYTES" || output_datatype == "STRING") {
             std::vector<std::string> stringData;
             err = result->StringData(outputName, &stringData);

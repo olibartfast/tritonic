@@ -26,6 +26,8 @@ private:
     std::shared_ptr<Logger> logger_;
     std::unique_ptr<neuriplo_tasks::TaskInterface> task_;
     std::vector<std::string> class_names_;
+    std::vector<std::string> request_output_names_;
+    size_t task_output_count_{0};
     std::vector<cv::Scalar> colors_;
     int num_frames_{16};     // Frame buffer size for video classification tasks
     int max_batch_size_{1};  // Engine batch cap from model config
@@ -35,6 +37,7 @@ private:
 
     std::vector<neuriplo_tasks::Result> processSource(const std::vector<cv::Mat>& source);
     std::vector<neuriplo_tasks::Result> processEncodedImage(const std::string& sourceName);
+    void benchmarkImage(const std::string& sourceName);
 
     void processImages(const std::vector<std::string>& sourceNames);
 

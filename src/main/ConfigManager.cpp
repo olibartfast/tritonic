@@ -60,8 +60,12 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
         "{input_sizes is |      | input sizes for dynamic axes (format: 'c,h,w;c,h,w')}"
         "{input_mode im |preprocessed | input transport: preprocessed or encoded-image}"
         "{task_model tm |      | inner Triton model used for task metadata in encoded-image mode}"
+        "{postprocess_mode pm |cpu | postprocessing placement: cpu or gpu}"
         "{batch_size bs  |1     | batch size}"
         "{inference_timeout it |0 | inference timeout in milliseconds (0 = no timeout)}"
+        "{benchmark_warmup bw |0 | benchmark warmup iterations}"
+        "{benchmark_iterations bi |0 | measured benchmark iterations}"
+        "{benchmark_output bo | | benchmark JSON output path}"
         "{show_frame sf  |false | show processed frames}"
         "{write_frame wf |true  | write processed frames to disk}"
         "{confidence_threshold ct |0.5 | confidence threshold}"
@@ -111,7 +115,11 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
     config->SetBatchSize(parser.get<int>("batch_size"));
     config->SetInputMode(parser.get<cv::String>("input_mode"));
     config->SetTaskModel(parser.get<cv::String>("task_model"));
+    config->SetPostprocessMode(parser.get<cv::String>("postprocess_mode"));
     config->SetInferenceTimeoutMs(parser.get<int>("inference_timeout"));
+    config->SetBenchmarkWarmup(parser.get<int>("benchmark_warmup"));
+    config->SetBenchmarkIterations(parser.get<int>("benchmark_iterations"));
+    config->SetBenchmarkOutput(parser.get<cv::String>("benchmark_output"));
     config->SetShowFrame(parser.get<bool>("show_frame"));
     config->SetWriteFrame(parser.get<bool>("write_frame"));
     config->SetConfidenceThreshold(parser.get<float>("confidence_threshold"));
@@ -160,9 +168,11 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
         if (Normalize(config->GetBackend()) != "triton") {
             throw std::invalid_argument("--input_mode=encoded-image requires --backend=triton");
         }
-        if (Normalize(config->GetModelType()) != "yolo") {
+        const std::string modelType = Normalize(config->GetModelType());
+        if (modelType != "yolo" && modelType != "yolo26seg") {
             throw std::invalid_argument(
-                "--input_mode=encoded-image currently supports only --model_type=yolo");
+                "--input_mode=encoded-image currently supports only --model_type=yolo or "
+                "--model_type=yolo26seg");
         }
         if (config->GetTaskModel().empty()) {
             throw std::invalid_argument("--task_model is required when --input_mode=encoded-image");
@@ -179,6 +189,31 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
             throw std::invalid_argument(
                 "--input_sizes must not be set with --input_mode=encoded-image");
         }
+    }
+
+    const std::string postprocessMode = Normalize(config->GetPostprocessMode());
+    if (postprocessMode == "cpu" || postprocessMode == "gpu") {
+        config->SetPostprocessMode(postprocessMode);
+    } else {
+        throw std::invalid_argument("--postprocess_mode must be either 'cpu' or 'gpu'");
+    }
+    if (postprocessMode == "gpu") {
+        if (config->GetInputMode() != "encoded-image") {
+            throw std::invalid_argument(
+                "--postprocess_mode=gpu requires --input_mode=encoded-image");
+        }
+        if (Normalize(config->GetModelType()) != "yolo26seg") {
+            throw std::invalid_argument(
+                "--postprocess_mode=gpu currently supports only --model_type=yolo26seg");
+        }
+    }
+
+    if (config->GetBenchmarkWarmup() < 0 || config->GetBenchmarkIterations() < 0) {
+        throw std::invalid_argument("benchmark iteration counts must be non-negative");
+    }
+    if (config->GetBenchmarkIterations() > 0 && config->GetBenchmarkOutput().empty()) {
+        throw std::invalid_argument(
+            "--benchmark_output is required when --benchmark_iterations is positive");
     }
 
     return config;

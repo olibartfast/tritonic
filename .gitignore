@@ -2,6 +2,9 @@ build
 build*
 /**.avi
 model_repository
+!deploy/instance_segmentation/yolo26/ensemble/model_repository/
+!deploy/instance_segmentation/yolo26/ensemble/model_repository/**
+!deploy/instance_segmentation/yolo26/ensemble/dali_plugin/build_plugin.sh
 build_test
 triton_client_libs
 3rdparty
