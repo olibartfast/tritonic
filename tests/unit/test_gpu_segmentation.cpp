@@ -46,22 +46,53 @@ std::vector<tritonic::core::Tensor> MakeGpuOutputs(bool valid_polygon = true) {
         Tensor(std::move(points), {1, 4, 2}),
     };
 }
+
+tritonic::triton::ModelInfo MakeGpuMaskModelInfo() {
+    auto info = MakeGpuModelInfo();
+    info.output_names = {"NUM_DETECTIONS", "BOXES",        "SCORES",
+                         "CLASSES",        "MASK_OFFSETS", "MASK_DATA"};
+    info.output_datatypes = {"INT32", "INT32", "FP32", "INT32", "INT64", "UINT8"};
+    info.output_shapes = {{1, 1}, {1, 100, 4}, {1, 100}, {1, 100}, {1, 101}, {1, -1}};
+    return info;
+}
+
+std::vector<tritonic::core::Tensor> MakeGpuMaskOutputs(bool valid_size = true) {
+    using tritonic::core::Tensor;
+    using tritonic::core::TensorElement;
+    std::vector<TensorElement> boxes(400, int32_t{0});
+    boxes[0] = int32_t{2};
+    boxes[1] = int32_t{3};
+    boxes[2] = int32_t{2};
+    boxes[3] = int32_t{2};
+    std::vector<TensorElement> scores(100, 0.0F);
+    scores[0] = 0.9F;
+    std::vector<TensorElement> classes(100, int32_t{0});
+    classes[0] = int32_t{5};
+    std::vector<TensorElement> offsets(101, int64_t{valid_size ? 4 : 3});
+    offsets[0] = int64_t{0};
+    std::vector<TensorElement> masks = {uint8_t{255}, uint8_t{0}, uint8_t{255}, uint8_t{255}};
+    return {
+        Tensor({int32_t{1}}, {1, 1}),         Tensor(std::move(boxes), {1, 100, 4}),
+        Tensor(std::move(scores), {1, 100}),  Tensor(std::move(classes), {1, 100}),
+        Tensor(std::move(offsets), {1, 101}), Tensor(std::move(masks), {1, 4}),
+    };
+}
 }  // namespace
 
 TEST(GpuSegmentationTest, AcceptsExpectedPolygonModelContract) {
-    EXPECT_NO_THROW(tritonic::core::ValidateGpuSegmentationModel(MakeGpuModelInfo()));
+    EXPECT_NO_THROW(tritonic::core::ValidateGpuSegmentationModel(MakeGpuModelInfo(), true));
 }
 
 TEST(GpuSegmentationTest, RejectsWrongPolygonPointDatatype) {
     auto info = MakeGpuModelInfo();
     info.output_datatypes.back() = "FP32";
-    EXPECT_THROW(tritonic::core::ValidateGpuSegmentationModel(info), std::runtime_error);
+    EXPECT_THROW(tritonic::core::ValidateGpuSegmentationModel(info, true), std::runtime_error);
 }
 
 TEST(GpuSegmentationTest, DecodesStrictPackedPolygonResult) {
     const auto info = MakeGpuModelInfo();
-    const auto results =
-        tritonic::core::DecodeGpuSegmentationResults(MakeGpuOutputs(), info.output_names, 10, 10);
+    const auto results = tritonic::core::DecodeGpuSegmentationResults(
+        MakeGpuOutputs(), info.output_names, 10, 10, true);
     ASSERT_EQ(results.size(), 1U);
     const auto& result = std::get<neuriplo_tasks::InstanceSegmentation>(results[0]);
     EXPECT_EQ(result.bbox.x, 2);
@@ -80,6 +111,36 @@ TEST(GpuSegmentationTest, DecodesStrictPackedPolygonResult) {
 TEST(GpuSegmentationTest, RejectsDegeneratePolygon) {
     const auto info = MakeGpuModelInfo();
     EXPECT_THROW(tritonic::core::DecodeGpuSegmentationResults(MakeGpuOutputs(false),
-                                                              info.output_names, 10, 10),
+                                                              info.output_names, 10, 10, true),
+                 std::runtime_error);
+}
+
+TEST(GpuSegmentationTest, AcceptsExpectedMaskModelContract) {
+    EXPECT_NO_THROW(tritonic::core::ValidateGpuSegmentationModel(MakeGpuMaskModelInfo(), false));
+}
+
+TEST(GpuSegmentationTest, RejectsMaskModelForPolygonMode) {
+    EXPECT_THROW(tritonic::core::ValidateGpuSegmentationModel(MakeGpuMaskModelInfo(), true),
+                 std::runtime_error);
+}
+
+TEST(GpuSegmentationTest, DecodesStrictPackedMaskResult) {
+    const auto info = MakeGpuMaskModelInfo();
+    const auto results = tritonic::core::DecodeGpuSegmentationResults(
+        MakeGpuMaskOutputs(), info.output_names, 10, 10, false);
+    ASSERT_EQ(results.size(), 1U);
+    const auto& result = std::get<neuriplo_tasks::InstanceSegmentation>(results[0]);
+    EXPECT_EQ(result.bbox.x, 2);
+    EXPECT_EQ(result.bbox.y, 3);
+    EXPECT_EQ(result.mask_width, 2);
+    EXPECT_EQ(result.mask_height, 2);
+    EXPECT_EQ(result.mask_data, (std::vector<uint8_t>{255, 0, 255, 255}));
+    EXPECT_TRUE(result.polygons.empty());
+}
+
+TEST(GpuSegmentationTest, RejectsMaskSizeThatDoesNotMatchBox) {
+    const auto info = MakeGpuMaskModelInfo();
+    EXPECT_THROW(tritonic::core::DecodeGpuSegmentationResults(MakeGpuMaskOutputs(false),
+                                                              info.output_names, 10, 10, false),
                  std::runtime_error);
 }

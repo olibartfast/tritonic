@@ -247,6 +247,109 @@ __global__ void TracePolygons(const uint8_t* masks, const int64_t* mask_offsets,
     ring_counts[detection] = ring_count;
 }
 
+__device__ int64_t HullCross(const int32_t* points, int64_t base, int origin, int a, int b) {
+    const int64_t ox = points[(base + origin) * 2];
+    const int64_t oy = points[(base + origin) * 2 + 1];
+    const int64_t ax = points[(base + a) * 2];
+    const int64_t ay = points[(base + a) * 2 + 1];
+    const int64_t bx = points[(base + b) * 2];
+    const int64_t by = points[(base + b) * 2 + 1];
+    return (ax - ox) * (by - oy) - (ay - oy) * (bx - ox);
+}
+
+__device__ int64_t HullDistanceSquared(const int32_t* points, int64_t base, int origin, int point) {
+    const int64_t dx = points[(base + point) * 2] - points[(base + origin) * 2];
+    const int64_t dy = points[(base + point) * 2 + 1] - points[(base + origin) * 2 + 1];
+    return dx * dx + dy * dy;
+}
+
+__global__ void ConvexHullRings(const int32_t* contours, int32_t* hulls,
+                                const int64_t* mask_offsets, const int32_t* ring_counts,
+                                int32_t* ring_point_counts, int32_t* errors, int count) {
+    const int detection = blockIdx.x;
+    if (detection >= count || threadIdx.x != 0 || errors[detection] != 0)
+        return;
+
+    const int64_t point_base = mask_offsets[detection] * 4;
+    const int64_t ring_base = mask_offsets[detection];
+    int64_t source_point = point_base;
+    int64_t destination_point = point_base;
+    for (int ring = 0; ring < ring_counts[detection]; ++ring) {
+        const int source_count = ring_point_counts[ring_base + ring];
+        int64_t source_area_twice = 0;
+        for (int point = 0; point < source_count; ++point) {
+            const int next = (point + 1) % source_count;
+            source_area_twice += static_cast<int64_t>(contours[(source_point + point) * 2]) *
+                                     contours[(source_point + next) * 2 + 1] -
+                                 static_cast<int64_t>(contours[(source_point + next) * 2]) *
+                                     contours[(source_point + point) * 2 + 1];
+        }
+
+        int start = 0;
+        for (int point = 1; point < source_count; ++point) {
+            const int32_t x = contours[(source_point + point) * 2];
+            const int32_t y = contours[(source_point + point) * 2 + 1];
+            const int32_t start_x = contours[(source_point + start) * 2];
+            const int32_t start_y = contours[(source_point + start) * 2 + 1];
+            if (x < start_x || (x == start_x && y < start_y))
+                start = point;
+        }
+
+        int current = start;
+        int hull_count = 0;
+        do {
+            hulls[(destination_point + hull_count) * 2] = contours[(source_point + current) * 2];
+            hulls[(destination_point + hull_count) * 2 + 1] =
+                contours[(source_point + current) * 2 + 1];
+            ++hull_count;
+
+            int next = -1;
+            for (int candidate = 0; candidate < source_count; ++candidate) {
+                if (candidate == current)
+                    continue;
+                if (next < 0) {
+                    next = candidate;
+                    continue;
+                }
+                const int64_t cross = HullCross(contours, source_point, current, next, candidate);
+                if (cross < 0 ||
+                    (cross == 0 && HullDistanceSquared(contours, source_point, current, candidate) >
+                                       HullDistanceSquared(contours, source_point, current, next)))
+                    next = candidate;
+            }
+            current = next;
+        } while (current != start && hull_count <= source_count);
+
+        if (hull_count < 3 || hull_count > source_count) {
+            errors[detection] = 4;
+            return;
+        }
+
+        int64_t hull_area_twice = 0;
+        for (int point = 0; point < hull_count; ++point) {
+            const int next = (point + 1) % hull_count;
+            hull_area_twice += static_cast<int64_t>(hulls[(destination_point + point) * 2]) *
+                                   hulls[(destination_point + next) * 2 + 1] -
+                               static_cast<int64_t>(hulls[(destination_point + next) * 2]) *
+                                   hulls[(destination_point + point) * 2 + 1];
+        }
+        if ((source_area_twice < 0) != (hull_area_twice < 0)) {
+            for (int left = 0, right = hull_count - 1; left < right; ++left, --right) {
+                const int32_t left_x = hulls[(destination_point + left) * 2];
+                const int32_t left_y = hulls[(destination_point + left) * 2 + 1];
+                hulls[(destination_point + left) * 2] = hulls[(destination_point + right) * 2];
+                hulls[(destination_point + left) * 2 + 1] =
+                    hulls[(destination_point + right) * 2 + 1];
+                hulls[(destination_point + right) * 2] = left_x;
+                hulls[(destination_point + right) * 2 + 1] = left_y;
+            }
+        }
+        ring_point_counts[ring_base + ring] = hull_count;
+        source_point += source_count;
+        destination_point += hull_count;
+    }
+}
+
 template <typename T>
 void ResizeOutput(::dali::Workspace& workspace, int index, const ::dali::TensorShape<>& shape) {
     auto& output = workspace.Output<::dali::GPUBackend>(index);
@@ -417,6 +520,10 @@ protected:
                                                visited, point_scratch, ring_counts_device,
                                                ring_point_counts_device, errors_device, count);
         CUDA_CALL(cudaGetLastError());
+        ConvexHullRings<<<count, 1, 0, stream>>>(point_scratch, edge_cells, mask_offsets_device,
+                                                 ring_counts_device, ring_point_counts_device,
+                                                 errors_device, count);
+        CUDA_CALL(cudaGetLastError());
 
         std::vector<int32_t> ring_counts(kMaxDetections, 0);
         std::vector<int32_t> ring_point_counts(static_cast<size_t>(total_pixels), 0);
@@ -471,7 +578,7 @@ protected:
                 detection_points += ring_point_counts[scratch_ring_base + ring];
             const int64_t source_point = mask_offsets[detection] * 4;
             CUDA_CALL(cudaMemcpyAsync(
-                point_output + destination_point * 2, point_scratch + source_point * 2,
+                point_output + destination_point * 2, edge_cells + source_point * 2,
                 detection_points * 2 * sizeof(int32_t), cudaMemcpyDeviceToDevice, stream));
             destination_point += detection_points;
         }

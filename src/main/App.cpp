@@ -197,7 +197,8 @@ int App::run() {
             config_->GetModelName(), config_->GetServerAddress(), requestInputSizes);
         if (encodedImageMode) {
             if (config_->GetPostprocessMode() == "gpu") {
-                tritonic::core::ValidateGpuSegmentationModel(modelInfo);
+                tritonic::core::ValidateGpuSegmentationModel(
+                    modelInfo, config_->GetSegmentationOutput() == "polygon");
             } else {
                 tritonic::core::ValidateEncodedImageModels(modelInfo, taskModelInfo);
             }
@@ -268,10 +269,6 @@ int App::run() {
         }
 
         if (encodedImageMode) {
-            if (!video_list.empty()) {
-                throw std::runtime_error(
-                    "--input_mode=encoded-image currently supports JPEG still images only");
-            }
             for (const auto& image : image_list) {
                 std::string extension = std::filesystem::path(image).extension().string();
                 std::transform(extension.begin(), extension.end(), extension.begin(),
@@ -356,11 +353,23 @@ std::vector<neuriplo_tasks::Result> App::processEncodedImage(const std::string& 
     tritonClient_->setInputShapes(request.shapes);
     auto tensors = tritonClient_->infer(request.inputs);
     if (config_->GetPostprocessMode() == "gpu") {
-        return tritonic::core::DecodeGpuSegmentationResults(tensors, request_output_names_,
-                                                            request.width, request.height);
+        return tritonic::core::DecodeGpuSegmentationResults(
+            tensors, request_output_names_, request.width, request.height,
+            config_->GetSegmentationOutput() == "polygon");
     }
     tensors.resize(task_output_count_);
     return task_->postprocess({request.width, request.height}, toNeuriploTensors(tensors));
+}
+
+std::vector<neuriplo_tasks::Result> App::processEncodedFrame(const cv::Mat& frame) {
+    std::vector<uint8_t> jpeg;
+    if (frame.empty() || !cv::imencode(".jpg", frame, jpeg))
+        throw std::runtime_error("Could not JPEG-encode video frame");
+    tritonClient_->setInputShapes({{1, static_cast<int64_t>(jpeg.size())}});
+    auto tensors = tritonClient_->infer({std::move(jpeg)});
+    return tritonic::core::DecodeGpuSegmentationResults(
+        tensors, request_output_names_, frame.cols, frame.rows,
+        config_->GetSegmentationOutput() == "polygon");
 }
 
 void App::benchmarkImage(const std::string& sourceName) {
@@ -406,7 +415,8 @@ void App::benchmarkImage(const std::string& sourceName) {
         const auto inferEnd = std::chrono::steady_clock::now();
         if (encodedImageMode && config_->GetPostprocessMode() == "gpu") {
             predictions = tritonic::core::DecodeGpuSegmentationResults(
-                tensors, request_output_names_, encodedRequest.width, encodedRequest.height);
+                tensors, request_output_names_, encodedRequest.width, encodedRequest.height,
+                config_->GetSegmentationOutput() == "polygon");
         } else {
             if (encodedImageMode)
                 tensors.resize(task_output_count_);
@@ -985,7 +995,9 @@ void App::processVideo(const std::string& sourceName) {
             }
         } else {
             // Process single frame for other tasks
-            predictions = processSource({current_frame});
+            predictions = config_->GetInputMode() == "encoded-image"
+                              ? processEncodedFrame(current_frame)
+                              : processSource({current_frame});
         }
 
         auto end = std::chrono::steady_clock::now();
@@ -1127,53 +1139,47 @@ void App::renderPrediction(cv::Mat& frame, const neuriplo_tasks::Result& predict
         const auto& seg = std::get<neuriplo_tasks::InstanceSegmentation>(prediction);
         cv::Rect safeBbox =
             neuriplo_tasks::toCvRect(seg.bbox) & cv::Rect(0, 0, frame.cols, frame.rows);
-        if (safeBbox.width > 0 && safeBbox.height > 0) {
-            cv::rectangle(frame, safeBbox, colors_[static_cast<int>(seg.class_id)], 2);
+        const auto color = colors_[static_cast<int>(seg.class_id)];
+        if (!seg.polygons.empty()) {
+            const auto drawRing = [&frame, &color](const auto& ring) {
+                std::vector<cv::Point> points;
+                points.reserve(ring.size());
+                for (const auto& point : ring)
+                    points.emplace_back(static_cast<int>(point.x), static_cast<int>(point.y));
+                if (points.size() < 3)
+                    return;
+                cv::polylines(frame, points, true, color, 2, cv::LINE_AA);
+                for (const auto& point : points)
+                    cv::circle(frame, point, 1, color, cv::FILLED, cv::LINE_AA);
+            };
+            for (const auto& polygon : seg.polygons) {
+                drawRing(polygon.exterior);
+                for (const auto& hole : polygon.holes)
+                    drawRing(hole);
+            }
+            if (safeBbox.width > 0 && safeBbox.height > 0)
+                drawLabel(frame, class_names_[static_cast<int>(seg.class_id)], seg.class_confidence,
+                          safeBbox.x, safeBbox.y - 1);
+        } else if (safeBbox.width > 0 && safeBbox.height > 0) {
+            cv::rectangle(frame, safeBbox, color, 2);
             drawLabel(frame, class_names_[static_cast<int>(seg.class_id)], seg.class_confidence,
                       safeBbox.x, safeBbox.y - 1);
 
-            if (!seg.polygons.empty()) {
-                cv::Mat polygonMask = cv::Mat::zeros(frame.size(), CV_8UC1);
-                for (const auto& polygon : seg.polygons) {
-                    std::vector<cv::Point> exterior;
-                    exterior.reserve(polygon.exterior.size());
-                    for (const auto& point : polygon.exterior)
-                        exterior.emplace_back(static_cast<int>(point.x), static_cast<int>(point.y));
-                    if (exterior.size() >= 3)
-                        cv::fillPoly(polygonMask, std::vector<std::vector<cv::Point>>{exterior},
-                                     cv::Scalar(255));
-                    for (const auto& hole : polygon.holes) {
-                        std::vector<cv::Point> holePoints;
-                        holePoints.reserve(hole.size());
-                        for (const auto& point : hole)
-                            holePoints.emplace_back(static_cast<int>(point.x),
-                                                    static_cast<int>(point.y));
-                        if (holePoints.size() >= 3)
-                            cv::fillPoly(polygonMask,
-                                         std::vector<std::vector<cv::Point>>{holePoints},
-                                         cv::Scalar(0));
-                    }
-                }
-                cv::Mat colorMask = cv::Mat::zeros(frame.size(), CV_8UC3);
-                colorMask.setTo(colors_[static_cast<int>(seg.class_id)], polygonMask);
-                cv::addWeighted(frame, 1, colorMask, 0.5, 0, frame);
-            } else {
-                cv::Mat mask;
-                if (!seg.mask.empty()) {
-                    mask = neuriplo_tasks::toCvMat(seg.mask);
-                } else if (!seg.mask_data.empty()) {
-                    mask = cv::Mat(seg.mask_height, seg.mask_width, CV_8UC1,
-                                   const_cast<uint8_t*>(seg.mask_data.data()));
-                }
-                if (!mask.empty()) {
-                    cv::Mat resized_mask;
-                    cv::resize(mask, resized_mask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
-                    cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
-                    colorMask.setTo(colors_[static_cast<int>(seg.class_id)], resized_mask);
-                    cv::Mat roi = frame(safeBbox);
-                    if (roi.size() == colorMask.size())
-                        cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
-                }
+            cv::Mat mask;
+            if (!seg.mask.empty()) {
+                mask = neuriplo_tasks::toCvMat(seg.mask);
+            } else if (!seg.mask_data.empty()) {
+                mask = cv::Mat(seg.mask_height, seg.mask_width, CV_8UC1,
+                               const_cast<uint8_t*>(seg.mask_data.data()));
+            }
+            if (!mask.empty()) {
+                cv::Mat resizedMask;
+                cv::resize(mask, resizedMask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
+                cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
+                colorMask.setTo(color, resizedMask);
+                cv::Mat roi = frame(safeBbox);
+                if (roi.size() == colorMask.size())
+                    cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
             }
         }
     } else if (std::holds_alternative<neuriplo_tasks::PoseEstimation>(prediction)) {
