@@ -353,10 +353,25 @@ Uses GPU memory directly for zero-copy inference (requires GPU support):
 
 ### Segmentation output and YOLO26 GPU ensemble
 
-Instance-segmentation tasks return raster masks by default. Select polygon rings
+Instance-segmentation tasks return raster masks by default. Select convex-hull polygon rings
 with `--segmentation_output=polygon`; exteriors and holes are returned in image
-coordinates. `--postprocess_mode=gpu` currently supports `yolo26seg` polygon
-output and requires the encoded-image ensemble path:
+coordinates. `--postprocess_mode=gpu` supports both `yolo26seg` representations
+through separate encoded-image ensembles, so mask-only requests do not run polygon extraction.
+
+GPU mask output (default):
+
+```bash
+./build/tritonic \
+  --source=data/images/bus.jpg \
+  --model_type=yolo26seg \
+  --model=yolo26seg_gpu_pre_gpu_mask_post \
+  --task_model=yolo26seg_trt \
+  --labelsFile=labels/coco.txt \
+  --input_mode=encoded-image \
+  --postprocess_mode=gpu
+```
+
+GPU polygon output:
 
 ```bash
 ./build/tritonic \
@@ -370,7 +385,23 @@ output and requires the encoded-image ensemble path:
   --segmentation_output=polygon
 ```
 
-Deployment instructions and the polygon tensor ABI are documented in the
+The same polygon ensemble accepts video sources. Tritonic JPEG-encodes each
+decoded frame in memory for DALI preprocessing and writes the rendered result to
+`<video-directory>/output/processed.avi`:
+
+```bash
+./build/tritonic \
+  --source=/path/to/input.mp4 \
+  --model_type=yolo26seg \
+  --model=yolo26seg_gpu_pre_gpu_post \
+  --task_model=yolo26seg_trt \
+  --labelsFile=labels/coco.txt \
+  --input_mode=encoded-image \
+  --postprocess_mode=gpu \
+  --segmentation_output=polygon
+```
+
+Deployment instructions and both tensor ABIs are documented in the
 [YOLO26 segmentation ensemble guide](deploy/instance_segmentation/yolo26/ensemble/README.md).
 The reproducible CPU/GPU benchmark and semantic parity gate are in the
 [YOLO26m-seg benchmark](benchmarks/yolo26-seg/README.md).

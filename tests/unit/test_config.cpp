@@ -276,7 +276,7 @@ TEST(ConfigManagerTest, RejectsUnknownSegmentationOutput) {
     EXPECT_THROW(mgr.LoadFromCommandLine(2, argv), std::invalid_argument);
 }
 
-TEST(ConfigManagerTest, GpuPostprocessRequiresPolygonOutput) {
+TEST(ConfigManagerTest, GpuPostprocessAcceptsDefaultMaskOutput) {
     ConfigManager mgr;
     const char* argv[] = {"tritonic",
                           "--input_mode=encoded-image",
@@ -284,7 +284,10 @@ TEST(ConfigManagerTest, GpuPostprocessRequiresPolygonOutput) {
                           "--model=yolo26seg_gpu_pipeline",
                           "--task_model=yolo26seg_trt",
                           "--postprocess_mode=gpu"};
-    EXPECT_THROW(mgr.LoadFromCommandLine(6, argv), std::invalid_argument);
+    auto config = mgr.LoadFromCommandLine(6, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetPostprocessMode(), "gpu");
+    EXPECT_EQ(config->GetSegmentationOutput(), "mask");
 }
 
 TEST(InferenceConfigTest, MultimodalSettersGetters) {

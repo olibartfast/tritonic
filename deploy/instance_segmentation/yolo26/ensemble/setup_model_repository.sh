@@ -33,8 +33,10 @@ mkdir -p \
   "${repository}/yolo26seg_trt/1" \
   "${repository}/yolo26seg_dali_preprocess/1" \
   "${repository}/yolo26seg_dali_postprocess/1" \
+  "${repository}/yolo26seg_dali_mask_postprocess/1" \
   "${repository}/yolo26seg_gpu_pre_cpu_post/1" \
-  "${repository}/yolo26seg_gpu_pre_gpu_post/1"
+  "${repository}/yolo26seg_gpu_pre_gpu_post/1" \
+  "${repository}/yolo26seg_gpu_pre_gpu_mask_post/1"
 cp "${engine}" "${repository}/yolo26seg_trt/1/model.plan"
 "${script_dir}/dali_plugin/build_plugin.sh"
 cp "${script_dir}/dali_plugin/build/libyolo26_seg_dali.so" \
@@ -53,6 +55,13 @@ docker run --gpus all --rm \
     --plugin "${relative_repository}/libyolo26_seg_dali.so" \
     --output "${relative_repository}/yolo26seg_dali_postprocess/1/model.dali"
 
+docker run --gpus all --rm \
+  -v "${repo_root}:/workspace" -w /workspace \
+  nvcr.io/nvidia/tritonserver:25.12-py3 \
+  python3 deploy/instance_segmentation/yolo26/ensemble/generate_mask_postprocess_pipeline.py \
+    --plugin "${relative_repository}/libyolo26_seg_dali.so" \
+    --output "${relative_repository}/yolo26seg_dali_mask_postprocess/1/model.dali"
+
 engine_sha256="$(sha256sum "${repository}/yolo26seg_trt/1/model.plan" | awk '{print $1}')"
 cat >"${repository}/reference_model.yaml" <<EOF
 model: yolo26m-seg
@@ -64,6 +73,6 @@ outputs:
   - {name: output1, shape: [1, 32, 160, 160], datatype: FP32}
 confidence_threshold: 0.5
 mask_threshold: 0.5
-segmentation_output: polygon
+segmentation_outputs: [mask, polygon]
 EOF
 echo "YOLO26m-seg model repository prepared at ${repository}"

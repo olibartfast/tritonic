@@ -216,11 +216,6 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
     } else {
         throw std::invalid_argument("--segmentation_output must be either 'mask' or 'polygon'");
     }
-    if (postprocessMode == "gpu" && segmentationOutput != "polygon") {
-        throw std::invalid_argument(
-            "--postprocess_mode=gpu requires --segmentation_output=polygon");
-    }
-
     if (config->GetBenchmarkWarmup() < 0 || config->GetBenchmarkIterations() < 0) {
         throw std::invalid_argument("benchmark iteration counts must be non-negative");
     }

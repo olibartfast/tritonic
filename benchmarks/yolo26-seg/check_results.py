@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Validate Tritonic YOLO26m-seg polygon semantics and summarize timings."""
+
 from __future__ import annotations
 
 import argparse
@@ -26,8 +27,7 @@ def bbox_iou(a, b):
 
 def signed_area(ring):
     return 0.5 * sum(
-        x1 * y2 - x2 * y1
-        for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1])
+        x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1])
     )
 
 
@@ -57,6 +57,14 @@ def validate_ring(ring, bbox, expected_sign, name):
     area = signed_area(ring)
     if area == 0 or math.copysign(1.0, area) != expected_sign:
         raise ValueError(f"{name} has invalid winding or zero area")
+    for index, current in enumerate(ring):
+        previous = ring[index - 1]
+        following = ring[(index + 1) % len(ring)]
+        turn = (current[0] - previous[0]) * (following[1] - current[1]) - (
+            current[1] - previous[1]
+        ) * (following[0] - current[0])
+        if turn * expected_sign < 0:
+            raise ValueError(f"{name} is not convex")
 
 
 def polygon_pixels(detection):
@@ -76,7 +84,9 @@ def polygon_pixels(detection):
         validate_ring(exterior, bbox, 1.0, f"polygon {polygon_index} exterior")
         actual_point_count += len(exterior)
         for hole_index, hole in enumerate(holes):
-            validate_ring(hole, bbox, -1.0, f"polygon {polygon_index} hole {hole_index}")
+            validate_ring(
+                hole, bbox, -1.0, f"polygon {polygon_index} hole {hole_index}"
+            )
             if not point_in_ring(hole[0], exterior):
                 raise ValueError("polygon hole is not contained by its exterior")
             actual_point_count += len(hole)
@@ -122,7 +132,9 @@ def percentile(values, fraction):
 def timing_summary_many(documents):
     result = {}
     for key in ("preprocess", "infer", "postprocess", "total"):
-        values = [sample[key] for document in documents for sample in document["samples_ms"]]
+        values = [
+            sample[key] for document in documents for sample in document["samples_ms"]
+        ]
         result[key] = {
             "mean_ms": statistics.fmean(values),
             "median_ms": statistics.median(values),
@@ -135,18 +147,28 @@ def timing_summary(document):
     return timing_summary_many([document])
 
 
-def compare(reference_doc, candidate_doc, min_box_iou, min_polygon_iou, max_score_delta):
+def compare(
+    reference_doc, candidate_doc, min_box_iou, min_polygon_iou, max_score_delta
+):
     reference = canonical(reference_doc["detections"])
     candidate = canonical(candidate_doc["detections"])
     if len(reference) != len(candidate):
-        raise ValueError(f"canonical detection count mismatch: {len(reference)} != {len(candidate)}")
+        raise ValueError(
+            f"canonical detection count mismatch: {len(reference)} != {len(candidate)}"
+        )
     remaining = set(range(len(candidate)))
     matches = []
     for ref in reference:
-        choices = [index for index in remaining if candidate[index]["class_id"] == ref["class_id"]]
+        choices = [
+            index
+            for index in remaining
+            if candidate[index]["class_id"] == ref["class_id"]
+        ]
         if not choices:
             raise ValueError(f"missing class {ref['class_id']}")
-        index = max(choices, key=lambda item: bbox_iou(ref["bbox"], candidate[item]["bbox"]))
+        index = max(
+            choices, key=lambda item: bbox_iou(ref["bbox"], candidate[item]["bbox"])
+        )
         cand = candidate[index]
         remaining.remove(index)
         box = bbox_iou(ref["bbox"], cand["bbox"])
@@ -154,7 +176,11 @@ def compare(reference_doc, candidate_doc, min_box_iou, min_polygon_iou, max_scor
         ref_pixels = polygon_pixels(ref)
         cand_pixels = polygon_pixels(cand)
         polygon = len(ref_pixels & cand_pixels) / len(ref_pixels | cand_pixels)
-        if box < min_box_iou or polygon < min_polygon_iou or score_delta > max_score_delta:
+        if (
+            box < min_box_iou
+            or polygon < min_polygon_iou
+            or score_delta > max_score_delta
+        ):
             raise ValueError(
                 f"semantic mismatch class={ref['class_id']} box_iou={box:.6f} "
                 f"polygon_iou={polygon:.6f} score_delta={score_delta:.6f}"
@@ -177,7 +203,20 @@ def main():
     args = parser.parse_args()
     report = {"schema_version": 2, "model_family": "yolo26m-seg", "fixtures": {}}
     all_documents = {name: [] for name in PATHS}
-    for fixture_dir in sorted(path for path in args.results_dir.iterdir() if path.is_dir()):
+    fixture_dirs = []
+    for candidate in sorted(
+        path for path in args.results_dir.iterdir() if path.is_dir()
+    ):
+        present = [(candidate / f"{path_name}.json").is_file() for path_name in PATHS]
+        if not any(present):
+            continue
+        if not all(present):
+            raise ValueError(f"incomplete benchmark fixture directory: {candidate}")
+        fixture_dirs.append(candidate)
+    if not fixture_dirs:
+        raise ValueError(f"no benchmark fixtures found in {args.results_dir}")
+
+    for fixture_dir in fixture_dirs:
         documents = {}
         for path_name in PATHS:
             json_path = fixture_dir / f"{path_name}.json"
@@ -191,20 +230,28 @@ def main():
                 polygon_pixels(detection)
         fixture = {"timings": {name: timing_summary(documents[name]) for name in PATHS}}
         fixture["cpu_vs_dali_pre"] = compare(
-            documents["cpu_pre_cpu_post"], documents["gpu_pre_cpu_post"], 0.95, 0.90, 0.30
+            documents["cpu_pre_cpu_post"],
+            documents["gpu_pre_cpu_post"],
+            0.95,
+            0.90,
+            0.30,
         )
         fixture["cpu_post_vs_dali_post"] = compare(
             documents["gpu_pre_cpu_post"], documents["gpu_pre_gpu_post"], 1.0, 1.0, 1e-6
         )
         fixture["status"] = "pass"
         report["fixtures"][fixture_dir.name] = fixture
-    report["aggregate"] = {name: timing_summary_many(all_documents[name]) for name in PATHS}
+    report["aggregate"] = {
+        name: timing_summary_many(all_documents[name]) for name in PATHS
+    }
     cpu_total = report["aggregate"]["cpu_pre_cpu_post"]["total"]
     dali_total = report["aggregate"]["gpu_pre_gpu_post"]["total"]
     gpu_cpu_total = report["aggregate"]["gpu_pre_cpu_post"]["total"]
     report["speedup"] = {
-        "dali_gpu_pre_post_vs_cpu_pre_post_median": cpu_total["median_ms"] / dali_total["median_ms"],
-        "dali_gpu_pre_post_vs_gpu_pre_cpu_post_median": gpu_cpu_total["median_ms"] / dali_total["median_ms"],
+        "dali_gpu_pre_post_vs_cpu_pre_post_median": cpu_total["median_ms"]
+        / dali_total["median_ms"],
+        "dali_gpu_pre_post_vs_gpu_pre_cpu_post_median": gpu_cpu_total["median_ms"]
+        / dali_total["median_ms"],
     }
     report["status"] = "pass"
     output = args.output or args.results_dir / "summary.json"

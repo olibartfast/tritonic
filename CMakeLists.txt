@@ -61,7 +61,7 @@ else()
   FetchContent_Declare(
     neuriplo-tasks
     GIT_REPOSITORY ${NEURIPLO_TASKS_REPO}
-    GIT_TAG 23d28b9b819439689d9fd6f100a2eb922f0d92d3
+    GIT_TAG 4bbb500ab853393fba60c8ea8ab216855112c87a
   )
 endif()
 FetchContent_MakeAvailable(neuriplo-tasks)

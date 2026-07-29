@@ -37,6 +37,7 @@ private:
 
     std::vector<neuriplo_tasks::Result> processSource(const std::vector<cv::Mat>& source);
     std::vector<neuriplo_tasks::Result> processEncodedImage(const std::string& sourceName);
+    std::vector<neuriplo_tasks::Result> processEncodedFrame(const cv::Mat& frame);
     void benchmarkImage(const std::string& sourceName);
 
     void processImages(const std::vector<std::string>& sourceNames);
