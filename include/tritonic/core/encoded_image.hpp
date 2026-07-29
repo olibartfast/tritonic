@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <fstream>
 #include <iterator>
@@ -90,9 +91,16 @@ inline void ValidateEncodedImageModels(const tritonic::triton::ModelInfo& reques
     if (request_model.max_batch_size_ != 1) {
         throw std::runtime_error("Encoded-image model must declare max_batch_size: 1");
     }
-    if (request_model.output_names != task_model.output_names ||
-        request_model.output_datatypes != task_model.output_datatypes ||
-        request_model.output_shapes != task_model.output_shapes) {
+    const size_t taskOutputCount = task_model.output_names.size();
+    if (request_model.output_names.size() < taskOutputCount ||
+        request_model.output_datatypes.size() < taskOutputCount ||
+        request_model.output_shapes.size() < taskOutputCount ||
+        !std::equal(task_model.output_names.begin(), task_model.output_names.end(),
+                    request_model.output_names.begin()) ||
+        !std::equal(task_model.output_datatypes.begin(), task_model.output_datatypes.end(),
+                    request_model.output_datatypes.begin()) ||
+        !std::equal(task_model.output_shapes.begin(), task_model.output_shapes.end(),
+                    request_model.output_shapes.begin())) {
         throw std::runtime_error("Encoded-image model outputs do not match --task_model metadata");
     }
 }

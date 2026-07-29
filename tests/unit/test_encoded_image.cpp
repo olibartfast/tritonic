@@ -54,6 +54,17 @@ TEST(EncodedImageRequestTest, AcceptsCompatibleModelMetadata) {
     EXPECT_NO_THROW(tritonic::core::ValidateEncodedImageModels(request, task));
 }
 
+TEST(EncodedImageRequestTest, AcceptsTrailingAuxiliaryOutputs) {
+    auto request = MakeRequestModel();
+    request.output_names.push_back("ORIGINAL_SIZE");
+    request.output_datatypes.push_back("INT64");
+    request.output_shapes.push_back({2});
+    auto task = MakeRequestModel();
+    task.input_names = {"images"};
+    task.input_datatypes = {"FP32"};
+    EXPECT_NO_THROW(tritonic::core::ValidateEncodedImageModels(request, task));
+}
+
 TEST(EncodedImageRequestTest, RejectsOutputMismatch) {
     const auto request = MakeRequestModel();
     auto task = request;
