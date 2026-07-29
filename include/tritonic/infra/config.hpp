@@ -87,6 +87,12 @@ public:
     void SetPostprocessMode(const std::string& v) {
         postprocess_mode_ = v;
     }
+    const std::string& GetSegmentationOutput() const noexcept {
+        return segmentation_output_;
+    }
+    void SetSegmentationOutput(const std::string& v) {
+        segmentation_output_ = v;
+    }
 
     // Input/Output
     const std::string& GetSource() const noexcept {
@@ -317,6 +323,7 @@ private:
     std::string input_mode_{"preprocessed"};
     std::string task_model_;
     std::string postprocess_mode_{"cpu"};
+    std::string segmentation_output_{"mask"};
 
     std::string source_;
     std::string labels_file_;

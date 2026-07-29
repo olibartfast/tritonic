@@ -3,9 +3,11 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "neuriplo/tasks/core/result_types.hpp"
@@ -26,10 +28,13 @@ inline void ValidateGpuSegmentationModel(const tritonic::triton::ModelInfo& mode
         std::vector<int64_t> suffix;
     };
     const std::vector<Expected> expected = {
-        {"NUM_DETECTIONS", "INT32", {1}}, {"BOXES", "INT32", {100, 4}},
-        {"SCORES", "FP32", {100}},        {"CLASSES", "INT32", {100}},
-        {"MASK_OFFSETS", "INT64", {101}}, {"MASK_SHAPES", "INT32", {100, 2}},
-        {"MASK_DATA", "UINT8", {-1}},
+        {"NUM_DETECTIONS", "INT32", {1}},
+        {"BOXES", "INT32", {100, 4}},
+        {"SCORES", "FP32", {100}},
+        {"CLASSES", "INT32", {100}},
+        {"INSTANCE_RING_OFFSETS", "INT64", {101}},
+        {"RING_POINT_OFFSETS", "INT64", {-1}},
+        {"POLYGON_POINTS", "INT32", {-1, 2}},
     };
     if (model.output_names.size() != expected.size())
         throw std::runtime_error("GPU-postprocessed model has an incomplete output contract");
@@ -55,20 +60,41 @@ inline int32_t RequireInt32(const TensorElement& value, const char* name) {
         throw std::runtime_error(std::string(name) + " is not INT32");
     return std::get<int32_t>(value);
 }
+
 inline int64_t RequireInt64(const TensorElement& value, const char* name) {
     if (!std::holds_alternative<int64_t>(value))
         throw std::runtime_error(std::string(name) + " is not INT64");
     return std::get<int64_t>(value);
 }
+
 inline float RequireFloat(const TensorElement& value, const char* name) {
     if (!std::holds_alternative<float>(value))
         throw std::runtime_error(std::string(name) + " is not FP32");
     return std::get<float>(value);
 }
-inline uint8_t RequireUint8(const TensorElement& value, const char* name) {
-    if (!std::holds_alternative<uint8_t>(value))
-        throw std::runtime_error(std::string(name) + " is not UINT8");
-    return std::get<uint8_t>(value);
+
+inline float PolygonSignedArea(const std::vector<neuriplo_tasks::vision::Point2f>& ring) {
+    float area = 0.0F;
+    for (size_t index = 0; index < ring.size(); ++index) {
+        const auto& current = ring[index];
+        const auto& next = ring[(index + 1) % ring.size()];
+        area += current.x * next.y - next.x * current.y;
+    }
+    return area * 0.5F;
+}
+
+inline bool PolygonContainsPoint(const std::vector<neuriplo_tasks::vision::Point2f>& ring,
+                                 const neuriplo_tasks::vision::Point2f& point) {
+    bool inside = false;
+    for (size_t current = 0, previous = ring.size() - 1; current < ring.size();
+         previous = current++) {
+        const auto& a = ring[current];
+        const auto& b = ring[previous];
+        const bool crosses = (a.y > point.y) != (b.y > point.y);
+        if (crosses && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x)
+            inside = !inside;
+    }
+    return inside;
 }
 
 inline std::vector<neuriplo_tasks::Result> DecodeGpuSegmentationResults(
@@ -85,60 +111,122 @@ inline std::vector<neuriplo_tasks::Result> DecodeGpuSegmentationResults(
             throw std::runtime_error(std::string("Missing GPU result: ") + name);
         return *found->second;
     };
+
     const auto& count_data = get("NUM_DETECTIONS").data;
     const auto& boxes = get("BOXES").data;
     const auto& scores = get("SCORES").data;
     const auto& classes = get("CLASSES").data;
-    const auto& offsets = get("MASK_OFFSETS").data;
-    const auto& shapes = get("MASK_SHAPES").data;
-    const auto& masks = get("MASK_DATA").data;
+    const auto& instance_offsets = get("INSTANCE_RING_OFFSETS").data;
+    const auto& ring_offsets = get("RING_POINT_OFFSETS").data;
+    const auto& points = get("POLYGON_POINTS").data;
     if (count_data.empty())
         throw std::runtime_error("NUM_DETECTIONS is empty");
     const int count = RequireInt32(count_data[0], "NUM_DETECTIONS");
     if (count < 0 || count > 100 || boxes.size() < 400 || scores.size() < 100 ||
-        classes.size() < 100 || offsets.size() < 101 || shapes.size() < 200)
-        throw std::runtime_error("GPU segmentation fixed output is invalid or truncated");
+        classes.size() < 100 || instance_offsets.size() < 101)
+        throw std::runtime_error("GPU polygon output is invalid or truncated");
+    if (RequireInt64(instance_offsets[0], "INSTANCE_RING_OFFSETS") != 0)
+        throw std::runtime_error("GPU polygon instance offsets must begin at zero");
+
+    int64_t previous_rings = 0;
+    for (int index = 0; index <= 100; ++index) {
+        const int64_t value =
+            RequireInt64(instance_offsets[static_cast<size_t>(index)], "INSTANCE_RING_OFFSETS");
+        if (value < previous_rings || (index > count && value != previous_rings))
+            throw std::runtime_error("GPU polygon instance offsets are invalid");
+        previous_rings = value;
+    }
+    const int64_t total_rings =
+        RequireInt64(instance_offsets[static_cast<size_t>(count)], "INSTANCE_RING_OFFSETS");
+    if (total_rings < 0 || ring_offsets.size() < static_cast<size_t>(total_rings + 1) ||
+        RequireInt64(ring_offsets[0], "RING_POINT_OFFSETS") != 0)
+        throw std::runtime_error("GPU polygon ring offsets are invalid or truncated");
+
+    int64_t previous_points = 0;
+    for (int64_t ring = 0; ring <= total_rings; ++ring) {
+        const int64_t value =
+            RequireInt64(ring_offsets[static_cast<size_t>(ring)], "RING_POINT_OFFSETS");
+        if (value < previous_points)
+            throw std::runtime_error("GPU polygon point offsets are not monotonic");
+        previous_points = value;
+    }
+    const int64_t total_points =
+        RequireInt64(ring_offsets[static_cast<size_t>(total_rings)], "RING_POINT_OFFSETS");
+    if (total_points < 0 || points.size() < static_cast<size_t>(total_points * 2))
+        throw std::runtime_error("GPU polygon points are invalid or truncated");
 
     std::vector<neuriplo_tasks::Result> results;
     results.reserve(static_cast<size_t>(count));
-    int64_t previous = 0;
     for (int i = 0; i < count; ++i) {
-        const size_t n = static_cast<size_t>(i);
-        const int x = RequireInt32(boxes[n * 4], "BOXES");
-        const int y = RequireInt32(boxes[n * 4 + 1], "BOXES");
-        const int width = RequireInt32(boxes[n * 4 + 2], "BOXES");
-        const int height = RequireInt32(boxes[n * 4 + 3], "BOXES");
-        const float score = RequireFloat(scores[n], "SCORES");
-        const int class_id = RequireInt32(classes[n], "CLASSES");
-        const int mask_height = RequireInt32(shapes[n * 2], "MASK_SHAPES");
-        const int mask_width = RequireInt32(shapes[n * 2 + 1], "MASK_SHAPES");
-        const int64_t begin = RequireInt64(offsets[n], "MASK_OFFSETS");
-        const int64_t end = RequireInt64(offsets[n + 1], "MASK_OFFSETS");
+        const size_t detection = static_cast<size_t>(i);
+        const int x = RequireInt32(boxes[detection * 4], "BOXES");
+        const int y = RequireInt32(boxes[detection * 4 + 1], "BOXES");
+        const int width = RequireInt32(boxes[detection * 4 + 2], "BOXES");
+        const int height = RequireInt32(boxes[detection * 4 + 3], "BOXES");
+        const float score = RequireFloat(scores[detection], "SCORES");
+        const int class_id = RequireInt32(classes[detection], "CLASSES");
         if (!std::isfinite(score) || score < 0.0F || score > 1.0F || class_id < 0 || x < 0 ||
             y < 0 || width <= 0 || height <= 0 || x + width > frame_width ||
-            y + height > frame_height || mask_width != width || mask_height != height ||
-            begin != previous || end < begin ||
-            end - begin != static_cast<int64_t>(width) * height ||
-            end > static_cast<int64_t>(masks.size()))
+            y + height > frame_height)
             throw std::runtime_error("GPU segmentation emitted invalid or garbage geometry");
+
+        const int64_t ring_begin =
+            RequireInt64(instance_offsets[detection], "INSTANCE_RING_OFFSETS");
+        const int64_t ring_end =
+            RequireInt64(instance_offsets[detection + 1], "INSTANCE_RING_OFFSETS");
+        std::vector<neuriplo_tasks::SegmentationPolygon> polygons;
+        std::vector<std::vector<neuriplo_tasks::vision::Point2f>> holes;
+        for (int64_t ring_index = ring_begin; ring_index < ring_end; ++ring_index) {
+            const int64_t point_begin =
+                RequireInt64(ring_offsets[static_cast<size_t>(ring_index)], "RING_POINT_OFFSETS");
+            const int64_t point_end = RequireInt64(
+                ring_offsets[static_cast<size_t>(ring_index + 1)], "RING_POINT_OFFSETS");
+            if (point_end - point_begin < 3)
+                throw std::runtime_error("GPU polygon ring has fewer than three points");
+            std::vector<neuriplo_tasks::vision::Point2f> ring;
+            ring.reserve(static_cast<size_t>(point_end - point_begin));
+            for (int64_t point_index = point_begin; point_index < point_end; ++point_index) {
+                const int px =
+                    RequireInt32(points[static_cast<size_t>(point_index * 2)], "POLYGON_POINTS");
+                const int py = RequireInt32(points[static_cast<size_t>(point_index * 2 + 1)],
+                                            "POLYGON_POINTS");
+                if (px < x || px > x + width || py < y || py > y + height || px < 0 ||
+                    px > frame_width || py < 0 || py > frame_height)
+                    throw std::runtime_error("GPU polygon point is outside its detection geometry");
+                ring.push_back({static_cast<float>(px), static_cast<float>(py)});
+            }
+            const float area = PolygonSignedArea(ring);
+            if (area > 0.0F)
+                polygons.push_back({std::move(ring), {}});
+            else if (area < 0.0F)
+                holes.push_back(std::move(ring));
+            else
+                throw std::runtime_error("GPU polygon ring has zero area");
+        }
+
+        for (auto& hole : holes) {
+            size_t owner = polygons.size();
+            float owner_area = std::numeric_limits<float>::max();
+            for (size_t polygon = 0; polygon < polygons.size(); ++polygon) {
+                const float area = PolygonSignedArea(polygons[polygon].exterior);
+                if (area < owner_area &&
+                    PolygonContainsPoint(polygons[polygon].exterior, hole.front())) {
+                    owner = polygon;
+                    owner_area = area;
+                }
+            }
+            if (owner == polygons.size())
+                throw std::runtime_error("GPU polygon hole has no containing exterior ring");
+            polygons[owner].holes.push_back(std::move(hole));
+        }
+        if (polygons.empty())
+            throw std::runtime_error("GPU segmentation emitted no polygons");
+
         neuriplo_tasks::InstanceSegmentation result;
         result.class_id = static_cast<float>(class_id);
         result.class_confidence = score;
         result.bbox = {x, y, width, height};
-        result.mask_height = height;
-        result.mask_width = width;
-        result.mask_data.reserve(static_cast<size_t>(end - begin));
-        bool nonzero = false;
-        for (int64_t offset = begin; offset < end; ++offset) {
-            const uint8_t value = RequireUint8(masks[static_cast<size_t>(offset)], "MASK_DATA");
-            if (value != 0 && value != 255)
-                throw std::runtime_error("GPU mask is not binary");
-            nonzero = nonzero || value != 0;
-            result.mask_data.push_back(value);
-        }
-        if (!nonzero)
-            throw std::runtime_error("GPU segmentation emitted an empty mask");
-        previous = end;
+        result.polygons = std::move(polygons);
         results.emplace_back(std::move(result));
     }
     return results;

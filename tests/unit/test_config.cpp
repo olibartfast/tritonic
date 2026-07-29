@@ -30,6 +30,7 @@ TEST(InferenceConfigTest, DefaultValues) {
     EXPECT_EQ(config.GetInputMode(), "preprocessed");
     EXPECT_TRUE(config.GetTaskModel().empty());
     EXPECT_EQ(config.GetPostprocessMode(), "cpu");
+    EXPECT_EQ(config.GetSegmentationOutput(), "mask");
     EXPECT_TRUE(config.GetInputSizes().empty());
     EXPECT_FALSE(config.GetEnableMultimodal());
     EXPECT_TRUE(config.GetTextPrompt().empty());
@@ -254,17 +255,36 @@ TEST(ConfigManagerTest, ParsesEncodedYolo26SegGpuPostprocess) {
                           "--model_type=yolo26seg",
                           "--model=yolo26seg_gpu_pipeline",
                           "--task_model=yolo26seg_trt",
-                          "--postprocess_mode=gpu"};
-    auto config = mgr.LoadFromCommandLine(6, argv);
+                          "--postprocess_mode=gpu",
+                          "--segmentation_output=polygon"};
+    auto config = mgr.LoadFromCommandLine(7, argv);
     ASSERT_NE(config, nullptr);
     EXPECT_EQ(config->GetInputMode(), "encoded-image");
     EXPECT_EQ(config->GetPostprocessMode(), "gpu");
+    EXPECT_EQ(config->GetSegmentationOutput(), "polygon");
 }
 
 TEST(ConfigManagerTest, GpuPostprocessRequiresEncodedYolo26Seg) {
     ConfigManager mgr;
     const char* argv[] = {"tritonic", "--postprocess_mode=gpu", "--model_type=yolo26seg"};
     EXPECT_THROW(mgr.LoadFromCommandLine(3, argv), std::invalid_argument);
+}
+
+TEST(ConfigManagerTest, RejectsUnknownSegmentationOutput) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--segmentation_output=contours"};
+    EXPECT_THROW(mgr.LoadFromCommandLine(2, argv), std::invalid_argument);
+}
+
+TEST(ConfigManagerTest, GpuPostprocessRequiresPolygonOutput) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic",
+                          "--input_mode=encoded-image",
+                          "--model_type=yolo26seg",
+                          "--model=yolo26seg_gpu_pipeline",
+                          "--task_model=yolo26seg_trt",
+                          "--postprocess_mode=gpu"};
+    EXPECT_THROW(mgr.LoadFromCommandLine(6, argv), std::invalid_argument);
 }
 
 TEST(InferenceConfigTest, MultimodalSettersGetters) {

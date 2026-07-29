@@ -49,11 +49,21 @@ endif()
 
 set(NEURIPLO_TASKS_WITH_OPENCV ON CACHE BOOL "" FORCE)
 
-FetchContent_Declare(
-  neuriplo-tasks
-  GIT_REPOSITORY ${NEURIPLO_TASKS_REPO}
-  GIT_TAG v0.6.0
-)
+set(TRITONIC_NEURIPLO_TASKS_SOURCE_DIR "" CACHE PATH
+    "Optional local neuriplo-tasks checkout used instead of the pinned release")
+if(TRITONIC_NEURIPLO_TASKS_SOURCE_DIR)
+  message(STATUS "Using local neuriplo-tasks: ${TRITONIC_NEURIPLO_TASKS_SOURCE_DIR}")
+  FetchContent_Declare(
+    neuriplo-tasks
+    SOURCE_DIR "${TRITONIC_NEURIPLO_TASKS_SOURCE_DIR}"
+  )
+else()
+  FetchContent_Declare(
+    neuriplo-tasks
+    GIT_REPOSITORY ${NEURIPLO_TASKS_REPO}
+    GIT_TAG 23d28b9b819439689d9fd6f100a2eb922f0d92d3
+  )
+endif()
 FetchContent_MakeAvailable(neuriplo-tasks)
 
 

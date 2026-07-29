@@ -223,6 +223,9 @@ int App::run() {
         neuriplo_tasks::TaskConfig taskConfig;
         taskConfig.confidence_threshold = config_->GetConfidenceThreshold();
         taskConfig.nms_threshold = config_->GetNmsThreshold();
+        taskConfig.segmentation_output = config_->GetSegmentationOutput() == "polygon"
+                                             ? neuriplo_tasks::SegmentationOutput::Polygon
+                                             : neuriplo_tasks::SegmentationOutput::Mask;
         task_ = neuriplo_tasks::TaskFactory::createTaskInstance(config_->GetModelType(),
                                                                 neuriploTasksModelInfo, taskConfig);
 
@@ -432,20 +435,23 @@ void App::benchmarkImage(const std::string& sourceName) {
     const std::filesystem::path outputPath = config_->GetBenchmarkOutput();
     if (outputPath.has_parent_path())
         std::filesystem::create_directories(outputPath.parent_path());
+    const bool polygonOutput = config_->GetSegmentationOutput() == "polygon";
     const auto maskDirectory = outputPath.parent_path() / (outputPath.stem().string() + "_masks");
-    std::filesystem::create_directories(maskDirectory);
-
+    if (!polygonOutput)
+        std::filesystem::create_directories(maskDirectory);
     std::ofstream output(outputPath);
     if (!output)
         throw std::runtime_error("Could not create benchmark output: " + outputPath.string());
     output << std::fixed << std::setprecision(6);
-    output << "{\n  \"schema_version\": 1,\n";
+    output << "{\n  \"schema_version\": " << (polygonOutput ? 2 : 1) << ",\n";
     output << "  \"application\": \"tritonic\",\n";
     output << "  \"model_family\": \"yolo26m-seg\",\n";
     output << "  \"request_model\": " << std::quoted(config_->GetModelName()) << ",\n";
     output << "  \"source\": " << std::quoted(sourceName) << ",\n";
     output << "  \"input_mode\": " << std::quoted(config_->GetInputMode()) << ",\n";
     output << "  \"postprocess_mode\": " << std::quoted(config_->GetPostprocessMode()) << ",\n";
+    output << "  \"segmentation_output\": " << std::quoted(config_->GetSegmentationOutput())
+           << ",\n";
     output << "  \"warmup_iterations\": " << config_->GetBenchmarkWarmup() << ",\n";
     output << "  \"samples_ms\": [\n";
     for (size_t i = 0; i < samples.size(); ++i) {
@@ -462,33 +468,71 @@ void App::benchmarkImage(const std::string& sourceName) {
         if (!std::holds_alternative<neuriplo_tasks::InstanceSegmentation>(prediction))
             continue;
         const auto& segmentation = std::get<neuriplo_tasks::InstanceSegmentation>(prediction);
-        const uint8_t* maskData = nullptr;
-        size_t maskBytes = 0;
-        if (!segmentation.mask_data.empty()) {
-            maskData = segmentation.mask_data.data();
-            maskBytes = segmentation.mask_data.size();
-        } else if (!segmentation.mask.empty()) {
-            maskData = segmentation.mask.data();
-            maskBytes = segmentation.mask.sizeBytes();
-        }
-        const size_t expectedMaskBytes = static_cast<size_t>(segmentation.mask_width) *
-                                         static_cast<size_t>(segmentation.mask_height);
-        if (maskData == nullptr || maskBytes < expectedMaskBytes || expectedMaskBytes == 0)
-            throw std::runtime_error("Benchmark result contains an invalid mask");
-        size_t nonzero = 0;
-        for (size_t i = 0; i < expectedMaskBytes; ++i)
-            nonzero += maskData[i] != 0;
-        if (nonzero == 0)
-            throw std::runtime_error("Benchmark result contains an empty mask");
+        if (!polygonOutput) {
+            const uint8_t* maskData = nullptr;
+            size_t maskBytes = 0;
+            if (!segmentation.mask_data.empty()) {
+                maskData = segmentation.mask_data.data();
+                maskBytes = segmentation.mask_data.size();
+            } else if (!segmentation.mask.empty()) {
+                maskData = segmentation.mask.data();
+                maskBytes = segmentation.mask.sizeBytes();
+            }
+            const size_t expectedMaskBytes = static_cast<size_t>(segmentation.mask_width) *
+                                             static_cast<size_t>(segmentation.mask_height);
+            if (maskData == nullptr || maskBytes < expectedMaskBytes || expectedMaskBytes == 0)
+                throw std::runtime_error("Benchmark result contains an invalid mask");
+            size_t nonzero = 0;
+            for (size_t index = 0; index < expectedMaskBytes; ++index)
+                nonzero += maskData[index] != 0;
+            if (nonzero == 0)
+                throw std::runtime_error("Benchmark result contains an empty mask");
 
-        const auto maskName = "mask_" + std::to_string(detectionIndex) + ".pgm";
-        std::ofstream maskOutput(maskDirectory / maskName, std::ios::binary);
-        if (!maskOutput)
-            throw std::runtime_error("Could not create benchmark mask output");
-        maskOutput << "P5\n"
-                   << segmentation.mask_width << " " << segmentation.mask_height << "\n255\n";
-        maskOutput.write(reinterpret_cast<const char*>(maskData),
-                         static_cast<std::streamsize>(expectedMaskBytes));
+            const auto maskName = "mask_" + std::to_string(detectionIndex) + ".pgm";
+            std::ofstream maskOutput(maskDirectory / maskName, std::ios::binary);
+            if (!maskOutput)
+                throw std::runtime_error("Could not create benchmark mask output");
+            maskOutput << "P5\n"
+                       << segmentation.mask_width << " " << segmentation.mask_height << "\n255\n";
+            maskOutput.write(reinterpret_cast<const char*>(maskData),
+                             static_cast<std::streamsize>(expectedMaskBytes));
+
+            if (detectionIndex != 0)
+                output << ",\n";
+            output << "    {\"class_id\": " << static_cast<int>(segmentation.class_id)
+                   << ", \"score\": " << segmentation.class_confidence << ", \"bbox\": ["
+                   << segmentation.bbox.x << ", " << segmentation.bbox.y << ", "
+                   << segmentation.bbox.width << ", " << segmentation.bbox.height
+                   << "], \"mask_shape\": [" << segmentation.mask_height << ", "
+                   << segmentation.mask_width << "], \"mask_nonzero\": " << nonzero
+                   << ", \"mask_file\": "
+                   << std::quoted((maskDirectory.filename() / maskName).string()) << "}";
+            ++detectionIndex;
+            continue;
+        }
+        if (segmentation.polygons.empty())
+            throw std::runtime_error("Benchmark result contains no polygons");
+        size_t polygonPointCount = 0;
+        for (const auto& polygon : segmentation.polygons) {
+            if (polygon.exterior.size() < 3)
+                throw std::runtime_error("Benchmark result contains a degenerate polygon");
+            polygonPointCount += polygon.exterior.size();
+            for (const auto& hole : polygon.holes) {
+                if (hole.size() < 3)
+                    throw std::runtime_error("Benchmark result contains a degenerate polygon hole");
+                polygonPointCount += hole.size();
+            }
+        }
+
+        const auto writeRing = [&output](const auto& ring) {
+            output << "[";
+            for (size_t pointIndex = 0; pointIndex < ring.size(); ++pointIndex) {
+                if (pointIndex != 0)
+                    output << ", ";
+                output << "[" << ring[pointIndex].x << ", " << ring[pointIndex].y << "]";
+            }
+            output << "]";
+        };
 
         if (detectionIndex != 0)
             output << ",\n";
@@ -496,10 +540,23 @@ void App::benchmarkImage(const std::string& sourceName) {
                << ", \"score\": " << segmentation.class_confidence << ", \"bbox\": ["
                << segmentation.bbox.x << ", " << segmentation.bbox.y << ", "
                << segmentation.bbox.width << ", " << segmentation.bbox.height
-               << "], \"mask_shape\": [" << segmentation.mask_height << ", "
-               << segmentation.mask_width << "], \"mask_nonzero\": " << nonzero
-               << ", \"mask_file\": " << std::quoted((maskDirectory.filename() / maskName).string())
-               << "}";
+               << "], \"polygon_count\": " << segmentation.polygons.size()
+               << ", \"polygon_point_count\": " << polygonPointCount << ", \"polygons\": [";
+        for (size_t polygonIndex = 0; polygonIndex < segmentation.polygons.size(); ++polygonIndex) {
+            if (polygonIndex != 0)
+                output << ", ";
+            const auto& polygon = segmentation.polygons[polygonIndex];
+            output << "{\"exterior\": ";
+            writeRing(polygon.exterior);
+            output << ", \"holes\": [";
+            for (size_t holeIndex = 0; holeIndex < polygon.holes.size(); ++holeIndex) {
+                if (holeIndex != 0)
+                    output << ", ";
+                writeRing(polygon.holes[holeIndex]);
+            }
+            output << "]}";
+        }
+        output << "]}";
         ++detectionIndex;
     }
     output << "\n  ]\n}\n";
@@ -1075,21 +1132,48 @@ void App::renderPrediction(cv::Mat& frame, const neuriplo_tasks::Result& predict
             drawLabel(frame, class_names_[static_cast<int>(seg.class_id)], seg.class_confidence,
                       safeBbox.x, safeBbox.y - 1);
 
-            cv::Mat mask;
-            if (!seg.mask.empty()) {
-                mask = neuriplo_tasks::toCvMat(seg.mask);
-            } else if (!seg.mask_data.empty()) {
-                mask = cv::Mat(seg.mask_height, seg.mask_width, CV_8UC1,
-                               const_cast<uint8_t*>(seg.mask_data.data()));
-            }
-            if (!mask.empty()) {
-                cv::Mat resized_mask;
-                cv::resize(mask, resized_mask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
-                cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
-                colorMask.setTo(colors_[static_cast<int>(seg.class_id)], resized_mask);
-                cv::Mat roi = frame(safeBbox);
-                if (roi.size() == colorMask.size())
-                    cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
+            if (!seg.polygons.empty()) {
+                cv::Mat polygonMask = cv::Mat::zeros(frame.size(), CV_8UC1);
+                for (const auto& polygon : seg.polygons) {
+                    std::vector<cv::Point> exterior;
+                    exterior.reserve(polygon.exterior.size());
+                    for (const auto& point : polygon.exterior)
+                        exterior.emplace_back(static_cast<int>(point.x), static_cast<int>(point.y));
+                    if (exterior.size() >= 3)
+                        cv::fillPoly(polygonMask, std::vector<std::vector<cv::Point>>{exterior},
+                                     cv::Scalar(255));
+                    for (const auto& hole : polygon.holes) {
+                        std::vector<cv::Point> holePoints;
+                        holePoints.reserve(hole.size());
+                        for (const auto& point : hole)
+                            holePoints.emplace_back(static_cast<int>(point.x),
+                                                    static_cast<int>(point.y));
+                        if (holePoints.size() >= 3)
+                            cv::fillPoly(polygonMask,
+                                         std::vector<std::vector<cv::Point>>{holePoints},
+                                         cv::Scalar(0));
+                    }
+                }
+                cv::Mat colorMask = cv::Mat::zeros(frame.size(), CV_8UC3);
+                colorMask.setTo(colors_[static_cast<int>(seg.class_id)], polygonMask);
+                cv::addWeighted(frame, 1, colorMask, 0.5, 0, frame);
+            } else {
+                cv::Mat mask;
+                if (!seg.mask.empty()) {
+                    mask = neuriplo_tasks::toCvMat(seg.mask);
+                } else if (!seg.mask_data.empty()) {
+                    mask = cv::Mat(seg.mask_height, seg.mask_width, CV_8UC1,
+                                   const_cast<uint8_t*>(seg.mask_data.data()));
+                }
+                if (!mask.empty()) {
+                    cv::Mat resized_mask;
+                    cv::resize(mask, resized_mask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
+                    cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
+                    colorMask.setTo(colors_[static_cast<int>(seg.class_id)], resized_mask);
+                    cv::Mat roi = frame(safeBbox);
+                    if (roi.size() == colorMask.size())
+                        cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);
+                }
             }
         }
     } else if (std::holds_alternative<neuriplo_tasks::PoseEstimation>(prediction)) {

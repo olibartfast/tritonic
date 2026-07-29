@@ -7,9 +7,9 @@ output [
   { name: "BOXES" data_type: TYPE_INT32 dims: [100, 4] },
   { name: "SCORES" data_type: TYPE_FP32 dims: [100] },
   { name: "CLASSES" data_type: TYPE_INT32 dims: [100] },
-  { name: "MASK_OFFSETS" data_type: TYPE_INT64 dims: [101] },
-  { name: "MASK_SHAPES" data_type: TYPE_INT32 dims: [100, 2] },
-  { name: "MASK_DATA" data_type: TYPE_UINT8 dims: [-1] }
+  { name: "INSTANCE_RING_OFFSETS" data_type: TYPE_INT64 dims: [101] },
+  { name: "RING_POINT_OFFSETS" data_type: TYPE_INT64 dims: [-1] },
+  { name: "POLYGON_POINTS" data_type: TYPE_INT32 dims: [-1, 2] }
 ]
 ensemble_scheduling {
   step [
@@ -34,9 +34,9 @@ ensemble_scheduling {
       output_map { key: "BOXES" value: "BOXES" }
       output_map { key: "SCORES" value: "SCORES" }
       output_map { key: "CLASSES" value: "CLASSES" }
-      output_map { key: "MASK_OFFSETS" value: "MASK_OFFSETS" }
-      output_map { key: "MASK_SHAPES" value: "MASK_SHAPES" }
-      output_map { key: "MASK_DATA" value: "MASK_DATA" }
+      output_map { key: "INSTANCE_RING_OFFSETS" value: "INSTANCE_RING_OFFSETS" }
+      output_map { key: "RING_POINT_OFFSETS" value: "RING_POINT_OFFSETS" }
+      output_map { key: "POLYGON_POINTS" value: "POLYGON_POINTS" }
     }
   ]
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Serialize the DALI-only YOLO26 segmentation postprocessing component."""
+"""Serialize the DALI-only YOLO26 polygon postprocessing component."""
 
 from __future__ import annotations
 

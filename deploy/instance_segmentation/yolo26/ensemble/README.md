@@ -26,4 +26,42 @@ Models:
 
 - `yolo26seg_trt`: raw TensorRT model.
 - `yolo26seg_gpu_pre_cpu_post`: DALI preprocessing plus raw TensorRT outputs.
-- `yolo26seg_gpu_pre_gpu_post`: DALI preprocessing, TensorRT, and DALI CUDA postprocessing.
+- `yolo26seg_gpu_pre_gpu_post`: DALI preprocessing, TensorRT, and DALI CUDA polygon postprocessing.
+
+## Polygon output contract
+
+The GPU-post ensemble accepts one encoded JPEG in `IMAGE` and returns detection
+metadata plus compact polygon rings:
+
+| Tensor | Type | Shape | Meaning |
+|---|---|---|---|
+| `NUM_DETECTIONS` | INT32 | `[1]` | Valid detections |
+| `BOXES` | INT32 | `[100,4]` | `(x, y, width, height)` |
+| `SCORES` | FP32 | `[100]` | Confidence scores |
+| `CLASSES` | INT32 | `[100]` | Class identifiers |
+| `INSTANCE_RING_OFFSETS` | INT64 | `[101]` | Detection-to-ring offsets |
+| `RING_POINT_OFFSETS` | INT64 | `[-1]` | Ring-to-point offsets |
+| `POLYGON_POINTS` | INT32 | `[-1,2]` | Image-space `(x, y)` points |
+
+Exterior rings have positive signed area in image coordinates; holes have
+negative signed area. The client assigns holes to the smallest containing
+exterior. Temporary raster masks remain inside the CUDA operator and are not
+part of the public model output.
+
+Run the polygon ensemble with:
+
+```bash
+./build/tritonic \
+  --source=data/images/bus.jpg \
+  --model_type=yolo26seg \
+  --model=yolo26seg_gpu_pre_gpu_post \
+  --task_model=yolo26seg_trt \
+  --labelsFile=labels/coco.txt \
+  --input_mode=encoded-image \
+  --postprocess_mode=gpu \
+  --segmentation_output=polygon
+```
+
+`--postprocess_mode=gpu` requires `--segmentation_output=polygon`. CPU
+postprocessing accepts `mask` (the default) or `polygon`. See the
+[validated three-path benchmark](../../../../benchmarks/yolo26-seg/README.md).

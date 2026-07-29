@@ -11,8 +11,8 @@ output [
   { name: "BOXES" data_type: TYPE_INT32 dims: [100, 4] },
   { name: "SCORES" data_type: TYPE_FP32 dims: [100] },
   { name: "CLASSES" data_type: TYPE_INT32 dims: [100] },
-  { name: "MASK_OFFSETS" data_type: TYPE_INT64 dims: [101] },
-  { name: "MASK_SHAPES" data_type: TYPE_INT32 dims: [100, 2] },
-  { name: "MASK_DATA" data_type: TYPE_UINT8 dims: [-1] }
+  { name: "INSTANCE_RING_OFFSETS" data_type: TYPE_INT64 dims: [101] },
+  { name: "RING_POINT_OFFSETS" data_type: TYPE_INT64 dims: [-1] },
+  { name: "POLYGON_POINTS" data_type: TYPE_INT32 dims: [-1, 2] }
 ]
 instance_group [{ kind: KIND_GPU count: 1 }]

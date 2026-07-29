@@ -351,6 +351,30 @@ Uses GPU memory directly for zero-copy inference (requires GPU support):
 - `--shared_memory_type` or `-smt`: Shared memory type (`none`, `system`, or `cuda`). Default: `none`
 - `--cuda_device_id` or `-cdi`: CUDA device ID when using CUDA shared memory. Default: `0`
 
+### Segmentation output and YOLO26 GPU ensemble
+
+Instance-segmentation tasks return raster masks by default. Select polygon rings
+with `--segmentation_output=polygon`; exteriors and holes are returned in image
+coordinates. `--postprocess_mode=gpu` currently supports `yolo26seg` polygon
+output and requires the encoded-image ensemble path:
+
+```bash
+./build/tritonic \
+  --source=data/images/bus.jpg \
+  --model_type=yolo26seg \
+  --model=yolo26seg_gpu_pre_gpu_post \
+  --task_model=yolo26seg_trt \
+  --labelsFile=labels/coco.txt \
+  --input_mode=encoded-image \
+  --postprocess_mode=gpu \
+  --segmentation_output=polygon
+```
+
+Deployment instructions and the polygon tensor ABI are documented in the
+[YOLO26 segmentation ensemble guide](deploy/instance_segmentation/yolo26/ensemble/README.md).
+The reproducible CPU/GPU benchmark and semantic parity gate are in the
+[YOLO26m-seg benchmark](benchmarks/yolo26-seg/README.md).
+
 ### Quick Start with Docker Scripts
 
 Use the provided Docker scripts for quick testing:
