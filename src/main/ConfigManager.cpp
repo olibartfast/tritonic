@@ -61,6 +61,7 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
         "{input_mode im |preprocessed | input transport: preprocessed or encoded-image}"
         "{task_model tm |      | inner Triton model used for task metadata in encoded-image mode}"
         "{postprocess_mode pm |cpu | postprocessing placement: cpu or gpu}"
+        "{segmentation_output so |mask | segmentation representation: mask or polygon}"
         "{batch_size bs  |1     | batch size}"
         "{inference_timeout it |0 | inference timeout in milliseconds (0 = no timeout)}"
         "{benchmark_warmup bw |0 | benchmark warmup iterations}"
@@ -116,6 +117,7 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
     config->SetInputMode(parser.get<cv::String>("input_mode"));
     config->SetTaskModel(parser.get<cv::String>("task_model"));
     config->SetPostprocessMode(parser.get<cv::String>("postprocess_mode"));
+    config->SetSegmentationOutput(parser.get<cv::String>("segmentation_output"));
     config->SetInferenceTimeoutMs(parser.get<int>("inference_timeout"));
     config->SetBenchmarkWarmup(parser.get<int>("benchmark_warmup"));
     config->SetBenchmarkIterations(parser.get<int>("benchmark_iterations"));
@@ -206,6 +208,17 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
             throw std::invalid_argument(
                 "--postprocess_mode=gpu currently supports only --model_type=yolo26seg");
         }
+    }
+
+    const std::string segmentationOutput = Normalize(config->GetSegmentationOutput());
+    if (segmentationOutput == "mask" || segmentationOutput == "polygon") {
+        config->SetSegmentationOutput(segmentationOutput);
+    } else {
+        throw std::invalid_argument("--segmentation_output must be either 'mask' or 'polygon'");
+    }
+    if (postprocessMode == "gpu" && segmentationOutput != "polygon") {
+        throw std::invalid_argument(
+            "--postprocess_mode=gpu requires --segmentation_output=polygon");
     }
 
     if (config->GetBenchmarkWarmup() < 0 || config->GetBenchmarkIterations() < 0) {

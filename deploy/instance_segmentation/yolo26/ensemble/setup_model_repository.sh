@@ -64,5 +64,6 @@ outputs:
   - {name: output1, shape: [1, 32, 160, 160], datatype: FP32}
 confidence_threshold: 0.5
 mask_threshold: 0.5
+segmentation_output: polygon
 EOF
 echo "YOLO26m-seg model repository prepared at ${repository}"
