@@ -243,9 +243,41 @@ TEST(ConfigManagerTest, EncodedImageRequiresTaskModel) {
 
 TEST(ConfigManagerTest, EncodedImageRejectsUnsupportedCombination) {
     ConfigManager mgr;
-    const char* argv[] = {"tritonic", "--input_mode=encoded-image", "--model_type=yoloseg",
-                          "--task_model=yolo_trt"};
+    const char* argv[] = {"tritonic", "--input_mode=encoded-image", "--model_type=vit",
+                          "--task_model=vit_trt"};
     EXPECT_THROW(mgr.LoadFromCommandLine(4, argv), std::invalid_argument);
+}
+
+TEST(ConfigManagerTest, EncodedImageAcceptsYolo11Seg) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--input_mode=encoded-image", "--model_type=yolo11seg",
+                          "--task_model=yolo11seg_trt"};
+    auto config = mgr.LoadFromCommandLine(4, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetInputMode(), "encoded-image");
+}
+
+TEST(ConfigManagerTest, EncodedImageAcceptsYoloSeg) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--input_mode=encoded-image", "--model_type=yoloseg",
+                          "--task_model=yoloseg_trt"};
+    auto config = mgr.LoadFromCommandLine(4, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetInputMode(), "encoded-image");
+}
+
+TEST(ConfigManagerTest, GpuPostprocessAcceptsYolo11Seg) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic",
+                          "--input_mode=encoded-image",
+                          "--model_type=yolo11seg",
+                          "--model=yolo11seg_gpu_post",
+                          "--task_model=yolo11seg_trt",
+                          "--postprocess_mode=gpu"};
+    auto config = mgr.LoadFromCommandLine(6, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetInputMode(), "encoded-image");
+    EXPECT_EQ(config->GetPostprocessMode(), "gpu");
 }
 
 TEST(ConfigManagerTest, ParsesEncodedYolo26SegGpuPostprocess) {
