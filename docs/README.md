@@ -51,3 +51,5 @@ See [deploy/README.md](../deploy/README.md) for the full directory layout.
 | Document | What it covers |
 | --- | --- |
 | [AGENTS.md](../AGENTS.md) | Code structure, namespaces, conventions for contributors |
+| [CI workflows](../.github/workflows/README.md) | What each CI job checks, and what it does not cover |
+| [Local CI checks](guides/Local_CI_Checks.md) | Reproducing those jobs before pushing |
