@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 --engine /path/to/yolo26m-seg.engine [--repository path]" >&2
+  echo "Usage: $0 --engine /path/to/yolo26<n|s|m|l|x>-seg.engine [--repository path]" >&2
 }
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -72,9 +72,11 @@ docker run --gpus all --rm \
     --plugin "${relative_repository}/libyolo26_seg_dali.so" \
     --output "${relative_repository}/yolo26seg_dali_mask_postprocess/1/model.dali"
 
+engine_file="$(basename "${engine}")"
 engine_sha256="$(sha256sum "${repository}/yolo26seg_trt/1/model.plan" | awk '{print $1}')"
 cat >"${repository}/reference_model.yaml" <<EOF
-model: yolo26m-seg
+model: yolo26-seg
+engine_file: ${engine_file}
 engine_sha256: ${engine_sha256}
 triton_image: nvcr.io/nvidia/tritonserver:25.12-py3
 input: {name: images, shape: [1, 3, 640, 640], datatype: FP32}
@@ -85,4 +87,4 @@ confidence_threshold: 0.5
 mask_threshold: 0.5
 segmentation_outputs: [mask, polygon]
 EOF
-echo "YOLO26m-seg model repository prepared at ${repository}"
+echo "YOLO26-seg model repository prepared at ${repository} (engine: ${engine_file})"

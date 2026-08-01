@@ -1,4 +1,7 @@
-# YOLO26m-seg Tritonic benchmark
+# YOLO26-seg Tritonic benchmark
+
+The committed results were produced with `yolo26m-seg`; the ensemble itself is
+scale-independent.
 
 This benchmark measures the real `./build/tritonic` C++ application with the
 official `yolo26m-seg` model exported to an FP16 TensorRT 10.14.1 engine. It

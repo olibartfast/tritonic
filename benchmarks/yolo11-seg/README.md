@@ -1,4 +1,10 @@
-# YOLO11m-seg GPU Ensemble Benchmarks
+# YOLO11-seg GPU ensemble benchmarks
+
+The harness works with any YOLO11-seg scale (n/s/m/l/x) — the ensemble contract is
+scale-independent. The engine actually staged is read from the model repository's
+`reference_model.yaml` and recorded in the results directory name and summary, so
+runs from different sizes stay distinguishable. Override with `--engine-label`.
+The results committed here were produced with `yolo11m-seg`.
 
 Four-path benchmark comparing DALI GPU pre/postprocessing against CPU baseline.
 
