@@ -2,18 +2,21 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 --engine /path/to/yolo11<n|s|m|l|x>-seg.engine [--repository path]" >&2
+  echo "Usage: $0 --engine /path/to/yolo11<n|s|m|l|x>-seg.engine [--repository path] [--triton-image ref]" >&2
 }
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/../../../.." && pwd)"
 repository="${script_dir}/model_repository"
+# Overridable default: env var, or --triton-image on the command line.
+TRITON_IMAGE="${TRITON_IMAGE:-nvcr.io/nvidia/tritonserver:25.12-py3}"
 engine=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --engine) engine="$2"; shift 2 ;;
     --repository) repository="$2"; shift 2 ;;
+    --triton-image) TRITON_IMAGE="$2"; shift 2 ;;
     *) usage; exit 2 ;;
   esac
 done
@@ -54,20 +57,20 @@ cp "${script_dir}/dali_plugin/build/libyolo11_seg_dali.so" \
 
 docker run --gpus all --rm \
   -v "${repo_root}:/workspace" -w /workspace \
-  nvcr.io/nvidia/tritonserver:25.12-py3 \
+  "${TRITON_IMAGE}" \
   python3 deploy/instance_segmentation/yolo11/ensemble/generate_pipeline.py \
     --output "${relative_repository}/yolo11seg_dali_preprocess/1/model.dali"
 
 docker run --gpus all --rm \
   -v "${repo_root}:/workspace" -w /workspace \
-  nvcr.io/nvidia/tritonserver:25.12-py3 \
+  "${TRITON_IMAGE}" \
   python3 deploy/instance_segmentation/yolo11/ensemble/generate_postprocess_pipeline.py \
     --plugin "${relative_repository}/libyolo11_seg_dali.so" \
     --output "${relative_repository}/yolo11seg_dali_postprocess/1/model.dali"
 
 docker run --gpus all --rm \
   -v "${repo_root}:/workspace" -w /workspace \
-  nvcr.io/nvidia/tritonserver:25.12-py3 \
+  "${TRITON_IMAGE}" \
   python3 deploy/instance_segmentation/yolo11/ensemble/generate_mask_postprocess_pipeline.py \
     --plugin "${relative_repository}/libyolo11_seg_dali.so" \
     --output "${relative_repository}/yolo11seg_dali_mask_postprocess/1/model.dali"
@@ -78,7 +81,7 @@ cat >"${repository}/reference_model.yaml" <<EOF
 model: yolo11-seg
 engine_file: ${engine_file}
 engine_sha256: ${engine_sha256}
-triton_image: nvcr.io/nvidia/tritonserver:25.12-py3
+triton_image: ${TRITON_IMAGE}
 input: {name: images, shape: [1, 3, 640, 640], datatype: FP32}
 outputs:
   - {name: output0, shape: [1, 116, 8400], datatype: FP32}
