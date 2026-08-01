@@ -7,6 +7,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Pinned neuriplo-tasks to `v0.7.0`, replacing a commit-SHA pin that referenced
+  an unreleased feature branch. Brings in polygon segmentation output.
+
 ## [0.3.0] - 2026-07-15
 
 ### Added

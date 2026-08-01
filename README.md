@@ -70,7 +70,7 @@ tritonic/
 ```
 
 **CMake Fetched Dependencies:**
-- [neuriplo-tasks](https://github.com/olibartfast/neuriplo-tasks) (v0.6.0) — model pre/post processing and task management
+- [neuriplo-tasks](https://github.com/olibartfast/neuriplo-tasks) (v0.7.0) — model pre/post processing and task management
 
 ## Architecture
 
