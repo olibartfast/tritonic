@@ -351,12 +351,24 @@ Uses GPU memory directly for zero-copy inference (requires GPU support):
 - `--shared_memory_type` or `-smt`: Shared memory type (`none`, `system`, or `cuda`). Default: `none`
 - `--cuda_device_id` or `-cdi`: CUDA device ID when using CUDA shared memory. Default: `0`
 
-### Segmentation output and YOLO26 GPU ensemble
+### Ensemble models
+
+Triton ensembles move preprocessing, and optionally postprocessing, onto the GPU: the
+client sends the encoded JPEG and the server runs DALI decode/resize/normalize, TensorRT
+inference, and — for the `gpu_pre_gpu_*` variants — a custom CUDA postprocess operator.
+
+| Ensemble | Task | Deployment guide |
+| --- | --- | --- |
+| `yolo_dali_ensemble` | Detection, GPU preprocess only | [YOLO ensemble](deploy/object_detection/yolo/ensemble/README.md) |
+| `yolo26det_*` | Detection, GPU pre/post | [YOLO26 detection ensemble](deploy/object_detection/yolo26/ensemble/README.md) |
+| `yolo26seg_*` | Instance segmentation, GPU pre/post | [YOLO26 segmentation ensemble](deploy/instance_segmentation/yolo26/ensemble/README.md) |
+| `yolo11seg_*` | Instance segmentation, GPU pre/post | see `deploy/instance_segmentation/yolo11/ensemble/` |
 
 Instance-segmentation tasks return raster masks by default. Select convex-hull polygon rings
 with `--segmentation_output=polygon`; exteriors and holes are returned in image
-coordinates. `--postprocess_mode=gpu` supports both `yolo26seg` representations
+coordinates. `--postprocess_mode=gpu` supports both representations
 through separate encoded-image ensembles, so mask-only requests do not run polygon extraction.
+The `yolo26seg` examples below apply unchanged to `yolo11seg` by substituting the model names.
 
 GPU mask output (default):
 
