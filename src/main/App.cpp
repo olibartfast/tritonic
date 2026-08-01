@@ -59,6 +59,25 @@ std::string NormalizeModelType(const std::string& modelType) {
     return normalized;
 }
 
+// Benchmark result family, which groups every size of one architecture and task.
+// The size letter (n/s/m/l/x) belongs to the engine, not the family, so it must not
+// appear here: "yolo26m-seg" names one engine, "yolo26-seg" names the family the
+// checkers aggregate over.
+std::string ModelFamily(const std::string& modelType) {
+    const std::string normalized = NormalizeModelType(modelType);
+    if (normalized == "yolo26seg")
+        return "yolo26-seg";
+    if (normalized == "yolo11seg")
+        return "yolo11-seg";
+    if (normalized == "yoloseg")
+        return "yolo-seg";
+    if (normalized == "yolo26")
+        return "yolo26-det";
+    if (normalized == "yolo")
+        return "yolo-det";
+    return normalized;
+}
+
 std::string ReadTextFile(const std::string& path) {
     std::ifstream file(path);
     if (!file.is_open()) {
@@ -197,8 +216,13 @@ int App::run() {
             config_->GetModelName(), config_->GetServerAddress(), requestInputSizes);
         if (encodedImageMode) {
             if (config_->GetPostprocessMode() == "gpu") {
-                tritonic::core::ValidateGpuSegmentationModel(
-                    modelInfo, config_->GetSegmentationOutput() == "polygon");
+                const std::string modelType = NormalizeModelType(config_->GetModelType());
+                if (modelType == "yolo" || modelType == "yolo26") {
+                    tritonic::core::ValidateGpuDetectionModel(modelInfo);
+                } else {
+                    tritonic::core::ValidateGpuSegmentationModel(
+                        modelInfo, config_->GetSegmentationOutput() == "polygon");
+                }
             } else {
                 tritonic::core::ValidateEncodedImageModels(modelInfo, taskModelInfo);
             }
@@ -353,6 +377,9 @@ std::vector<neuriplo_tasks::Result> App::processEncodedImage(const std::string& 
     tritonClient_->setInputShapes(request.shapes);
     auto tensors = tritonClient_->infer(request.inputs);
     if (config_->GetPostprocessMode() == "gpu") {
+        if (task_->getTaskType() == neuriplo_tasks::TaskType::Detection) {
+            return tritonic::core::DecodeGpuDetectionResults(tensors, request_output_names_);
+        }
         return tritonic::core::DecodeGpuSegmentationResults(
             tensors, request_output_names_, request.width, request.height,
             config_->GetSegmentationOutput() == "polygon");
@@ -367,14 +394,26 @@ std::vector<neuriplo_tasks::Result> App::processEncodedFrame(const cv::Mat& fram
         throw std::runtime_error("Could not JPEG-encode video frame");
     tritonClient_->setInputShapes({{1, static_cast<int64_t>(jpeg.size())}});
     auto tensors = tritonClient_->infer({std::move(jpeg)});
-    return tritonic::core::DecodeGpuSegmentationResults(
-        tensors, request_output_names_, frame.cols, frame.rows,
-        config_->GetSegmentationOutput() == "polygon");
+    // Mirrors processEncodedImage: an encoded-image video run with CPU postprocessing
+    // gets raw model outputs, not the GPU result envelope.
+    if (config_->GetPostprocessMode() == "gpu") {
+        if (task_->getTaskType() == neuriplo_tasks::TaskType::Detection) {
+            return tritonic::core::DecodeGpuDetectionResults(tensors, request_output_names_);
+        }
+        return tritonic::core::DecodeGpuSegmentationResults(
+            tensors, request_output_names_, frame.cols, frame.rows,
+            config_->GetSegmentationOutput() == "polygon");
+    }
+    tensors.resize(task_output_count_);
+    return task_->postprocess({frame.cols, frame.rows}, toNeuriploTensors(tensors));
 }
 
 void App::benchmarkImage(const std::string& sourceName) {
-    if (task_->getTaskType() != neuriplo_tasks::TaskType::InstanceSegmentation) {
-        throw std::runtime_error("Benchmark mode currently requires an instance-segmentation task");
+    const auto taskType = task_->getTaskType();
+    const bool isDet = taskType == neuriplo_tasks::TaskType::Detection;
+    const bool isSeg = taskType == neuriplo_tasks::TaskType::InstanceSegmentation;
+    if (!isDet && !isSeg) {
+        throw std::runtime_error("Benchmark mode requires a detection or instance-segmentation task");
     }
 
     const bool encodedImageMode = config_->GetInputMode() == "encoded-image";
@@ -414,9 +453,14 @@ void App::benchmarkImage(const std::string& sourceName) {
         auto tensors = tritonClient_->infer(inputs);
         const auto inferEnd = std::chrono::steady_clock::now();
         if (encodedImageMode && config_->GetPostprocessMode() == "gpu") {
-            predictions = tritonic::core::DecodeGpuSegmentationResults(
-                tensors, request_output_names_, encodedRequest.width, encodedRequest.height,
-                config_->GetSegmentationOutput() == "polygon");
+            if (isSeg) {
+                predictions = tritonic::core::DecodeGpuSegmentationResults(
+                    tensors, request_output_names_, encodedRequest.width, encodedRequest.height,
+                    config_->GetSegmentationOutput() == "polygon");
+            } else {
+                predictions = tritonic::core::DecodeGpuDetectionResults(
+                    tensors, request_output_names_);
+            }
         } else {
             if (encodedImageMode)
                 tensors.resize(task_output_count_);
@@ -447,21 +491,25 @@ void App::benchmarkImage(const std::string& sourceName) {
         std::filesystem::create_directories(outputPath.parent_path());
     const bool polygonOutput = config_->GetSegmentationOutput() == "polygon";
     const auto maskDirectory = outputPath.parent_path() / (outputPath.stem().string() + "_masks");
-    if (!polygonOutput)
+    if (isSeg && !polygonOutput)
         std::filesystem::create_directories(maskDirectory);
     std::ofstream output(outputPath);
     if (!output)
         throw std::runtime_error("Could not create benchmark output: " + outputPath.string());
     output << std::fixed << std::setprecision(6);
-    output << "{\n  \"schema_version\": " << (polygonOutput ? 2 : 1) << ",\n";
+    output << "{\n  \"schema_version\": " << (isDet ? 3 : polygonOutput ? 2 : 1) << ",\n";
     output << "  \"application\": \"tritonic\",\n";
-    output << "  \"model_family\": \"yolo26m-seg\",\n";
+    output << "  \"model_family\": " << std::quoted(ModelFamily(config_->GetModelType()))
+           << ",\n";
+    output << "  \"model_type\": " << std::quoted(config_->GetModelType()) << ",\n";
     output << "  \"request_model\": " << std::quoted(config_->GetModelName()) << ",\n";
     output << "  \"source\": " << std::quoted(sourceName) << ",\n";
     output << "  \"input_mode\": " << std::quoted(config_->GetInputMode()) << ",\n";
     output << "  \"postprocess_mode\": " << std::quoted(config_->GetPostprocessMode()) << ",\n";
-    output << "  \"segmentation_output\": " << std::quoted(config_->GetSegmentationOutput())
-           << ",\n";
+    if (isSeg) {
+        output << "  \"segmentation_output\": " << std::quoted(config_->GetSegmentationOutput())
+               << ",\n";
+    }
     output << "  \"warmup_iterations\": " << config_->GetBenchmarkWarmup() << ",\n";
     output << "  \"samples_ms\": [\n";
     for (size_t i = 0; i < samples.size(); ++i) {
@@ -475,6 +523,19 @@ void App::benchmarkImage(const std::string& sourceName) {
     output << "  ],\n  \"detections\": [\n";
     size_t detectionIndex = 0;
     for (const auto& prediction : predictions) {
+        if (isDet) {
+            if (!std::holds_alternative<neuriplo_tasks::Detection>(prediction))
+                continue;
+            const auto& det = std::get<neuriplo_tasks::Detection>(prediction);
+            if (detectionIndex != 0)
+                output << ",\n";
+            output << "    {\"class_id\": " << static_cast<int>(det.class_id)
+                   << ", \"score\": " << det.class_confidence << ", \"bbox\": ["
+                   << det.bbox.x << ", " << det.bbox.y << ", "
+                   << det.bbox.width << ", " << det.bbox.height << "]}";
+            ++detectionIndex;
+            continue;
+        }
         if (!std::holds_alternative<neuriplo_tasks::InstanceSegmentation>(prediction))
             continue;
         const auto& segmentation = std::get<neuriplo_tasks::InstanceSegmentation>(prediction);
