@@ -31,7 +31,7 @@ Deployment guides sit beside the model repositories they configure:
 | YOLO (detection) | [ensemble](../deploy/object_detection/yolo/ensemble/README.md) | — |
 | YOLO26 (detection) | [ensemble](../deploy/object_detection/yolo26/ensemble/README.md) | — |
 | YOLO26-seg | [ensemble](../deploy/instance_segmentation/yolo26/ensemble/README.md) | [benchmark](../benchmarks/yolo26-seg/README.md) |
-| YOLO11-seg | `../deploy/instance_segmentation/yolo11/ensemble/` | [benchmark](../benchmarks/yolo11-seg/README.md) |
+| YOLO11-seg | [ensemble](../deploy/instance_segmentation/yolo11/ensemble/README.md) | [benchmark](../benchmarks/yolo11-seg/README.md) |
 | RF-DETR-seg | [export and deploy](../deploy/instance_segmentation/rf-detr/README.md) | — |
 | ViT classifier | [Python backends](../deploy/classifier/vit/README.md) | — |
 
