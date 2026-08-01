@@ -6,23 +6,26 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import statistics
+import sys
 from pathlib import Path
 
 import cv2
 import numpy as np
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.agreement import (  # noqa: E402
+    bbox_iou,
+    compare,
+    require_model_family,
+    timing_summary,
+    timing_summary_many,
+)
+
 PATHS = ("cpu_pre_cpu_post", "gpu_pre_cpu_post", "gpu_pre_gpu_post")
 
-
-def bbox_iou(a, b):
-    ax, ay, aw, ah = a
-    bx, by, bw, bh = b
-    x1, y1 = max(ax, bx), max(ay, by)
-    x2, y2 = min(ax + aw, bx + bw), min(ay + ah, by + bh)
-    intersection = max(0, x2 - x1) * max(0, y2 - y1)
-    union = aw * ah + bw * bh - intersection
-    return intersection / union if union else 0.0
+# Result documents written before the family naming was corrected say "yolo26m-seg",
+# where the m is the model size rather than part of the family.
+ACCEPTED_FAMILIES = {"yolo26-seg", "yolo26m-seg"}
 
 
 def signed_area(ring):
@@ -111,89 +114,23 @@ def polygon_pixels(detection):
     return set(zip(xs + x, ys + y))
 
 
-def canonical(detections):
-    kept = []
-    for detection in sorted(detections, key=lambda item: item["score"], reverse=True):
-        if any(
-            detection["class_id"] == prior["class_id"]
-            and bbox_iou(detection["bbox"], prior["bbox"]) >= 0.9
-            for prior in kept
-        ):
-            continue
-        kept.append(detection)
-    return kept
+def polygon_overlap(ref, cand):
+    ref_pixels = polygon_pixels(ref)
+    cand_pixels = polygon_pixels(cand)
+    return len(ref_pixels & cand_pixels) / len(ref_pixels | cand_pixels)
 
 
-def percentile(values, fraction):
-    ordered = sorted(values)
-    return ordered[min(len(ordered) - 1, math.ceil(fraction * len(ordered)) - 1)]
-
-
-def timing_summary_many(documents):
-    result = {}
-    for key in ("preprocess", "infer", "postprocess", "total"):
-        values = [
-            sample[key] for document in documents for sample in document["samples_ms"]
-        ]
-        result[key] = {
-            "mean_ms": statistics.fmean(values),
-            "median_ms": statistics.median(values),
-            "p95_ms": percentile(values, 0.95),
-        }
-    return result
-
-
-def timing_summary(document):
-    return timing_summary_many([document])
-
-
-def compare(
-    reference_doc, candidate_doc, min_box_iou, min_polygon_iou, max_score_delta
-):
-    reference = canonical(reference_doc["detections"])
-    candidate = canonical(candidate_doc["detections"])
-    if len(reference) != len(candidate):
-        raise ValueError(
-            f"canonical detection count mismatch: {len(reference)} != {len(candidate)}"
-        )
-    remaining = set(range(len(candidate)))
-    matches = []
-    for ref in reference:
-        choices = [
-            index
-            for index in remaining
-            if candidate[index]["class_id"] == ref["class_id"]
-        ]
-        if not choices:
-            raise ValueError(f"missing class {ref['class_id']}")
-        index = max(
-            choices, key=lambda item: bbox_iou(ref["bbox"], candidate[item]["bbox"])
-        )
-        cand = candidate[index]
-        remaining.remove(index)
-        box = bbox_iou(ref["bbox"], cand["bbox"])
-        score_delta = abs(ref["score"] - cand["score"])
-        ref_pixels = polygon_pixels(ref)
-        cand_pixels = polygon_pixels(cand)
-        polygon = len(ref_pixels & cand_pixels) / len(ref_pixels | cand_pixels)
-        if (
-            box < min_box_iou
-            or polygon < min_polygon_iou
-            or score_delta > max_score_delta
-        ):
-            raise ValueError(
-                f"semantic mismatch class={ref['class_id']} box_iou={box:.6f} "
-                f"polygon_iou={polygon:.6f} score_delta={score_delta:.6f}"
-            )
-        matches.append(
-            {
-                "class_id": ref["class_id"],
-                "box_iou": box,
-                "polygon_iou": polygon,
-                "score_delta": score_delta,
-            }
-        )
-    return matches
+def compare_polygons(reference_doc, candidate_doc, min_box_iou, min_polygon_iou,
+                     max_score_delta):
+    return compare(
+        reference_doc,
+        candidate_doc,
+        min_box_iou,
+        max_score_delta,
+        overlap=polygon_overlap,
+        min_overlap=min_polygon_iou,
+        overlap_name="polygon_iou",
+    )
 
 
 def main():
@@ -221,22 +158,21 @@ def main():
         for path_name in PATHS:
             json_path = fixture_dir / f"{path_name}.json"
             documents[path_name] = json.loads(json_path.read_text())
-            if documents[path_name].get("model_family") != "yolo26m-seg":
-                raise ValueError(f"wrong model family in {json_path}")
+            require_model_family(documents[path_name], ACCEPTED_FAMILIES, json_path)
             if documents[path_name].get("segmentation_output") != "polygon":
                 raise ValueError(f"non-polygon benchmark output in {json_path}")
             all_documents[path_name].append(documents[path_name])
             for detection in documents[path_name]["detections"]:
                 polygon_pixels(detection)
         fixture = {"timings": {name: timing_summary(documents[name]) for name in PATHS}}
-        fixture["cpu_vs_dali_pre"] = compare(
+        fixture["cpu_vs_dali_pre"] = compare_polygons(
             documents["cpu_pre_cpu_post"],
             documents["gpu_pre_cpu_post"],
             0.95,
             0.90,
             0.30,
         )
-        fixture["cpu_post_vs_dali_post"] = compare(
+        fixture["cpu_post_vs_dali_post"] = compare_polygons(
             documents["gpu_pre_cpu_post"], documents["gpu_pre_gpu_post"], 1.0, 1.0, 1e-6
         )
         fixture["status"] = "pass"
