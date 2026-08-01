@@ -1,197 +1,124 @@
 #!/usr/bin/env python3
-"""Validate Tritonic YOLO11-seg polygon semantics and summarize timings."""
+"""Validate Tritonic YOLO11-seg polygon semantics and summarize timings.
+
+Structurally identical to the YOLO26-seg polygon checker -- the benchmark documents
+share one schema -- so both drive the same shared agreement and polygon helpers.
+
+The previous version of this file defined validate_detection/polygon_iou/
+extract_polygons and never called any of them, against a JSON shape the binary does
+not emit. It reported timings only, so a GPU path that silently dropped detections
+still produced a clean run.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
-import math
-import statistics
+import sys
 from pathlib import Path
 
-import cv2
-import numpy as np
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.agreement import (  # noqa: E402
+    compare,
+    require_model_family,
+    timing_summary,
+    timing_summary_many,
+)
+from common.polygons import polygon_overlap, polygon_pixels  # noqa: E402
 
 PATHS = ("cpu_pre_cpu_post", "gpu_pre_cpu_post", "gpu_pre_gpu_post")
 
+# "yolo11seg" is what the binary emitted before the model_family fix.
+ACCEPTED_FAMILIES = {"yolo11-seg", "yolo11seg"}
 
-def bbox_iou(a, b):
-    ax, ay, aw, ah = a
-    bx, by, bw, bh = b
-    x1, y1 = max(ax, bx), max(ay, by)
-    x2, y2 = min(ax + aw, bx + bw), min(ay + ah, by + bh)
-    intersection = max(0, x2 - x1) * max(0, y2 - y1)
-    union = aw * ah + bw * bh - intersection
-    return intersection / union if union else 0.0
+# DALI preprocessing resamples differently from OpenCV, so boxes and polygons drift
+# slightly; GPU postprocessing must instead reproduce the CPU result exactly.
+PRE_TOLERANCE = (0.95, 0.90, 0.30)
+POST_TOLERANCE = (1.0, 1.0, 1e-6)
+
+# The synthetic dense fixture packs many small instances into one 640x640 resize, so
+# the two preprocessors disagree far more than on a normal photo. It exists to test
+# the postprocessor's detection cap, not resampling fidelity, so only its
+# preprocessing tolerance is relaxed -- the postprocess comparison stays exact, and
+# the detection *count* must match in both.
+DENSE_FIXTURES = {"crowd"}
+DENSE_PRE_TOLERANCE = (0.80, 0.70, 0.30)
 
 
-def signed_area(ring):
-    return 0.5 * sum(
-        x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1])
+def compare_polygons(reference_doc, candidate_doc, tolerance):
+    min_box_iou, min_polygon_iou, max_score_delta = tolerance
+    return compare(
+        reference_doc,
+        candidate_doc,
+        min_box_iou,
+        max_score_delta,
+        overlap=polygon_overlap,
+        min_overlap=min_polygon_iou,
+        overlap_name="polygon_iou",
     )
-
-
-def point_in_ring(point, ring):
-    px, py = point
-    inside = False
-    previous = ring[-1]
-    for current in ring:
-        ax, ay = current
-        bx, by = previous
-        if (ay > py) != (by > py) and px < (bx - ax) * (py - ay) / (by - ay) + ax:
-            inside = not inside
-        previous = current
-    return inside
-
-
-def validate_ring(ring, bbox, expected_sign, name):
-    if len(ring) < 3:
-        raise ValueError(f"{name} has fewer than three points")
-    x, y, width, height = bbox
-    for px, py in ring:
-        if not (x <= px <= x + width and y <= py <= y + height):
-            raise ValueError(
-                f"{name} has a point ({px},{py}) outside its bounding box "
-                f"[{x},{y},{width},{height}]"
-            )
-    area = signed_area(ring)
-    if area == 0:
-        raise ValueError(f"{name} has zero area (collinear points)")
-    if (area < 0) != (expected_sign < 0):
-        raise ValueError(
-            f"{name} has wrong winding (area {area:.1f}, expected sign {expected_sign})"
-        )
-
-
-def polygon_iou(rings_a, rings_b, image_shape):
-    h, w = int(image_shape[0]), int(image_shape[1])
-    canvas_a = np.zeros((h, w), dtype=np.uint8)
-    canvas_b = np.zeros((h, w), dtype=np.uint8)
-    for ring in rings_a:
-        if len(ring) >= 3:
-            pts = np.array(ring, dtype=np.int32)
-            cv2.fillPoly(canvas_a, [pts], 255)
-    for ring in rings_b:
-        if len(ring) >= 3:
-            pts = np.array(ring, dtype=np.int32)
-            cv2.fillPoly(canvas_b, [pts], 255)
-    intersection = np.sum(np.logical_and(canvas_a, canvas_b))
-    union = np.sum(np.logical_or(canvas_a, canvas_b))
-    return intersection / union if union else 0.0
-
-
-def extract_polygons(det):
-    image_w, image_h = det.get("image_width", 0), det.get("image_height", 0)
-    rings = []
-    bbox = det["box"]
-    ring_offsets = det.get("instance_ring_offsets", [])
-    ring_point_offsets = det.get("ring_point_offsets", [])
-    polygon_points = det.get("polygon_points", [])
-    if not ring_offsets or not ring_point_offsets:
-        return rings, (image_h, image_w)
-    for ri in range(len(ring_offsets) - 1):
-        ring_start = ring_offsets[ri]
-        ring_end = ring_offsets[ri + 1]
-        instance = []
-        for rj in range(int(ring_start), int(ring_end)):
-            ps = int(ring_point_offsets[rj])
-            pe = int(ring_point_offsets[rj + 1])
-            ring = [tuple(polygon_points[k]) for k in range(ps, pe)]
-            instance.append(ring)
-        rings.append(instance)
-    return rings, (image_h, image_w)
-
-
-def validate_detection(ref, det, image_shape):
-    if det.get("class_id", -1) != ref.get("class_id", -2):
-        return False
-    ref_box = ref["box"]
-    det_box = det["box"]
-    iou = bbox_iou(ref_box, det_box)
-    if iou < 0.95:
-        return False
-    return True
-
-
-def pct(values, p):
-    k = (len(values) - 1) * p
-    f = int(k)
-    c = k - f
-    return values[f] * (1 - c) + values[f + 1] * c if f + 1 < len(values) else values[f]
-
-
-def aggregate(samples):
-    pre = sorted(s["preprocess"] for s in samples)
-    inf = sorted(s["infer"] for s in samples)
-    post = sorted(s["postprocess"] for s in samples)
-    total = sorted(s["total"] for s in samples)
-    return {
-        "preprocess": {"mean": statistics.mean(pre), "median": statistics.median(pre), "p95": pct(pre, 0.95)},
-        "infer": {"mean": statistics.mean(inf), "median": statistics.median(inf), "p95": pct(inf, 0.95)},
-        "postprocess": {"mean": statistics.mean(post), "median": statistics.median(post), "p95": pct(post, 0.95)},
-        "total": {"mean": statistics.mean(total), "median": statistics.median(total), "p95": pct(total, 0.95)},
-    }
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("results_dir", help="Benchmark results directory (e.g. results/2026-07-31_yolo11m-seg_rtx3060)")
-    parser.add_argument("--reference", help="Reference results directory for validation", default=None)
+    parser.add_argument("results_dir", type=Path)
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    results_dir = Path(args.results_dir)
+    report = {"schema_version": 2, "model_family": "yolo11-seg", "fixtures": {}}
+    all_documents = {name: [] for name in PATHS}
 
-    summary = {"model_family": "yolo11-seg", "fixtures": {}}
-    for fixture_dir in sorted(results_dir.iterdir()):
-        if not fixture_dir.is_dir():
+    fixture_dirs = []
+    for candidate in sorted(path for path in args.results_dir.iterdir() if path.is_dir()):
+        present = [(candidate / f"{path_name}.json").is_file() for path_name in PATHS]
+        if not any(present):
             continue
-        fixture = fixture_dir.name
-        fixture_data = {}
-        for path_label in PATHS:
-            json_file = fixture_dir / f"{path_label}.json"
-            if not json_file.exists():
-                continue
-            data = json.loads(json_file.read_text())
-            samples = data.get("samples_ms", [])
-            timings = aggregate(samples)
-            fixture_data[path_label] = {
-                "timings": timings,
-                "detection_count": len(data.get("detections", [])),
-            }
-            print(f"  {fixture}/{path_label}: "
-                  f"total={timings['total']['median']:.1f}ms, "
-                  f"detections={fixture_data[path_label]['detection_count']}")
-        if fixture_data:
-            summary["fixtures"][fixture] = fixture_data
+        if not all(present):
+            raise ValueError(f"incomplete benchmark fixture directory: {candidate}")
+        fixture_dirs.append(candidate)
+    if not fixture_dirs:
+        raise ValueError(f"no benchmark fixtures found in {args.results_dir}")
 
-    out_path = results_dir / "summary.json"
-    out_path.write_text(json.dumps(summary, indent=2) + "\n")
-    print(f"\nSummary written to {out_path}")
+    for fixture_dir in fixture_dirs:
+        documents = {}
+        for path_name in PATHS:
+            json_path = fixture_dir / f"{path_name}.json"
+            documents[path_name] = json.loads(json_path.read_text())
+            require_model_family(documents[path_name], ACCEPTED_FAMILIES, json_path)
+            if documents[path_name].get("segmentation_output") != "polygon":
+                raise ValueError(f"non-polygon benchmark output in {json_path}")
+            all_documents[path_name].append(documents[path_name])
+            for detection in documents[path_name]["detections"]:
+                polygon_pixels(detection)
+        pre_tolerance = (
+            DENSE_PRE_TOLERANCE
+            if fixture_dir.name in DENSE_FIXTURES
+            else PRE_TOLERANCE
+        )
+        fixture = {"timings": {name: timing_summary(documents[name]) for name in PATHS}}
+        fixture["cpu_vs_dali_pre"] = compare_polygons(
+            documents["cpu_pre_cpu_post"], documents["gpu_pre_cpu_post"], pre_tolerance
+        )
+        fixture["cpu_post_vs_dali_post"] = compare_polygons(
+            documents["gpu_pre_cpu_post"], documents["gpu_pre_gpu_post"], POST_TOLERANCE
+        )
+        fixture["status"] = "pass"
+        report["fixtures"][fixture_dir.name] = fixture
 
-    # Print overview
-    print()
-    header = f"{'Path':<28} {'Pre':>8} {'Infer':>8} {'Post':>8} {'Total':>8}"
-    print(header)
-    print("-" * len(header))
-    agg = {}
-    for path in PATHS:
-        medians = []
-        for f in summary["fixtures"]:
-            if path in summary["fixtures"][f]:
-                medians.append(summary["fixtures"][f][path]["timings"]["total"]["median"])
-        if medians:
-            agg[path] = statistics.mean(medians)
-            p = {}
-            for stage in ("preprocess", "infer", "postprocess", "total"):
-                p[stage] = statistics.mean(
-                    summary["fixtures"][fix][path]["timings"][stage]["median"]
-                    for fix in summary["fixtures"]
-                    if path in summary["fixtures"][fix]
-                )
-            print(f"{path:<28} {p['preprocess']:>7.1f}ms {p['infer']:>7.1f}ms "
-                  f"{p['postprocess']:>7.1f}ms {p['total']:>8.1f}ms")
-    if "cpu_pre_cpu_post" in agg and "gpu_pre_gpu_post" in agg:
-        speedup = agg["cpu_pre_cpu_post"] / agg["gpu_pre_gpu_post"]
-        print(f"\nDALI pre/post is {speedup:.2f}x faster than CPU pre/post")
+    report["aggregate"] = {
+        name: timing_summary_many(all_documents[name]) for name in PATHS
+    }
+    cpu_total = report["aggregate"]["cpu_pre_cpu_post"]["total"]
+    dali_total = report["aggregate"]["gpu_pre_gpu_post"]["total"]
+    gpu_cpu_total = report["aggregate"]["gpu_pre_cpu_post"]["total"]
+    report["speedup"] = {
+        "dali_gpu_pre_post_vs_cpu_pre_post_median": cpu_total["median_ms"]
+        / dali_total["median_ms"],
+        "dali_gpu_pre_post_vs_gpu_pre_cpu_post_median": gpu_cpu_total["median_ms"]
+        / dali_total["median_ms"],
+    }
+    report["status"] = "pass"
+    output = args.output or args.results_dir / "summary.json"
+    output.write_text(json.dumps(report, indent=2) + "\n")
+    print(output)
 
 
 if __name__ == "__main__":

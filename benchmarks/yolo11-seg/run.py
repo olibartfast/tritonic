@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Run YOLO11-seg benchmark: 4 paths, 4 fixtures, aggregate timings."""
+"""Run the YOLO11-seg benchmark: 3 paths x 4 fixtures for one segmentation mode.
+
+Pass --segmentation-output to pick the mode; run it twice (mask and polygon) to
+cover both, then validate each result directory with the matching checker.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +15,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from common.fixtures import make_crowded_fixture  # noqa: E402
+
 FIXTURES = [
     "data/images/bus.jpg",
     "data/images/horses.jpg",
@@ -18,40 +25,45 @@ FIXTURES = [
     "data/images/mug.jpg",
 ]
 
-PATHS = {
-    "cpu_pre_cpu_post": {
-        "model": "yolo11seg_trt",
-        "model_type": "yolo11seg",
-        "input_mode": "preprocessed",
-        "postprocess_mode": "cpu",
-        "task_model": None,
-        "segmentation_output": None,
-    },
-    "gpu_pre_cpu_post": {
-        "model": "yolo11seg_gpu_pre_cpu_post",
-        "model_type": "yolo11seg",
-        "input_mode": "encoded-image",
-        "postprocess_mode": "cpu",
-        "task_model": "yolo11seg_trt",
-        "segmentation_output": None,
-    },
-    "gpu_pre_gpu_mask_post": {
-        "model": "yolo11seg_gpu_pre_gpu_mask_post",
-        "model_type": "yolo11seg",
-        "input_mode": "encoded-image",
-        "postprocess_mode": "gpu",
-        "task_model": "yolo11seg_trt",
-        "segmentation_output": "mask",
-    },
-    "gpu_pre_gpu_post": {
-        "model": "yolo11seg_gpu_pre_gpu_post",
-        "model_type": "yolo11seg",
-        "input_mode": "encoded-image",
-        "postprocess_mode": "gpu",
-        "task_model": "yolo11seg_trt",
-        "segmentation_output": "polygon",
-    },
-}
+# One campaign produces one segmentation mode across all three paths. Mixing modes
+# within a run leaves the GPU polygon path without a polygon CPU reference, so the
+# checkers cannot compare it against anything -- which is how a truncating GPU path
+# previously passed as a pure timing win.
+def build_paths(segmentation_output):
+    gpu_post_model = (
+        "yolo11seg_gpu_pre_gpu_post"
+        if segmentation_output == "polygon"
+        else "yolo11seg_gpu_pre_gpu_mask_post"
+    )
+    return {
+        "cpu_pre_cpu_post": {
+            "model": "yolo11seg_trt",
+            "model_type": "yolo11seg",
+            "input_mode": "preprocessed",
+            "postprocess_mode": "cpu",
+            "task_model": None,
+            "segmentation_output": segmentation_output,
+        },
+        "gpu_pre_cpu_post": {
+            "model": "yolo11seg_gpu_pre_cpu_post",
+            "model_type": "yolo11seg",
+            "input_mode": "encoded-image",
+            "postprocess_mode": "cpu",
+            "task_model": "yolo11seg_trt",
+            "segmentation_output": segmentation_output,
+        },
+        "gpu_pre_gpu_post": {
+            "model": gpu_post_model,
+            "model_type": "yolo11seg",
+            "input_mode": "encoded-image",
+            "postprocess_mode": "gpu",
+            "task_model": "yolo11seg_trt",
+            "segmentation_output": segmentation_output,
+        },
+    }
+
+
+PATH_ORDER = ("cpu_pre_cpu_post", "gpu_pre_cpu_post", "gpu_pre_gpu_post")
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 TRITONIC = REPO_ROOT / "build" / "tritonic"
 
@@ -134,13 +146,22 @@ def main():
     parser.add_argument("--warmup", type=int, default=5)
     parser.add_argument("--iterations", type=int, default=30)
     parser.add_argument("--output-dir", default=None)
+    parser.add_argument(
+        "--segmentation-output", default="mask", choices=["mask", "polygon"]
+    )
+    parser.add_argument(
+        "--no-crowded",
+        action="store_true",
+        help="skip the synthetic dense fixture that exercises the detection cap",
+    )
     args = parser.parse_args()
+    paths = build_paths(args.segmentation_output)
 
     if not TRITONIC.exists():
         sys.exit(f"tritonic not found at {TRITONIC}")
 
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    label = f"{timestamp}_yolo11m-seg_mask_rtx3060"
+    label = f"{timestamp}_yolo11m-seg_{args.segmentation_output}_rtx3060"
     if args.output_dir:
         out = Path(args.output_dir)
     else:
@@ -151,13 +172,20 @@ def main():
     print(f"Warmup: {args.warmup}, Iterations: {args.iterations}")
     print()
 
+    fixtures = list(FIXTURES)
+    if not args.no_crowded:
+        # Generated into the results dir so it is reproducible but never committed.
+        fixtures.append(
+            str(make_crowded_fixture("data/images/bus.jpg", out / "crowd.jpg"))
+        )
+
     summary = {"schema_version": 3, "model_family": "yolo11-seg", "fixtures": {}}
-    for fixture in FIXTURES:
+    for fixture in fixtures:
         fixture_name = Path(fixture).stem
         fixture_dir = out / fixture_name
         fixture_dir.mkdir(parents=True, exist_ok=True)
         fixture_summary = {}
-        for path_label, params in PATHS.items():
+        for path_label, params in paths.items():
             output_file = fixture_dir / f"{path_label}.json"
             data = run_benchmark(args, path_label, params, fixture, output_file)
             fixture_summary[path_label] = aggregate(data["samples_ms"])
@@ -172,7 +200,7 @@ def main():
 
 
 def aggregate_global(summary):
-    paths = ("cpu_pre_cpu_post", "gpu_pre_cpu_post", "gpu_pre_gpu_mask_post", "gpu_pre_gpu_post")
+    paths = PATH_ORDER
     stages = ("preprocess", "infer", "postprocess", "total")
     result = {}
     for path in paths:
@@ -193,7 +221,7 @@ def print_overview(agg):
     header = f"{'Path':<30} {'Pre median':>10} {'Infer median':>12} {'Post median':>11} {'Total median':>12}"
     print(header)
     print("-" * len(header))
-    for label in ("cpu_pre_cpu_post", "gpu_pre_cpu_post", "gpu_pre_gpu_mask_post", "gpu_pre_gpu_post"):
+    for label in PATH_ORDER:
         if label not in agg:
             continue
         p = agg[label]
@@ -204,10 +232,9 @@ def print_overview(agg):
             f" {p['postprocess']:>10.2f} ms"
             f" {p['total']:>11.2f} ms"
         )
-    if "cpu_pre_cpu_post" in agg and "gpu_pre_gpu_mask_post" in agg:
-        print(f"\nDALI pre/mask post is {agg['cpu_pre_cpu_post']['total'] / agg['gpu_pre_gpu_mask_post']['total']:.2f}x vs CPU")
     if "cpu_pre_cpu_post" in agg and "gpu_pre_gpu_post" in agg:
-        print(f"DALI pre/polygon post is {agg['cpu_pre_cpu_post']['total'] / agg['gpu_pre_gpu_post']['total']:.2f}x vs CPU")
+        speedup = agg["cpu_pre_cpu_post"]["total"] / agg["gpu_pre_gpu_post"]["total"]
+        print(f"\nDALI GPU pre/post is {speedup:.2f}x vs CPU pre/post")
 
 
 if __name__ == "__main__":

@@ -8,43 +8,19 @@ import json
 import sys
 from pathlib import Path
 
-import cv2
-import numpy as np
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common.agreement import (  # noqa: E402
     compare,
     require_model_family,
     timing_summary_many,
 )
+from common.masks import load_mask, mask_overlap_for  # noqa: E402
 
 PATHS = ("cpu_pre_cpu_post", "gpu_pre_cpu_post", "gpu_pre_gpu_post")
 
 # Result documents written before the family naming was corrected say "yolo26m-seg",
 # where the m is the model size rather than part of the family.
 ACCEPTED_FAMILIES = {"yolo26-seg", "yolo26m-seg"}
-
-
-def load_mask(json_path, detection, frame_shape=None):
-    mask_path = json_path.parent / detection["mask_file"]
-    mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
-    if mask is None:
-        raise ValueError(f"could not read mask artifact: {mask_path}")
-    mask = mask != 0
-    if not np.count_nonzero(mask):
-        raise ValueError(f"empty mask artifact: {mask_path}")
-    x, y, width, height = detection["bbox"]
-    if mask.shape == (height, width):
-        if frame_shape is None:
-            return mask
-        expanded = np.zeros(frame_shape, dtype=bool)
-        if y + height > frame_shape[0] or x + width > frame_shape[1]:
-            raise ValueError(f"bbox-local mask exceeds frame: {mask_path}")
-        expanded[y : y + height, x : x + width] = mask
-        return expanded
-    if frame_shape is not None and mask.shape != frame_shape:
-        raise ValueError(f"full-frame mask shape mismatch: {mask_path}")
-    return mask
 
 
 def compare_masks(
@@ -56,19 +32,12 @@ def compare_masks(
     min_mask_iou,
     max_score_delta,
 ):
-    def mask_overlap(ref, cand):
-        ref_mask = load_mask(reference_path, ref)
-        cand_mask = load_mask(candidate_path, cand, ref_mask.shape)
-        intersection = int(np.count_nonzero(ref_mask & cand_mask))
-        union = int(np.count_nonzero(ref_mask | cand_mask))
-        return intersection / union if union else 0.0
-
     return compare(
         reference_doc,
         candidate_doc,
         min_box_iou,
         max_score_delta,
-        overlap=mask_overlap,
+        overlap=mask_overlap_for(reference_path, candidate_path),
         min_overlap=min_mask_iou,
         overlap_name="mask_iou",
     )
