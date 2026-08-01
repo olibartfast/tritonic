@@ -18,6 +18,26 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common.fixtures import make_crowded_fixture  # noqa: E402
 
+# The ensemble is size-agnostic -- every YOLO11-seg scale shares the same tensor
+# contract -- but a benchmark is meaningless without knowing which engine produced
+# it, so the label comes from the engine that setup_model_repository.sh staged
+# rather than being hardcoded.
+DEFAULT_MANIFEST = (
+    Path(__file__).resolve().parents[2]
+    / "deploy/instance_segmentation/yolo11/ensemble/model_repository/reference_model.yaml"
+)
+
+
+def deployed_engine(manifest):
+    """Return the staged engine's stem, e.g. 'yolo11m-seg', or None if unknown."""
+    try:
+        for line in Path(manifest).read_text().splitlines():
+            if line.startswith("engine_file:"):
+                return Path(line.split(":", 1)[1].strip()).stem
+    except OSError:
+        pass
+    return None
+
 FIXTURES = [
     "data/images/bus.jpg",
     "data/images/horses.jpg",
@@ -150,6 +170,11 @@ def main():
         "--segmentation-output", default="mask", choices=["mask", "polygon"]
     )
     parser.add_argument(
+        "--engine-label",
+        default=None,
+        help="Engine identity recorded in results; defaults to the staged engine",
+    )
+    parser.add_argument(
         "--no-crowded",
         action="store_true",
         help="skip the synthetic dense fixture that exercises the detection cap",
@@ -160,8 +185,14 @@ def main():
     if not TRITONIC.exists():
         sys.exit(f"tritonic not found at {TRITONIC}")
 
+    engine_label = args.engine_label or deployed_engine(DEFAULT_MANIFEST)
+    if engine_label is None:
+        sys.exit(
+            "could not determine which engine is deployed; pass --engine-label "
+            f"(looked for engine_file in {DEFAULT_MANIFEST})"
+        )
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    label = f"{timestamp}_yolo11m-seg_{args.segmentation_output}_rtx3060"
+    label = f"{timestamp}_{engine_label}_{args.segmentation_output}_rtx3060"
     if args.output_dir:
         out = Path(args.output_dir)
     else:
@@ -179,7 +210,12 @@ def main():
             str(make_crowded_fixture("data/images/bus.jpg", out / "crowd.jpg"))
         )
 
-    summary = {"schema_version": 3, "model_family": "yolo11-seg", "fixtures": {}}
+    summary = {
+        "schema_version": 3,
+        "model_family": "yolo11-seg",
+        "engine": engine_label,
+        "fixtures": {},
+    }
     for fixture in fixtures:
         fixture_name = Path(fixture).stem
         fixture_dir = out / fixture_name

@@ -1,4 +1,4 @@
-# YOLO11m-seg DALI/TensorRT ensemble
+# YOLO11-seg DALI/TensorRT ensemble
 
 Same architecture and tensor contracts as the
 [YOLO26-seg ensemble](../../yolo26/ensemble/README.md) — DALI GPU preprocessing,
@@ -8,6 +8,10 @@ raw `[116, 8400]` anchor grid in spatial order, so the plugin must rank candidat
 by score and run NMS, whereas YOLO26's end-to-end head emits 300 pre-sorted rows.
 
 ## Export and deploy
+
+Any scale works — n/s/m/l/x share the same tensor contract, since `[116, 8400]`
+and `[32, 160, 160]` depend on image size and class count, not on the scale
+variant. Substitute the size letter throughout; `m` is used here as an example.
 
 ```bash
 # 1. Export ONNX from Ultralytics

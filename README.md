@@ -428,7 +428,7 @@ decoded frame in memory for DALI preprocessing and writes the rendered result to
 Deployment instructions and both tensor ABIs are documented in the
 [YOLO26 segmentation ensemble guide](deploy/instance_segmentation/yolo26/ensemble/README.md).
 The reproducible CPU/GPU benchmark and semantic parity gate are in the
-[YOLO26m-seg benchmark](benchmarks/yolo26-seg/README.md).
+[YOLO26-seg benchmark](benchmarks/yolo26-seg/README.md).
 
 ### Running with the Docker scripts
 

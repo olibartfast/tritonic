@@ -1,10 +1,10 @@
-# YOLO26m-seg DALI/TensorRT ensemble
+# YOLO26-seg DALI/TensorRT ensemble
 
-Prepare the repository from a TensorRT 10.14.1 FP16 `yolo26m-seg` engine:
+Prepare the repository from a TensorRT 10.14.1 FP16 YOLO26-seg engine (any scale: n/s/m/l/x):
 
 ```bash
 deploy/instance_segmentation/yolo26/ensemble/setup_model_repository.sh \
-  --engine /path/to/yolo26m-seg.engine
+  --engine /path/to/yolo26m-seg.engine   # or n/s/l/x
 ```
 
 The setup builds the custom DALI CUDA postprocess operators against the DALI

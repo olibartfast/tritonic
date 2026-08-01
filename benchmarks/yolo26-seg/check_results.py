@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Tritonic YOLO26m-seg polygon semantics and summarize timings."""
+"""Validate Tritonic YOLO26-seg polygon semantics and summarize timings."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def main():
     parser.add_argument("results_dir", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    report = {"schema_version": 2, "model_family": "yolo26m-seg", "fixtures": {}}
+    report = {"schema_version": 2, "model_family": "yolo26-seg", "fixtures": {}}
     all_documents = {name: [] for name in PATHS}
     fixture_dirs = []
     for candidate in sorted(
