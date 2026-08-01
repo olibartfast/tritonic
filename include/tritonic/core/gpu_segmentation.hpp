@@ -298,4 +298,76 @@ inline std::vector<neuriplo_tasks::Result> DecodeGpuSegmentationResults(
     return results;
 }
 
+inline std::vector<neuriplo_tasks::Result> DecodeGpuDetectionResults(
+    const std::vector<Tensor>& tensors, const std::vector<std::string>& names) {
+    if (tensors.size() != names.size())
+        throw std::runtime_error("Invalid GPU detection result envelope");
+    std::unordered_map<std::string, const Tensor*> map;
+    for (size_t i = 0; i < tensors.size(); ++i)
+        map.emplace(names[i], &tensors[i]);
+    const auto get = [&map](const char* name) -> const Tensor& {
+        const auto found = map.find(name);
+        if (found == map.end())
+            throw std::runtime_error(std::string("Missing GPU result: ") + name);
+        return *found->second;
+    };
+
+    const auto& count_data = get("NUM_DETECTIONS").data;
+    const auto& boxes = get("BOXES").data;
+    const auto& scores = get("SCORES").data;
+    const auto& classes = get("CLASSES").data;
+    if (count_data.empty())
+        throw std::runtime_error("NUM_DETECTIONS is empty");
+    const int count = RequireInt32(count_data[0], "NUM_DETECTIONS");
+    if (count < 0 || count > 100 || boxes.size() < 400 || scores.size() < 100 ||
+        classes.size() < 100)
+        throw std::runtime_error("GPU detection output is invalid or truncated");
+
+    std::vector<neuriplo_tasks::Result> results;
+    results.reserve(static_cast<size_t>(count));
+    for (size_t i = 0; i < static_cast<size_t>(count); ++i) {
+        const int x = RequireInt32(boxes[i * 4], "BOXES");
+        const int y = RequireInt32(boxes[i * 4 + 1], "BOXES");
+        const int width = RequireInt32(boxes[i * 4 + 2], "BOXES");
+        const int height = RequireInt32(boxes[i * 4 + 3], "BOXES");
+        const float score = RequireFloat(scores[i], "SCORES");
+        const int class_id = RequireInt32(classes[i], "CLASSES");
+        if (!std::isfinite(score) || score < 0.0F || score > 1.0F || class_id < 0 || x < 0 ||
+            y < 0 || width <= 0 || height <= 0)
+            throw std::runtime_error("GPU detection emitted invalid geometry");
+
+        neuriplo_tasks::Detection result;
+        result.class_id = static_cast<float>(class_id);
+        result.class_confidence = score;
+        result.bbox = {x, y, width, height};
+        results.emplace_back(std::move(result));
+    }
+    return results;
+}
+
+inline void ValidateGpuDetectionModel(const tritonic::triton::ModelInfo& model) {
+    if (model.input_names != std::vector<std::string>{"IMAGE"} ||
+        model.input_datatypes != std::vector<std::string>{"UINT8"} || model.max_batch_size_ != 1) {
+        throw std::runtime_error(
+            "GPU-detection model must expose one UINT8 IMAGE input with max batch 1");
+    }
+    const std::vector<std::string> expected_names = {"NUM_DETECTIONS", "BOXES", "SCORES",
+                                                     "CLASSES"};
+    const std::vector<std::string> expected_types = {"INT32", "INT32", "FP32", "INT32"};
+    const std::vector<std::vector<int64_t>> expected_suffixes = {{1}, {100, 4}, {100}, {100}};
+    if (model.output_names.size() < 4)
+        throw std::runtime_error("GPU-detection model has an incomplete output contract");
+    for (size_t i = 0; i < 4; ++i) {
+        if (i >= model.output_names.size() || i >= model.output_datatypes.size() ||
+            i >= model.output_shapes.size() || model.output_names[i] != expected_names[i] ||
+            model.output_datatypes[i] != expected_types[i] ||
+            model.output_shapes[i].size() < expected_suffixes[i].size() ||
+            !std::equal(expected_suffixes[i].rbegin(), expected_suffixes[i].rend(),
+                        model.output_shapes[i].rbegin())) {
+            throw std::runtime_error(std::string("GPU-detection output mismatch: ") +
+                                     expected_names[i]);
+        }
+    }
+}
+
 }  // namespace tritonic::core
