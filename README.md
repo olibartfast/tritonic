@@ -387,7 +387,7 @@ GPU polygon output:
 
 The same polygon ensemble accepts video sources. Tritonic JPEG-encodes each
 decoded frame in memory for DALI preprocessing and writes the rendered result to
-`<video-directory>/output/processed.avi`:
+`<video-directory>/output/processed_<model-name>.avi`:
 
 ```bash
 ./build/tritonic \
