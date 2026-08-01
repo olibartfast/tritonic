@@ -281,19 +281,19 @@ protected:
     copy_h2d(2, final_scores.data(), final_scores.size() * sizeof(float));
     copy_h2d(3, final_classes.data(), final_classes.size() * sizeof(int32_t));
 
+    // MASK_OFFSETS is a fixed-size [kMaxDetections + 1] output even when nothing was
+    // detected: the client reads all of it to find each mask's extent, and rejects the
+    // whole frame if it is short. Only MASK_DATA varies, and it still needs one byte to
+    // stay a valid tensor.
+    ResizeOutput<int64_t>(workspace, 4, {kMaxDetections + 1});
+    ResizeOutput<uint8_t>(workspace, 5, {std::max<int64_t>(1, total_pixels)});
+    copy_h2d(4, mask_offsets.data(), mask_offsets.size() * sizeof(int64_t));
+
     if (count == 0) {
-      ResizeOutput<int64_t>(workspace, 4, {1});
-      ResizeOutput<uint8_t>(workspace, 5, {1});
-      const int64_t zero = 0;
       const uint8_t zero_byte = 0;
-      copy_h2d(4, &zero, sizeof(zero));
       copy_h2d(5, &zero_byte, sizeof(zero_byte));
       return;
     }
-
-    ResizeOutput<int64_t>(workspace, 4, {kMaxDetections + 1});
-    ResizeOutput<uint8_t>(workspace, 5, {total_pixels});
-    copy_h2d(4, mask_offsets.data(), mask_offsets.size() * sizeof(int64_t));
 
     const auto* detections_device = static_cast<const float*>(detections_input.raw_tensor(0));
     const auto* prototypes_device = static_cast<const float*>(prototypes_input.raw_tensor(0));
