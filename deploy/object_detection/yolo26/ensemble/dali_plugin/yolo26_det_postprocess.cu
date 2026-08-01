@@ -10,7 +10,6 @@
 namespace tritonic::dali_plugin {
 namespace {
 constexpr int kMaxDetections = 100;
-constexpr int kDetectionRows = 300;
 constexpr float kInputSize = 640.0F;
 
 template <typename T>
@@ -25,7 +24,8 @@ class Yolo26DetPostprocess final : public ::dali::Operator<::dali::GPUBackend> {
 public:
     explicit Yolo26DetPostprocess(const ::dali::OpSpec& spec)
         : ::dali::Operator<::dali::GPUBackend>(spec),
-          confidence_(spec.GetArgument<float>("confidence_threshold")) {}
+          confidence_(spec.GetArgument<float>("confidence_threshold")),
+          normalized_boxes_(spec.GetArgument<bool>("normalized_boxes")) {}
 
 protected:
     bool SetupImpl(std::vector<::dali::OutputDesc>& output_desc,
@@ -40,8 +40,17 @@ protected:
         const auto stream = workspace.stream();
 
         const auto detections_shape = detections_input.tensor_shape(0);
+        DALI_ENFORCE(detections_shape.size() == 2,
+                     "Detection tensor must be 2-D [rows, width]");
+        const int detection_rows = static_cast<int>(detections_shape[0]);
         const int detection_width = static_cast<int>(detections_shape[1]);
-        std::vector<float> detections(kDetectionRows * detection_width);
+        // Both dimensions drive the copy below, so neither may be assumed: sizing the
+        // buffer from a constant while reading the width from the shape lets a shorter
+        // engine output read past the end of the device allocation.
+        DALI_ENFORCE(detection_rows > 0, "Detection tensor has no rows");
+        DALI_ENFORCE(detection_width >= 6,
+                     "Detection row must hold at least x1,y1,x2,y2,score,class");
+        std::vector<float> detections(static_cast<size_t>(detection_rows) * detection_width);
         int64_t original_size[2]{};
         CUDA_CALL(cudaMemcpyAsync(detections.data(), detections_input.raw_tensor(0),
                                   detections.size() * sizeof(float), cudaMemcpyDeviceToHost,
@@ -74,14 +83,12 @@ protected:
         // this loop to a raw anchor-grid head (YOLO11), where rows are in spatial
         // order and this silently drops the strongest detections.
         for (int row_index = 0;
-             row_index < kDetectionRows && static_cast<int>(selected.size()) < kMaxDetections;
+             row_index < detection_rows && static_cast<int>(selected.size()) < kMaxDetections;
              ++row_index) {
             const float* row = detections.data() + row_index * detection_width;
             if (!std::isfinite(row[4]) || row[4] < confidence_)
                 continue;
-            // Detection engine outputs normalized [0,1]; seg engine outputs pixel [0,640].
-            const bool normalized = (detection_width <= 6);
-            const float denorm = normalized ? kInputSize : 1.0F;
+            const float denorm = normalized_boxes_ ? kInputSize : 1.0F;
             const float x1 =
                 std::clamp((row[0] * denorm - pad_width) / gain, 0.0F, static_cast<float>(width));
             const float y1 =
@@ -132,6 +139,10 @@ protected:
 
 private:
     float confidence_;
+    // Whether the engine emits boxes in [0,1] rather than [0,640]. Previously inferred
+    // from the column count, which silently scaled boxes by 640x for any engine whose
+    // width did not match the assumption.
+    bool normalized_boxes_;
 };
 }  // namespace tritonic::dali_plugin
 
@@ -141,4 +152,7 @@ DALI_SCHEMA(Yolo26DetPostprocess)
     .DocStr("YOLO26 detection bbox postprocessing")
     .NumInput(2)
     .NumOutput(4)
-    .AddOptionalArg("confidence_threshold", "Detection confidence threshold", 0.5F);
+    .AddOptionalArg("confidence_threshold", "Detection confidence threshold", 0.5F)
+    .AddOptionalArg("normalized_boxes",
+                    "Engine emits boxes in [0,1] rather than input-pixel coordinates",
+                    true);
