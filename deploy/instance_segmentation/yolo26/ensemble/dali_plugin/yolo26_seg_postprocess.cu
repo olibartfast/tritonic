@@ -399,6 +399,11 @@ protected:
         std::vector<int32_t> classes(kMaxDetections, 0);
         std::vector<int64_t> mask_offsets(kMaxDetections + 1, 0);
         selected.reserve(kMaxDetections);
+        // Safe to stop at kMaxDetections mid-scan *only* because the YOLO26
+        // end-to-end head emits its rows already sorted by descending score, so the
+        // first kMaxDetections survivors are the highest-scoring ones. Do not copy
+        // this loop to a raw anchor-grid head (YOLO11), where rows are in spatial
+        // order and this silently drops the strongest detections.
         for (int row_index = 0;
              row_index < kDetectionRows && static_cast<int>(selected.size()) < kMaxDetections;
              ++row_index) {

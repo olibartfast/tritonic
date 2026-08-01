@@ -11,7 +11,9 @@ namespace tritonic::dali_plugin {
 namespace {
 
 constexpr int kMaxDetections = 100;
-constexpr int kMaxAnchors = 8400;
+// Upper bound on the NMS input, purely to bound its O(n^2) cost; the real output
+// limit is kMaxDetections, applied to the survivors.
+constexpr int kMaxNmsCandidates = 4096;
 constexpr int kPrototypeChannels = 32;
 constexpr int kPrototypeWidth = 160;
 constexpr int kPrototypeHeight = 160;
@@ -27,9 +29,12 @@ __device__ float SigmoidDot(const float* coefficients, const float* prototypes, 
   return 1.0F / (1.0F + expf(-sum));
 }
 
-__global__ void BuildMasks(const float* detections, int num_channels, const float* prototypes,
-                           const int32_t* selected, const int64_t* offsets, const int32_t* boxes,
-                           uint8_t* masks, int count, float threshold, int64_t total_pixels) {
+// `num_anchors` is the stride between channels of the head, and must come from the
+// tensor shape: it is 8400 only for a 640x640 engine.
+__global__ void BuildMasks(const float* detections, int num_channels, int num_anchors,
+                           const float* prototypes, const int32_t* selected,
+                           const int64_t* offsets, const int32_t* boxes, uint8_t* masks,
+                           int count, float threshold, int64_t total_pixels) {
   const int64_t output_index = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (output_index >= total_pixels) return;
 
@@ -43,9 +48,9 @@ __global__ void BuildMasks(const float* detections, int num_channels, const floa
   const int anchor_idx = selected[detection];
 
   const float cx = detections[anchor_idx];
-  const float cy = detections[kMaxAnchors + anchor_idx];
-  const float dw = detections[2 * kMaxAnchors + anchor_idx];
-  const float dh = detections[3 * kMaxAnchors + anchor_idx];
+  const float cy = detections[num_anchors + anchor_idx];
+  const float dw = detections[2 * num_anchors + anchor_idx];
+  const float dh = detections[3 * num_anchors + anchor_idx];
   const float raw_x1 = (cx - dw * 0.5F);
   const float raw_y1 = (cy - dh * 0.5F);
   const float raw_x2 = (cx + dw * 0.5F);
@@ -69,7 +74,7 @@ __global__ void BuildMasks(const float* detections, int num_channels, const floa
 
   float coeffs_local[kPrototypeChannels];
   for (int c = 0; c < kPrototypeChannels; ++c) {
-    coeffs_local[c] = detections[(num_channels - kPrototypeChannels + c) * kMaxAnchors + anchor_idx];
+    coeffs_local[c] = detections[(num_channels - kPrototypeChannels + c) * num_anchors + anchor_idx];
   }
   const double top = SigmoidDot(coeffs_local, prototypes, y0, x0) * (1.0 - wx) +
                      SigmoidDot(coeffs_local, prototypes, y0, x1) * wx;
@@ -360,6 +365,7 @@ public:
   explicit Yolo11SegPostprocess(const ::dali::OpSpec& spec)
       : ::dali::Operator<::dali::GPUBackend>(spec),
         confidence_(spec.GetArgument<float>("confidence_threshold")),
+        nms_threshold_(spec.GetArgument<float>("nms_threshold")),
         mask_threshold_(spec.GetArgument<float>("mask_threshold")) {}
 
 protected:
@@ -378,8 +384,10 @@ protected:
     const auto& det_shape = detections_input.tensor_shape(0);
     const int num_channels = det_shape[0];
     const int num_anchors = det_shape[1];
-    DALI_ENFORCE(num_channels >= 4 + kPrototypeChannels,
+    DALI_ENFORCE(det_shape.size() == 2, "Detection tensor must be 2-D [channels, anchors]");
+    DALI_ENFORCE(num_channels > 4 + kPrototypeChannels,
                  "Detection channels too small for 4 bbox + N classes + 32 mask coeffs");
+    DALI_ENFORCE(num_anchors > 0, "Detection tensor has no anchors");
     const int num_classes = num_channels - 4 - kPrototypeChannels;
 
     std::vector<float> detections(static_cast<size_t>(num_channels) * num_anchors);
@@ -397,27 +405,34 @@ protected:
     const float pad_width = (kInputSize - gain * width) / 2.0F;
     const float pad_height = (kInputSize - gain * height) / 2.0F;
 
-    std::vector<int32_t> filtered_indices;
-    std::vector<int32_t> boxes(kMaxDetections * 4, 0);
-    std::vector<float> scores(kMaxDetections, 0.0F);
-    std::vector<int32_t> classes(kMaxDetections, 0);
-    filtered_indices.reserve(kMaxDetections);
+    // YOLO11 emits anchors in spatial raster order, not score order, so every
+    // above-threshold candidate has to be collected and ranked before the list is cut
+    // to kMaxDetections. Truncating during the scan keeps whichever candidates happen
+    // to sit early in the grid and silently drops higher-scoring ones further down.
+    struct Candidate {
+      int32_t anchor;
+      float score;
+      int32_t class_id;
+      int32_t box[4];
+    };
+    std::vector<Candidate> candidates;
+    candidates.reserve(kMaxDetections);
 
-    for (int anchor = 0;
-         anchor < num_anchors && static_cast<int>(filtered_indices.size()) < kMaxDetections;
-         ++anchor) {
+    for (int anchor = 0; anchor < num_anchors; ++anchor) {
       const float cx = detections[anchor];
-      const float cy = detections[kMaxAnchors + anchor];
-      const float w = detections[2 * kMaxAnchors + anchor];
-      const float h = detections[3 * kMaxAnchors + anchor];
+      const float cy = detections[num_anchors + anchor];
+      const float w = detections[2 * num_anchors + anchor];
+      const float h = detections[3 * num_anchors + anchor];
 
       float max_score = -INFINITY;
       int best_class = 0;
       for (int c = 0; c < num_classes; ++c) {
-        const float score = detections[(4 + c) * kMaxAnchors + anchor];
+        const float score = detections[(4 + c) * num_anchors + anchor];
         if (score > max_score) { max_score = score; best_class = c; }
       }
-      if (max_score < confidence_) continue;
+      if (!std::isfinite(max_score) || max_score < confidence_) continue;
+      if (!std::isfinite(cx) || !std::isfinite(cy) || !std::isfinite(w) || !std::isfinite(h))
+        continue;
 
       const float x1 = std::clamp((cx - w * 0.5F - pad_width) / gain, 0.0F, static_cast<float>(width));
       const float y1 = std::clamp((cy - h * 0.5F - pad_height) / gain, 0.0F, static_cast<float>(height));
@@ -428,18 +443,38 @@ protected:
       const int box_width = std::max(1, std::min(static_cast<int>(x2 - x1), width - x));
       const int box_height = std::max(1, std::min(static_cast<int>(y2 - y1), height - y));
 
-      const int index = static_cast<int>(filtered_indices.size());
-      filtered_indices.push_back(anchor);
-      boxes[index * 4] = x;
-      boxes[index * 4 + 1] = y;
-      boxes[index * 4 + 2] = box_width;
-      boxes[index * 4 + 3] = box_height;
-      scores[index] = max_score;
-      classes[index] = best_class;
+      candidates.push_back({anchor, max_score, best_class, {x, y, box_width, box_height}});
+    }
+
+    // Rank by score, then bound the NMS input. kMaxDetections is a limit on the
+    // *output*: capping candidates here instead would fill the list with duplicate
+    // boxes on the strongest objects and evict weaker but distinct ones that NMS
+    // would have kept.
+    std::sort(candidates.begin(), candidates.end(),
+              [](const Candidate& a, const Candidate& b) { return a.score > b.score; });
+    if (static_cast<int>(candidates.size()) > kMaxNmsCandidates)
+      candidates.resize(kMaxNmsCandidates);
+
+    std::vector<int32_t> filtered_indices;
+    std::vector<int32_t> boxes(candidates.size() * 4, 0);
+    std::vector<float> scores(candidates.size(), 0.0F);
+    std::vector<int32_t> classes(candidates.size(), 0);
+    filtered_indices.reserve(candidates.size());
+    for (size_t index = 0; index < candidates.size(); ++index) {
+      const auto& candidate = candidates[index];
+      filtered_indices.push_back(candidate.anchor);
+      boxes[index * 4] = candidate.box[0];
+      boxes[index * 4 + 1] = candidate.box[1];
+      boxes[index * 4 + 2] = candidate.box[2];
+      boxes[index * 4 + 3] = candidate.box[3];
+      scores[index] = candidate.score;
+      classes[index] = candidate.class_id;
     }
 
     const int raw_count = static_cast<int>(filtered_indices.size());
-    const auto kept = ApplyNms(boxes, classes, scores, raw_count, 0.45F);
+    auto kept = ApplyNms(boxes, classes, scores, raw_count, nms_threshold_);
+    // ApplyNms returns survivors in descending score order, so this keeps the best.
+    if (static_cast<int>(kept.size()) > kMaxDetections) kept.resize(kMaxDetections);
     const int32_t count = static_cast<int32_t>(kept.size());
 
     std::vector<int32_t> selected(count, 0);
@@ -532,7 +567,8 @@ protected:
 
     constexpr int threads = 256;
     const int blocks = static_cast<int>((total_pixels + threads - 1) / threads);
-    BuildMasks<<<blocks, threads, 0, stream>>>(detections_device, num_channels, prototypes_device,
+    BuildMasks<<<blocks, threads, 0, stream>>>(detections_device, num_channels, num_anchors,
+                                                prototypes_device,
                                                 selected_device, mask_offsets_device, boxes_device,
                                                 mask_scratch, count, mask_threshold_, total_pixels);
     CUDA_CALL(cudaGetLastError());
@@ -622,6 +658,7 @@ protected:
 
 private:
   float confidence_;
+  float nms_threshold_;
   float mask_threshold_;
 };
 
@@ -634,4 +671,5 @@ DALI_SCHEMA(Yolo11SegPostprocess)
     .NumInput(3)
     .NumOutput(7)
     .AddOptionalArg("confidence_threshold", "Detection confidence threshold", 0.5F)
+    .AddOptionalArg("nms_threshold", "NMS IoU threshold", 0.4F)
     .AddOptionalArg("mask_threshold", "Binary mask threshold", 0.5F);
