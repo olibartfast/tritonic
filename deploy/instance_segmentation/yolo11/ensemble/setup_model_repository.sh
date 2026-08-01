@@ -29,14 +29,24 @@ case "${repository}/" in
   *) echo "--repository must be inside ${repo_root}" >&2; exit 2 ;;
 esac
 relative_repository="${repository#"${repo_root}/"}"
-mkdir -p \
-  "${repository}/yolo11seg_trt/1" \
-  "${repository}/yolo11seg_dali_preprocess/1" \
-  "${repository}/yolo11seg_dali_postprocess/1" \
-  "${repository}/yolo11seg_dali_mask_postprocess/1" \
-  "${repository}/yolo11seg_gpu_pre_cpu_post/1" \
-  "${repository}/yolo11seg_gpu_pre_gpu_post/1" \
-  "${repository}/yolo11seg_gpu_pre_gpu_mask_post/1"
+models=(
+  yolo11seg_trt
+  yolo11seg_dali_preprocess
+  yolo11seg_dali_postprocess
+  yolo11seg_dali_mask_postprocess
+  yolo11seg_gpu_pre_cpu_post
+  yolo11seg_gpu_pre_gpu_post
+  yolo11seg_gpu_pre_gpu_mask_post
+)
+source_repository="${script_dir}/model_repository"
+for model in "${models[@]}"; do
+  mkdir -p "${repository}/${model}/1"
+  # config.pbtxt is source, not a generated artifact: copy it so --repository
+  # pointing at a fresh path produces a repository Triton can actually load.
+  if [[ "${repository}" != "${source_repository}" ]]; then
+    cp "${source_repository}/${model}/config.pbtxt" "${repository}/${model}/config.pbtxt"
+  fi
+done
 cp "${engine}" "${repository}/yolo11seg_trt/1/model.plan"
 "${script_dir}/dali_plugin/build_plugin.sh"
 cp "${script_dir}/dali_plugin/build/libyolo11_seg_dali.so" \
