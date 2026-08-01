@@ -2,7 +2,7 @@
 
 YOLO26 object detection with server-side DALI GPU preprocessing and CUDA-accelerated
 bbox decoding.  For segmentation, see
-[YOLO26 instance seg](../../../instance_segmentation/yolo26/README.md).
+[YOLO26 instance seg](../../instance_segmentation/yolo26/README.md).
 
 For model export, see [neuriplo-tasks export documentation](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/README.md).
 

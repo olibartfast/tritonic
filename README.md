@@ -17,20 +17,32 @@ The two backends are complementary: use Triton for real-time computer vision at 
 - [Project Structure](#project-structure)
 - [Architecture](#architecture)
 - [Tested Models](#tested-models)
+  - [Object Detection](#object-detection) · [Instance Segmentation](#instance-segmentation) · [Classification](#classification)
+  - [Optical Flow](#optical-flow) · [Open Vocabulary Detection](#open-vocabulary-detection) · [Pose Estimation](#pose-estimation)
+  - [Video Classification](#video-classification) · [Depth Estimation](#depth-estimation) · [Image Understanding (VLM)](#image-understanding-vlm)
 - [Build Client Libraries](#build-client-libraries)
 - [Dependencies](#dependencies)
-- [Build and Compile](#build-and-compile)
+- [Development Setup](#development-setup)
+  - [Pre-commit Hooks](#pre-commit-hooks-recommended)
+  - [Build and Compile](#build-and-compile)
 - [Tasks](#tasks)
 - [Notes](#notes)
 - [Deploying Models](#deploying-models)
+  - [Model Repository Structure](#model-repository-structure)
+  - [Starting Triton Server](#starting-triton-server)
 - [Running Inference](#running-inference)
-  - [Triton backend](#command-line-inference-on-video-or-image)
+  - [Command-line inference](#command-line-inference-on-video-or-image)
+  - [Shared Memory Support](#shared-memory-support)
+  - [Ensemble models](#ensemble-models)
+  - [Docker scripts](#running-with-the-docker-scripts)
   - [Chat backend](#chat-backend-openai-compatible)
 - [Docker Support](#docker-support)
 - [Kubernetes Deployment](#kubernetes-deployment)
 - [Demo](#demo)
 - [References](#references)
 - [Feedback](#feedback)
+
+**Full documentation index: [docs/README.md](docs/README.md)**
 
 ## Project Structure
 
@@ -84,7 +96,7 @@ and its [atomic implementation roadmap](docs/ENSEMBLE_INFERENCE_ROADMAP.md).
 
 ## Tested Models
 
-## Object Detection
+### Object Detection
 
 - [YOLOv5](https://github.com/ultralytics/yolov5)
 - [YOLOv6](https://github.com/meituan/YOLOv6)
@@ -102,7 +114,7 @@ and its [atomic implementation roadmap](docs/ENSEMBLE_INFERENCE_ROADMAP.md).
 - [DEIMv2](https://github.com/Intellindust-AI-Lab/DEIMv2)
 - [RF-DETR](https://github.com/roboflow/rf-detr)
 
-## Instance Segmentation
+### Instance Segmentation
 
 - [YOLOv5](https://github.com/ultralytics/yolov5)
 - [YOLOv8/YOLO11/YOLO26](https://github.com/ultralytics/ultralytics)
@@ -110,23 +122,23 @@ and its [atomic implementation roadmap](docs/ENSEMBLE_INFERENCE_ROADMAP.md).
 - [YOLOv12](https://github.com/sunsmarterjie/yolov12)
 - [RF-DETR-Seg](https://github.com/roboflow/rf-detr)
 
-## Classification
+### Classification
 
 - [Torchvision Models](https://pytorch.org/vision/stable/models.html)
 - [TensorFlow-Keras Models](https://www.tensorflow.org/api_docs/python/tf/keras/applications)
 - [Hugging Face Vision Transformers (ViT)](https://huggingface.co/docs/transformers/model_doc/vit)
 
-## Optical Flow
+### Optical Flow
 
 - [RAFT](https://pytorch.org/vision/stable/models/raft.html)
 
-## Open Vocabulary Detection
+### Open Vocabulary Detection
 
 - [OWLv2](https://huggingface.co/google/owlv2-base-patch16-ensemble)
 - [OWL-ViT](https://huggingface.co/google/owlvit-base-patch32)
 - [Grounding DINO](https://github.com/IDEA-Research/GroundingDINO)
 
-## Pose Estimation
+### Pose Estimation
 
 - [YOLOv5 Pose](https://github.com/ultralytics/yolov5)
 - [YOLOv8/YOLO11/YOLO26 Pose](https://github.com/ultralytics/ultralytics)
@@ -135,17 +147,17 @@ and its [atomic implementation roadmap](docs/ENSEMBLE_INFERENCE_ROADMAP.md).
 - [YOLOv5 Pose](https://github.com/ultralytics/yolov5)
 - [YOLOv8/YOLO11/YOLO26 Pose](https://github.com/ultralytics/ultralytics)
 
-## Video Classification
+### Video Classification
 
 - [VideoMAE](https://github.com/MCG-NJU/VideoMAE)
 - [ViViT](https://github.com/google-research/scenic/tree/main/scenic/projects/vivit)
 - [TimeSformer](https://github.com/facebookresearch/TimeSformer)
 
-## Depth Estimation
+### Depth Estimation
 
 - [Depth Anything V2](https://github.com/ibaiGorordo/Depth-Anything-V2)
 
-## Image Understanding (VLM)
+### Image Understanding (VLM)
 
 - [Gemma 4](https://ai.google.dev/gemma/docs) and compatible vision-language models via llama.cpp (image captioning, visual Q&A)
 - LLaVA, LLaMA3-V, and other multimodal models via OpenAI-compatible endpoints
@@ -418,153 +430,25 @@ Deployment instructions and both tensor ABIs are documented in the
 The reproducible CPU/GPU benchmark and semantic parity gate are in the
 [YOLO26m-seg benchmark](benchmarks/yolo26-seg/README.md).
 
-### Quick Start with Docker Scripts
+### Running with the Docker scripts
 
-Use the provided Docker scripts for quick testing:
-
-```bash
-# Run object detection
-./docker/scripts/run_client.sh
-
-# Run with debug mode
-./docker/scripts/run_debug.sh
-
-# Run optical flow
-./docker/scripts/run_optical_flow.sh
-
-# Run unit tests
-./docker/scripts/run_tests.sh
-```
-
-#### Debugging Tips
-Check [`.vscode/launch.json`](.vscode/launch.json) for additional configuration examples
-
-#### Placeholder Descriptions
-- **`/path/to/source.format`**: Path to the input video or image file, for optical flow you must pass two images as comma separated list
-- **`<model_type>`**: Model type (e.g., `yolov5`, `yolov8`, `yolo11`, `yoloseg`, `torchvision-classifier`, `tensorflow-classifier`, `vit-classifier`, check below [Model Type Parameters](#model-type-tag-parameters))
-- **`<model_name_folder_on_triton>`**: Name of the model folder on the Triton server
-- **`/path/to/labels/coco.names`**: Path to the label file (e.g., COCO labels)
-- **`<http or grpc>`**: Communication protocol (`http` or `grpc`)
-- **`<triton-ip>`**: IP address of your Triton server
-- **`<8000 for http, 8001 for grpc>`**: Port number
-- **`<batch or b >`**: Batch size. For compatible independent-image models (classification, detection, segmentation, pose, depth, open-vocab) with `max_batch_size > 1` in the model config, automatic batching groups up to this many images into a single inference call, capped by the model `max_batch_size`.
-- **`<inference_timeout or it>`**: Inference timeout in milliseconds. `0` keeps the backend default; positive values apply to chat HTTP requests, Triton infer requests, and model-load readiness waits.
-- **`<input_sizes or -is>`**: Input sizes input for dynamic axes. Semi-colon separated list format: CHW;CHW;... (e.g., '3,224,224' for single input or '3,224,224;3,224,224' for two inputs, '3,640,640;2' for rtdetr/dfine models)
-
-
-To view all available parameters, run:
-```bash
-./tritonic --help
-```
-
-#### Model Type Tag Parameters
-| Model                  | Model Type Parameter   | Notes |
-|------------------------|------------------------|-------|
-| YOLOv5 / v6 / v7 / v8 / v9 / v11 / v12 | `yolo` | Any `yolo*` variant works. Standard format |
-| YOLOv7 End-to-End      | `yolov7e2e`            | Only for YOLOv7 exported with `--grid --end2end` flags (requires TensorRT backend) |
-| YOLOv10                | `yolov10`              | Specific output format |
-| YOLO26                | `yolo26`              | Specific output format (i.e. is the same of yolov10) |
-| YOLO-NAS               | `yolonas`              | Specific output format |
-| RT-DETR / RT-DETRv2 / RT-DETRv4 / D-FINE / DEIM / DEIMv2 | `rtdetr` | All RT-DETR style models share the same postprocessor |
-| RT-DETR Ultralytics    | `rtdetrul`             |       |
-| RF-DETR Detection | `rfdetr`  |       |
-| YOLOv5/v8/v11/v12 Segmentation | `yoloseg`       |       |
-| YOLO26 Segmentation | `yolo26seg`       |       |
-| YOLOv10 Segmentation | `yolov10seg`       |    
-| RF-DETR Segmentation | `rfdetrseg`  |       |
-| Torchvision Classifier | `torchvision-classifier` |     |
-| Tensorflow Classifier  | `tensorflow-classifier` |      |
-| ViT Classifier         | `vit-classifier`       |       |
-| RAFT Optical Flow      | `raft`                 |       |
-| VideoMAE               | `videomae`             | 16-frame sliding window video |
-| ViViT                  | `vivit`                | Video Transformer |
-| TimeSformer            | `timesformer`          | Video Transformer |
-| ViTPose                | `vitpose`              | Pose estimation (COCO 17 keypoints) |
-| Depth Anything V2      | `depth_anything_v2`    | Monocular depth estimation |
-| OWLv2                  | `owlv2`                | Open-vocabulary detection |
-| OWL-ViT                | `owlvit`               | Open-vocabulary detection |
-| Grounding DINO         | `grounding_dino`       | Open-vocabulary detection |
-| RF-DETR Keypoints      | `rfdetr_keypoints`     | Single-stage person keypoints (17 COCO) |
-| YOLOv5 Pose            | `yolov5pose`           | Pose estimation |
-| YOLOv8 Pose            | `yolov8pose`           | Pose estimation |
-| YOLO11 Pose            | `yolo11pose`           | Pose estimation |
-| YOLO26 Pose            | `yolo26pose`           | Pose estimation |
+Wrapper scripts run TritonIC in a container without a local build. The full
+placeholder and model-type-tag reference is in
+[Running Inference with the Docker Scripts](docs/Docker_Scripts.md).
 
 ### Chat Backend (OpenAI-compatible)
 
-Skip Triton entirely and query any OpenAI-compatible server. Works with Ollama, llama.cpp, SGLang, vLLM, OpenAI, Together AI, OpenRouter, and Z.AI.
+Skip Triton entirely and query any OpenAI-compatible server — Ollama, llama.cpp,
+SGLang, vLLM, OpenAI, Together AI, OpenRouter, Z.AI:
 
-**Single-turn with an image:**
 ```bash
-./tritonic \
-    --backend=chat \
-    --api_endpoint=http://localhost:11434/v1/chat/completions \
-    --model=llava:7b \
-    --text_prompt="Describe what you see" \
-    --source=/path/to/image.jpg
+./build/tritonic --backend=chat --chat_url=http://localhost:11434/v1/chat/completions \
+  --model=gemma3:4b --prompt="Describe this image" --source=data/images/bus.jpg
 ```
 
-**Interactive multi-turn session:**
-```bash
-./tritonic \
-    --backend=chat \
-    --api_endpoint=http://localhost:11434/v1/chat/completions \
-    --model=llava:7b \
-    --text_prompt="You are a helpful assistant" \
-    --interactive
-```
+Full flag reference in [Chat Backend](docs/Chat_Backend.md); the test procedure is
+in [Chat Backend Testing](docs/Chat_Backend_Testing.md).
 
-**OpenRouter multimodal with Kimi K2.6:**
-```bash
-export OPENROUTER_API_KEY=...
-
-./tritonic \
-    --backend=chat \
-    --api_service=openrouter \
-    --model=moonshotai/kimi-k2.6 \
-    --text_prompt="Describe the scene and read any visible text." \
-    --source=/path/to/image.jpg
-```
-
-**Together AI text-only with GLM-5.1:**
-```bash
-export TOGETHER_API_KEY=...
-
-./tritonic \
-    --backend=chat \
-    --api_service=together \
-    --model=zai-org/GLM-5.1 \
-    --text_prompt="Summarize the design tradeoffs in this architecture."
-```
-
-**Z.AI multimodal with GLM-4.6V:**
-```bash
-export ZAI_API_KEY=...
-
-./tritonic \
-    --backend=chat \
-    --api_service=zai \
-    --model=glm-4.6v \
-    --text_prompt="Describe the image and extract the key objects." \
-    --source=/path/to/image.jpg
-```
-
-`GLM-5.1` is available on Together AI and Z.AI, but it is text-only. For GLM-family image input, use `GLM-4.6V`.
-
-**Chat CLI parameters:**
-
-| Parameter | Short | Default | Description |
-|-----------|-------|---------|-------------|
-| `--backend` | `be` | `triton` | `triton` or `chat` |
-| `--api_endpoint` | `ae` | — | Full URL, e.g. `http://localhost:11434/v1/chat/completions` |
-| `--api_service` | `as` | — | Service preset: `openai`, `openrouter`, `together`, `zai` |
-| `--api_key_env` | `ak` | — | Env-var name that holds the API key (e.g. `OPENAI_API_KEY`) |
-| `--text_prompt` | `tp` | — | System prompt (interactive) or user prompt (single-turn) |
-| `--max_tokens` | `mxt` | `256` | Max tokens to generate |
-| `--temperature` | `temp` | `1.0` | Sampling temperature |
-| `--target_image_size` | `tis` | `512` | Longest edge (px) before base64 encoding |
-| `--interactive` | `ia` | `false` | Enable multi-turn REPL |
-| `--inference_timeout` | `it` | `0` | Request timeout in milliseconds (`0` keeps backend default) |
 
 ## Docker Support
 For detailed instructions on installing Docker and the NVIDIA Container Toolkit, refer to the [Docker Setup Document](docs/guides/Docker_setup.md).
