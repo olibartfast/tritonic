@@ -171,10 +171,11 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
             throw std::invalid_argument("--input_mode=encoded-image requires --backend=triton");
         }
         const std::string modelType = Normalize(config->GetModelType());
-        if (modelType != "yolo" && modelType != "yolo26seg") {
+        if (modelType != "yolo" && modelType != "yolo26" && modelType != "yolo26seg" &&
+            modelType != "yolo11seg" && modelType != "yoloseg") {
             throw std::invalid_argument(
-                "--input_mode=encoded-image currently supports only --model_type=yolo or "
-                "--model_type=yolo26seg");
+                "--input_mode=encoded-image supports --model_type=yolo, yolo26, yolo26seg, "
+                "yolo11seg, or yoloseg");
         }
         if (config->GetTaskModel().empty()) {
             throw std::invalid_argument("--task_model is required when --input_mode=encoded-image");
@@ -204,9 +205,14 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
             throw std::invalid_argument(
                 "--postprocess_mode=gpu requires --input_mode=encoded-image");
         }
-        if (Normalize(config->GetModelType()) != "yolo26seg") {
+        if (Normalize(config->GetModelType()) != "yolo26seg" &&
+            Normalize(config->GetModelType()) != "yolo11seg" &&
+            Normalize(config->GetModelType()) != "yoloseg" &&
+            Normalize(config->GetModelType()) != "yolo" &&
+            Normalize(config->GetModelType()) != "yolo26") {
             throw std::invalid_argument(
-                "--postprocess_mode=gpu currently supports only --model_type=yolo26seg");
+                "--postprocess_mode=gpu supports --model_type=yolo26seg, yolo11seg, yoloseg, "
+                "yolo26, or yolo");
         }
     }
 
