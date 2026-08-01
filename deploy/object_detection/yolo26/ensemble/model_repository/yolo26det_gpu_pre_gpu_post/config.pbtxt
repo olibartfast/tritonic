@@ -1,0 +1,34 @@
+name: "yolo26det_gpu_pre_gpu_post"
+platform: "ensemble"
+max_batch_size: 1
+input [{ name: "IMAGE" data_type: TYPE_UINT8 dims: [-1] }]
+output [
+  { name: "NUM_DETECTIONS" data_type: TYPE_INT32 dims: [1] },
+  { name: "BOXES" data_type: TYPE_INT32 dims: [100, 4] },
+  { name: "SCORES" data_type: TYPE_FP32 dims: [100] },
+  { name: "CLASSES" data_type: TYPE_INT32 dims: [100] }
+]
+ensemble_scheduling {
+  step [
+    {
+      model_name: "yolo26det_dali_preprocess" model_version: -1
+      input_map { key: "IMAGE" value: "IMAGE" }
+      output_map { key: "PREPROCESSED" value: "model_input" }
+      output_map { key: "ORIGINAL_SIZE" value: "original_size" }
+    },
+    {
+      model_name: "yolo26det_trt" model_version: -1
+      input_map { key: "images" value: "model_input" }
+      output_map { key: "output0" value: "detections" }
+    },
+    {
+      model_name: "yolo26det_dali_postprocess" model_version: -1
+      input_map { key: "DETECTIONS" value: "detections" }
+      input_map { key: "ORIGINAL_SIZE" value: "original_size" }
+      output_map { key: "NUM_DETECTIONS" value: "NUM_DETECTIONS" }
+      output_map { key: "BOXES" value: "BOXES" }
+      output_map { key: "SCORES" value: "SCORES" }
+      output_map { key: "CLASSES" value: "CLASSES" }
+    }
+  ]
+}

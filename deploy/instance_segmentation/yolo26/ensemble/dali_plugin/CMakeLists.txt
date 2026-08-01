@@ -1,0 +1,13 @@
+cmake_minimum_required(VERSION 3.24)
+project(yolo26_seg_dali_plugin LANGUAGES CUDA CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CUDA_STANDARD 20)
+set(CMAKE_CUDA_ARCHITECTURES "86" CACHE STRING
+    "CUDA architectures to build for, e.g. 75 or \"86;89\"")
+set(DALI_ROOT "/dali" CACHE PATH "DALI package root")
+add_library(yolo26_seg_dali SHARED yolo26_seg_postprocess.cu yolo26_seg_mask_postprocess.cu)
+target_include_directories(yolo26_seg_dali SYSTEM PRIVATE "${DALI_ROOT}/include")
+target_compile_definitions(yolo26_seg_dali PRIVATE _GLIBCXX_USE_CXX11_ABI=1)
+target_link_directories(yolo26_seg_dali PRIVATE "${DALI_ROOT}")
+target_link_libraries(yolo26_seg_dali PRIVATE dali)
+set_target_properties(yolo26_seg_dali PROPERTIES OUTPUT_NAME yolo26_seg_dali)
