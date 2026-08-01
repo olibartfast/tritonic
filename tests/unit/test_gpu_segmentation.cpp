@@ -144,3 +144,56 @@ TEST(GpuSegmentationTest, RejectsMaskSizeThatDoesNotMatchBox) {
                                                               info.output_names, 10, 10, false),
                  std::runtime_error);
 }
+
+// A frame containing no objects is normal, not an error, and the plugins must still
+// emit the fixed-size offset arrays. Getting this wrong on the mask path made every
+// empty video frame abort the run, so both shapes are pinned here.
+namespace {
+std::vector<tritonic::core::Tensor> MakeEmptyMaskOutputs(size_t mask_offset_count = 101) {
+    using tritonic::core::Tensor;
+    using tritonic::core::TensorElement;
+    return {
+        Tensor({int32_t{0}}, {1, 1}),
+        Tensor(std::vector<TensorElement>(400, int32_t{0}), {1, 100, 4}),
+        Tensor(std::vector<TensorElement>(100, 0.0F), {1, 100}),
+        Tensor(std::vector<TensorElement>(100, int32_t{0}), {1, 100}),
+        Tensor(std::vector<TensorElement>(mask_offset_count, int64_t{0}),
+               {1, static_cast<int64_t>(mask_offset_count)}),
+        Tensor(std::vector<TensorElement>{uint8_t{0}}, {1, 1}),
+    };
+}
+}  // namespace
+
+TEST(GpuSegmentationTest, DecodesEmptyMaskResult) {
+    const auto info = MakeGpuMaskModelInfo();
+    const auto results = tritonic::core::DecodeGpuSegmentationResults(
+        MakeEmptyMaskOutputs(), info.output_names, 10, 10, false);
+    EXPECT_TRUE(results.empty());
+}
+
+TEST(GpuSegmentationTest, RejectsEmptyMaskResultWithTruncatedOffsets) {
+    const auto info = MakeGpuMaskModelInfo();
+    // The shape a plugin produces if it collapses MASK_OFFSETS to a single element
+    // when nothing was detected.
+    EXPECT_THROW(tritonic::core::DecodeGpuSegmentationResults(MakeEmptyMaskOutputs(1),
+                                                             info.output_names, 10, 10, false),
+                 std::runtime_error);
+}
+
+TEST(GpuSegmentationTest, DecodesEmptyPolygonResult) {
+    using tritonic::core::Tensor;
+    using tritonic::core::TensorElement;
+    const auto info = MakeGpuModelInfo();
+    const std::vector<Tensor> tensors = {
+        Tensor({int32_t{0}}, {1, 1}),
+        Tensor(std::vector<TensorElement>(400, int32_t{0}), {1, 100, 4}),
+        Tensor(std::vector<TensorElement>(100, 0.0F), {1, 100}),
+        Tensor(std::vector<TensorElement>(100, int32_t{0}), {1, 100}),
+        Tensor(std::vector<TensorElement>(101, int64_t{0}), {1, 101}),
+        Tensor(std::vector<TensorElement>{int64_t{0}}, {1, 1}),
+        Tensor(std::vector<TensorElement>{int32_t{0}, int32_t{0}}, {1, 1, 2}),
+    };
+    const auto results = tritonic::core::DecodeGpuSegmentationResults(tensors, info.output_names,
+                                                                     10, 10, true);
+    EXPECT_TRUE(results.empty());
+}
