@@ -413,7 +413,8 @@ void App::benchmarkImage(const std::string& sourceName) {
     const bool isDet = taskType == neuriplo_tasks::TaskType::Detection;
     const bool isSeg = taskType == neuriplo_tasks::TaskType::InstanceSegmentation;
     if (!isDet && !isSeg) {
-        throw std::runtime_error("Benchmark mode requires a detection or instance-segmentation task");
+        throw std::runtime_error(
+            "Benchmark mode requires a detection or instance-segmentation task");
     }
 
     const bool encodedImageMode = config_->GetInputMode() == "encoded-image";
@@ -458,8 +459,8 @@ void App::benchmarkImage(const std::string& sourceName) {
                     tensors, request_output_names_, encodedRequest.width, encodedRequest.height,
                     config_->GetSegmentationOutput() == "polygon");
             } else {
-                predictions = tritonic::core::DecodeGpuDetectionResults(
-                    tensors, request_output_names_);
+                predictions =
+                    tritonic::core::DecodeGpuDetectionResults(tensors, request_output_names_);
             }
         } else {
             if (encodedImageMode)
@@ -499,8 +500,7 @@ void App::benchmarkImage(const std::string& sourceName) {
     output << std::fixed << std::setprecision(6);
     output << "{\n  \"schema_version\": " << (isDet ? 3 : polygonOutput ? 2 : 1) << ",\n";
     output << "  \"application\": \"tritonic\",\n";
-    output << "  \"model_family\": " << std::quoted(ModelFamily(config_->GetModelType()))
-           << ",\n";
+    output << "  \"model_family\": " << std::quoted(ModelFamily(config_->GetModelType())) << ",\n";
     output << "  \"model_type\": " << std::quoted(config_->GetModelType()) << ",\n";
     output << "  \"request_model\": " << std::quoted(config_->GetModelName()) << ",\n";
     output << "  \"source\": " << std::quoted(sourceName) << ",\n";
@@ -530,9 +530,9 @@ void App::benchmarkImage(const std::string& sourceName) {
             if (detectionIndex != 0)
                 output << ",\n";
             output << "    {\"class_id\": " << static_cast<int>(det.class_id)
-                   << ", \"score\": " << det.class_confidence << ", \"bbox\": ["
-                   << det.bbox.x << ", " << det.bbox.y << ", "
-                   << det.bbox.width << ", " << det.bbox.height << "]}";
+                   << ", \"score\": " << det.class_confidence << ", \"bbox\": [" << det.bbox.x
+                   << ", " << det.bbox.y << ", " << det.bbox.width << ", " << det.bbox.height
+                   << "]}";
             ++detectionIndex;
             continue;
         }

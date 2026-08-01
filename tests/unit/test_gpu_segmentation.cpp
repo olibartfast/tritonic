@@ -176,7 +176,7 @@ TEST(GpuSegmentationTest, RejectsEmptyMaskResultWithTruncatedOffsets) {
     // The shape a plugin produces if it collapses MASK_OFFSETS to a single element
     // when nothing was detected.
     EXPECT_THROW(tritonic::core::DecodeGpuSegmentationResults(MakeEmptyMaskOutputs(1),
-                                                             info.output_names, 10, 10, false),
+                                                              info.output_names, 10, 10, false),
                  std::runtime_error);
 }
 
@@ -193,7 +193,7 @@ TEST(GpuSegmentationTest, DecodesEmptyPolygonResult) {
         Tensor(std::vector<TensorElement>{int64_t{0}}, {1, 1}),
         Tensor(std::vector<TensorElement>{int32_t{0}, int32_t{0}}, {1, 1, 2}),
     };
-    const auto results = tritonic::core::DecodeGpuSegmentationResults(tensors, info.output_names,
-                                                                     10, 10, true);
+    const auto results =
+        tritonic::core::DecodeGpuSegmentationResults(tensors, info.output_names, 10, 10, true);
     EXPECT_TRUE(results.empty());
 }
