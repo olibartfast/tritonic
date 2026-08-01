@@ -29,12 +29,22 @@ case "${repository}/" in
   *) echo "--repository must be inside ${repo_root}" >&2; exit 2 ;;
 esac
 relative_repository="${repository#"${repo_root}/"}"
-mkdir -p \
-  "${repository}/yolo26det_trt/1" \
-  "${repository}/yolo26det_dali_preprocess/1" \
-  "${repository}/yolo26det_dali_postprocess/1" \
-  "${repository}/yolo26det_gpu_pre_cpu_post/1" \
-  "${repository}/yolo26det_gpu_pre_gpu_post/1"
+models=(
+  yolo26det_trt
+  yolo26det_dali_preprocess
+  yolo26det_dali_postprocess
+  yolo26det_gpu_pre_cpu_post
+  yolo26det_gpu_pre_gpu_post
+)
+source_repository="${script_dir}/model_repository"
+for model in "${models[@]}"; do
+  mkdir -p "${repository}/${model}/1"
+  # config.pbtxt is source, not a generated artifact: copy it so --repository
+  # pointing at a fresh path produces a repository Triton can actually load.
+  if [[ "${repository}" != "${source_repository}" ]]; then
+    cp "${source_repository}/${model}/config.pbtxt" "${repository}/${model}/config.pbtxt"
+  fi
+done
 cp "${engine}" "${repository}/yolo26det_trt/1/model.plan"
 "${script_dir}/dali_plugin/build_plugin.sh"
 cp "${script_dir}/dali_plugin/build/libyolo26_det_dali.so" \
@@ -60,7 +70,7 @@ engine_sha256: ${engine_sha256}
 triton_image: nvcr.io/nvidia/tritonserver:25.12-py3
 input: {name: images, shape: [1, 3, 640, 640], datatype: FP32}
 outputs:
-  - {name: output0, shape: [1, 300, 38], datatype: FP32}
+  - {name: output0, shape: [1, 300, 6], datatype: FP32}
 confidence_threshold: 0.5
 EOF
 echo "YOLO26 detection model repository prepared at ${repository}"

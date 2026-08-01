@@ -19,7 +19,7 @@ FIXTURES = [
 ]
 PATHS = {
     "cpu_pre_cpu_post": {
-        "model": "yolo26",
+        "model": "yolo26det_trt",
         "input_mode": "preprocessed",
         "postprocess_mode": "cpu",
         "task_model": None,
@@ -28,13 +28,13 @@ PATHS = {
         "model": "yolo26det_gpu_pre_cpu_post",
         "input_mode": "encoded-image",
         "postprocess_mode": "cpu",
-        "task_model": "yolo26",
+        "task_model": "yolo26det_trt",
     },
     "gpu_pre_gpu_post": {
         "model": "yolo26det_gpu_pre_gpu_post",
         "input_mode": "encoded-image",
         "postprocess_mode": "gpu",
-        "task_model": "yolo26",
+        "task_model": "yolo26det_trt",
     },
 }
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
