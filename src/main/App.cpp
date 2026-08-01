@@ -5,6 +5,7 @@
 #include <deque>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <random>
 #include <sstream>
@@ -13,6 +14,8 @@
 #include "neuriplo/tasks/core/batch_preprocess.hpp"
 #include "neuriplo/tasks/core/opencv_interop.hpp"
 #include "neuriplo/tasks/core/task_factory.hpp"
+#include "tritonic/core/encoded_image.hpp"
+#include "tritonic/core/gpu_segmentation.hpp"
 
 namespace {
 neuriplo_tasks::vision::Image ToTaskImage(const cv::Mat& image) {
@@ -53,6 +56,25 @@ std::string NormalizeModelType(const std::string& modelType) {
             normalized += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         }
     }
+    return normalized;
+}
+
+// Benchmark result family, which groups every size of one architecture and task.
+// The size letter (n/s/m/l/x) belongs to the engine, not the family, so it must not
+// appear here: "yolo26m-seg" names one engine, "yolo26-seg" names the family the
+// checkers aggregate over.
+std::string ModelFamily(const std::string& modelType) {
+    const std::string normalized = NormalizeModelType(modelType);
+    if (normalized == "yolo26seg")
+        return "yolo26-seg";
+    if (normalized == "yolo11seg")
+        return "yolo11-seg";
+    if (normalized == "yoloseg")
+        return "yolo-seg";
+    if (normalized == "yolo26")
+        return "yolo26-det";
+    if (normalized == "yolo")
+        return "yolo-det";
     return normalized;
 }
 
@@ -170,9 +192,44 @@ int App::run() {
             logger_->Info("Model is ready.");
         }
 
-        logger_->Info("Getting model info for: " + config_->GetModelName());
+        const bool encodedImageMode = config_->GetInputMode() == "encoded-image";
+        TritonModelInfo taskModelInfo;
+        if (encodedImageMode) {
+            logger_->Info("Getting task metadata from: " + config_->GetTaskModel());
+            if (!tritonClient_->isModelInRepository(config_->GetTaskModel())) {
+                throw std::runtime_error("Task model " + config_->GetTaskModel() +
+                                         " not found in Triton repository.");
+            }
+            if (!tritonClient_->isModelReady(config_->GetTaskModel())) {
+                tritonClient_->loadModel(config_->GetTaskModel());
+            }
+            taskModelInfo = tritonClient_->getModelInfo(config_->GetTaskModel(),
+                                                        config_->GetServerAddress(), {});
+        }
+
+        logger_->Info("Getting request model info for: " + config_->GetModelName());
+        std::vector<std::vector<int64_t>> requestInputSizes = config_->GetInputSizes();
+        if (encodedImageMode && config_->GetProtocol() == "http") {
+            requestInputSizes = {{1}};
+        }
         TritonModelInfo modelInfo = tritonClient_->getModelInfo(
-            config_->GetModelName(), config_->GetServerAddress(), config_->GetInputSizes());
+            config_->GetModelName(), config_->GetServerAddress(), requestInputSizes);
+        if (encodedImageMode) {
+            if (config_->GetPostprocessMode() == "gpu") {
+                const std::string modelType = NormalizeModelType(config_->GetModelType());
+                if (modelType == "yolo" || modelType == "yolo26") {
+                    tritonic::core::ValidateGpuDetectionModel(modelInfo);
+                } else {
+                    tritonic::core::ValidateGpuSegmentationModel(
+                        modelInfo, config_->GetSegmentationOutput() == "polygon");
+                }
+            } else {
+                tritonic::core::ValidateEncodedImageModels(modelInfo, taskModelInfo);
+            }
+        }
+        request_output_names_ = modelInfo.output_names;
+        task_output_count_ = taskModelInfo.output_names.size();
+        const TritonModelInfo& processingModelInfo = encodedImageMode ? taskModelInfo : modelInfo;
 
         // Cache batch metadata for the batched image pipeline (neuriplo-tasks v0.5.0).
         max_batch_size_ = modelInfo.max_batch_size_;
@@ -187,10 +244,13 @@ int App::run() {
 
         // Create task instance
         logger_->Info("Creating task instance for model type: " + config_->GetModelType());
-        auto neuriploTasksModelInfo = convertToNeuriploTasksModelInfo(modelInfo);
+        auto neuriploTasksModelInfo = convertToNeuriploTasksModelInfo(processingModelInfo);
         neuriplo_tasks::TaskConfig taskConfig;
         taskConfig.confidence_threshold = config_->GetConfidenceThreshold();
         taskConfig.nms_threshold = config_->GetNmsThreshold();
+        taskConfig.segmentation_output = config_->GetSegmentationOutput() == "polygon"
+                                             ? neuriplo_tasks::SegmentationOutput::Polygon
+                                             : neuriplo_tasks::SegmentationOutput::Mask;
         task_ = neuriplo_tasks::TaskFactory::createTaskInstance(config_->GetModelType(),
                                                                 neuriploTasksModelInfo, taskConfig);
 
@@ -200,8 +260,8 @@ int App::run() {
 
         // Extract frame buffer size for video classification from 5D input shape [B, T, C, H, W]
         if (task_->getTaskType() == neuriplo_tasks::TaskType::VideoClassification &&
-            !modelInfo.input_shapes.empty()) {
-            const auto& shape = modelInfo.input_shapes[0];
+            !processingModelInfo.input_shapes.empty()) {
+            const auto& shape = processingModelInfo.input_shapes[0];
             if (shape.size() == 5) {
                 num_frames_ = static_cast<int>(shape[1]);
             }
@@ -232,12 +292,33 @@ int App::run() {
             }
         }
 
+        if (encodedImageMode) {
+            for (const auto& image : image_list) {
+                std::string extension = std::filesystem::path(image).extension().string();
+                std::transform(extension.begin(), extension.end(), extension.begin(),
+                               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                if (extension != ".jpg" && extension != ".jpeg") {
+                    throw std::runtime_error(
+                        "--input_mode=encoded-image currently supports JPEG files only: " + image);
+                }
+            }
+        }
+
         if (image_list.empty() && video_list.empty()) {
             throw std::runtime_error("No valid image or video files provided");
         }
 
         logger_->Info("Processing " + std::to_string(image_list.size()) + " images and " +
                       std::to_string(video_list.size()) + " videos");
+
+        if (config_->GetBenchmarkIterations() > 0) {
+            if (image_list.size() != 1 || !video_list.empty()) {
+                throw std::runtime_error("Benchmark mode requires exactly one still image");
+            }
+            benchmarkImage(image_list.front());
+            logger_->Info("Application completed successfully");
+            return 0;
+        }
 
         // Process images
         if (!image_list.empty()) {
@@ -291,6 +372,268 @@ std::vector<neuriplo_tasks::Result> App::processSource(const std::vector<cv::Mat
     return task_->postprocess(ToTaskSize(source.front()), vision_tensors);
 }
 
+std::vector<neuriplo_tasks::Result> App::processEncodedImage(const std::string& sourceName) {
+    auto request = tritonic::core::BuildEncodedImageRequest(sourceName);
+    tritonClient_->setInputShapes(request.shapes);
+    auto tensors = tritonClient_->infer(request.inputs);
+    if (config_->GetPostprocessMode() == "gpu") {
+        if (task_->getTaskType() == neuriplo_tasks::TaskType::Detection) {
+            return tritonic::core::DecodeGpuDetectionResults(tensors, request_output_names_);
+        }
+        return tritonic::core::DecodeGpuSegmentationResults(
+            tensors, request_output_names_, request.width, request.height,
+            config_->GetSegmentationOutput() == "polygon");
+    }
+    tensors.resize(task_output_count_);
+    return task_->postprocess({request.width, request.height}, toNeuriploTensors(tensors));
+}
+
+std::vector<neuriplo_tasks::Result> App::processEncodedFrame(const cv::Mat& frame) {
+    std::vector<uint8_t> jpeg;
+    if (frame.empty() || !cv::imencode(".jpg", frame, jpeg))
+        throw std::runtime_error("Could not JPEG-encode video frame");
+    tritonClient_->setInputShapes({{1, static_cast<int64_t>(jpeg.size())}});
+    auto tensors = tritonClient_->infer({std::move(jpeg)});
+    // Mirrors processEncodedImage: an encoded-image video run with CPU postprocessing
+    // gets raw model outputs, not the GPU result envelope.
+    if (config_->GetPostprocessMode() == "gpu") {
+        if (task_->getTaskType() == neuriplo_tasks::TaskType::Detection) {
+            return tritonic::core::DecodeGpuDetectionResults(tensors, request_output_names_);
+        }
+        return tritonic::core::DecodeGpuSegmentationResults(
+            tensors, request_output_names_, frame.cols, frame.rows,
+            config_->GetSegmentationOutput() == "polygon");
+    }
+    tensors.resize(task_output_count_);
+    return task_->postprocess({frame.cols, frame.rows}, toNeuriploTensors(tensors));
+}
+
+void App::benchmarkImage(const std::string& sourceName) {
+    const auto taskType = task_->getTaskType();
+    const bool isDet = taskType == neuriplo_tasks::TaskType::Detection;
+    const bool isSeg = taskType == neuriplo_tasks::TaskType::InstanceSegmentation;
+    if (!isDet && !isSeg) {
+        throw std::runtime_error(
+            "Benchmark mode requires a detection or instance-segmentation task");
+    }
+
+    const bool encodedImageMode = config_->GetInputMode() == "encoded-image";
+    cv::Mat image;
+    tritonic::core::EncodedImageRequest encodedRequest;
+    if (encodedImageMode) {
+        encodedRequest = tritonic::core::BuildEncodedImageRequest(sourceName);
+    } else {
+        image = cv::imread(sourceName);
+        if (image.empty())
+            throw std::runtime_error("Could not open benchmark image: " + sourceName);
+    }
+
+    struct Sample {
+        double preprocess_ms;
+        double infer_ms;
+        double postprocess_ms;
+        double total_ms;
+    };
+    std::vector<Sample> samples;
+    std::vector<neuriplo_tasks::Result> predictions;
+    const auto milliseconds = [](auto begin, auto end) {
+        return std::chrono::duration<double, std::milli>(end - begin).count();
+    };
+
+    const auto runOnce = [&](bool record) {
+        const auto totalBegin = std::chrono::steady_clock::now();
+        const auto preprocessBegin = totalBegin;
+        std::vector<std::vector<uint8_t>> inputs;
+        if (encodedImageMode) {
+            tritonClient_->setInputShapes(encodedRequest.shapes);
+            inputs = encodedRequest.inputs;
+        } else {
+            inputs = task_->preprocess(ToTaskImages({image}));
+        }
+        const auto preprocessEnd = std::chrono::steady_clock::now();
+        auto tensors = tritonClient_->infer(inputs);
+        const auto inferEnd = std::chrono::steady_clock::now();
+        if (encodedImageMode && config_->GetPostprocessMode() == "gpu") {
+            if (isSeg) {
+                predictions = tritonic::core::DecodeGpuSegmentationResults(
+                    tensors, request_output_names_, encodedRequest.width, encodedRequest.height,
+                    config_->GetSegmentationOutput() == "polygon");
+            } else {
+                predictions =
+                    tritonic::core::DecodeGpuDetectionResults(tensors, request_output_names_);
+            }
+        } else {
+            if (encodedImageMode)
+                tensors.resize(task_output_count_);
+            const auto width = encodedImageMode ? encodedRequest.width : image.cols;
+            const auto height = encodedImageMode ? encodedRequest.height : image.rows;
+            predictions = task_->postprocess({width, height}, toNeuriploTensors(tensors));
+        }
+        const auto postprocessEnd = std::chrono::steady_clock::now();
+        if (record) {
+            samples.push_back({milliseconds(preprocessBegin, preprocessEnd),
+                               milliseconds(preprocessEnd, inferEnd),
+                               milliseconds(inferEnd, postprocessEnd),
+                               milliseconds(totalBegin, postprocessEnd)});
+        }
+    };
+
+    logger_->Info("Benchmark warmup: " + std::to_string(config_->GetBenchmarkWarmup()) +
+                  " iterations");
+    for (int i = 0; i < config_->GetBenchmarkWarmup(); ++i)
+        runOnce(false);
+    logger_->Info("Benchmark measurement: " + std::to_string(config_->GetBenchmarkIterations()) +
+                  " iterations");
+    for (int i = 0; i < config_->GetBenchmarkIterations(); ++i)
+        runOnce(true);
+
+    const std::filesystem::path outputPath = config_->GetBenchmarkOutput();
+    if (outputPath.has_parent_path())
+        std::filesystem::create_directories(outputPath.parent_path());
+    const bool polygonOutput = config_->GetSegmentationOutput() == "polygon";
+    const auto maskDirectory = outputPath.parent_path() / (outputPath.stem().string() + "_masks");
+    if (isSeg && !polygonOutput)
+        std::filesystem::create_directories(maskDirectory);
+    std::ofstream output(outputPath);
+    if (!output)
+        throw std::runtime_error("Could not create benchmark output: " + outputPath.string());
+    output << std::fixed << std::setprecision(6);
+    output << "{\n  \"schema_version\": " << (isDet ? 3 : polygonOutput ? 2 : 1) << ",\n";
+    output << "  \"application\": \"tritonic\",\n";
+    output << "  \"model_family\": " << std::quoted(ModelFamily(config_->GetModelType())) << ",\n";
+    output << "  \"model_type\": " << std::quoted(config_->GetModelType()) << ",\n";
+    output << "  \"request_model\": " << std::quoted(config_->GetModelName()) << ",\n";
+    output << "  \"source\": " << std::quoted(sourceName) << ",\n";
+    output << "  \"input_mode\": " << std::quoted(config_->GetInputMode()) << ",\n";
+    output << "  \"postprocess_mode\": " << std::quoted(config_->GetPostprocessMode()) << ",\n";
+    if (isSeg) {
+        output << "  \"segmentation_output\": " << std::quoted(config_->GetSegmentationOutput())
+               << ",\n";
+    }
+    output << "  \"warmup_iterations\": " << config_->GetBenchmarkWarmup() << ",\n";
+    output << "  \"samples_ms\": [\n";
+    for (size_t i = 0; i < samples.size(); ++i) {
+        const auto& sample = samples[i];
+        output << "    {\"preprocess\": " << sample.preprocess_ms
+               << ", \"infer\": " << sample.infer_ms
+               << ", \"postprocess\": " << sample.postprocess_ms
+               << ", \"total\": " << sample.total_ms << "}";
+        output << (i + 1 == samples.size() ? "\n" : ",\n");
+    }
+    output << "  ],\n  \"detections\": [\n";
+    size_t detectionIndex = 0;
+    for (const auto& prediction : predictions) {
+        if (isDet) {
+            if (!std::holds_alternative<neuriplo_tasks::Detection>(prediction))
+                continue;
+            const auto& det = std::get<neuriplo_tasks::Detection>(prediction);
+            if (detectionIndex != 0)
+                output << ",\n";
+            output << "    {\"class_id\": " << static_cast<int>(det.class_id)
+                   << ", \"score\": " << det.class_confidence << ", \"bbox\": [" << det.bbox.x
+                   << ", " << det.bbox.y << ", " << det.bbox.width << ", " << det.bbox.height
+                   << "]}";
+            ++detectionIndex;
+            continue;
+        }
+        if (!std::holds_alternative<neuriplo_tasks::InstanceSegmentation>(prediction))
+            continue;
+        const auto& segmentation = std::get<neuriplo_tasks::InstanceSegmentation>(prediction);
+        if (!polygonOutput) {
+            const uint8_t* maskData = nullptr;
+            size_t maskBytes = 0;
+            if (!segmentation.mask_data.empty()) {
+                maskData = segmentation.mask_data.data();
+                maskBytes = segmentation.mask_data.size();
+            } else if (!segmentation.mask.empty()) {
+                maskData = segmentation.mask.data();
+                maskBytes = segmentation.mask.sizeBytes();
+            }
+            const size_t expectedMaskBytes = static_cast<size_t>(segmentation.mask_width) *
+                                             static_cast<size_t>(segmentation.mask_height);
+            if (maskData == nullptr || maskBytes < expectedMaskBytes || expectedMaskBytes == 0)
+                throw std::runtime_error("Benchmark result contains an invalid mask");
+            size_t nonzero = 0;
+            for (size_t index = 0; index < expectedMaskBytes; ++index)
+                nonzero += maskData[index] != 0;
+            if (nonzero == 0)
+                throw std::runtime_error("Benchmark result contains an empty mask");
+
+            const auto maskName = "mask_" + std::to_string(detectionIndex) + ".pgm";
+            std::ofstream maskOutput(maskDirectory / maskName, std::ios::binary);
+            if (!maskOutput)
+                throw std::runtime_error("Could not create benchmark mask output");
+            maskOutput << "P5\n"
+                       << segmentation.mask_width << " " << segmentation.mask_height << "\n255\n";
+            maskOutput.write(reinterpret_cast<const char*>(maskData),
+                             static_cast<std::streamsize>(expectedMaskBytes));
+
+            if (detectionIndex != 0)
+                output << ",\n";
+            output << "    {\"class_id\": " << static_cast<int>(segmentation.class_id)
+                   << ", \"score\": " << segmentation.class_confidence << ", \"bbox\": ["
+                   << segmentation.bbox.x << ", " << segmentation.bbox.y << ", "
+                   << segmentation.bbox.width << ", " << segmentation.bbox.height
+                   << "], \"mask_shape\": [" << segmentation.mask_height << ", "
+                   << segmentation.mask_width << "], \"mask_nonzero\": " << nonzero
+                   << ", \"mask_file\": "
+                   << std::quoted((maskDirectory.filename() / maskName).string()) << "}";
+            ++detectionIndex;
+            continue;
+        }
+        if (segmentation.polygons.empty())
+            throw std::runtime_error("Benchmark result contains no polygons");
+        size_t polygonPointCount = 0;
+        for (const auto& polygon : segmentation.polygons) {
+            if (polygon.exterior.size() < 3)
+                throw std::runtime_error("Benchmark result contains a degenerate polygon");
+            polygonPointCount += polygon.exterior.size();
+            for (const auto& hole : polygon.holes) {
+                if (hole.size() < 3)
+                    throw std::runtime_error("Benchmark result contains a degenerate polygon hole");
+                polygonPointCount += hole.size();
+            }
+        }
+
+        const auto writeRing = [&output](const auto& ring) {
+            output << "[";
+            for (size_t pointIndex = 0; pointIndex < ring.size(); ++pointIndex) {
+                if (pointIndex != 0)
+                    output << ", ";
+                output << "[" << ring[pointIndex].x << ", " << ring[pointIndex].y << "]";
+            }
+            output << "]";
+        };
+
+        if (detectionIndex != 0)
+            output << ",\n";
+        output << "    {\"class_id\": " << static_cast<int>(segmentation.class_id)
+               << ", \"score\": " << segmentation.class_confidence << ", \"bbox\": ["
+               << segmentation.bbox.x << ", " << segmentation.bbox.y << ", "
+               << segmentation.bbox.width << ", " << segmentation.bbox.height
+               << "], \"polygon_count\": " << segmentation.polygons.size()
+               << ", \"polygon_point_count\": " << polygonPointCount << ", \"polygons\": [";
+        for (size_t polygonIndex = 0; polygonIndex < segmentation.polygons.size(); ++polygonIndex) {
+            if (polygonIndex != 0)
+                output << ", ";
+            const auto& polygon = segmentation.polygons[polygonIndex];
+            output << "{\"exterior\": ";
+            writeRing(polygon.exterior);
+            output << ", \"holes\": [";
+            for (size_t holeIndex = 0; holeIndex < polygon.holes.size(); ++holeIndex) {
+                if (holeIndex != 0)
+                    output << ", ";
+                writeRing(polygon.holes[holeIndex]);
+            }
+            output << "]}";
+        }
+        output << "]}";
+        ++detectionIndex;
+    }
+    output << "\n  ]\n}\n";
+    logger_->Info("Saved benchmark results to: " + outputPath.string());
+}
+
 std::vector<neuriplo_tasks::Tensor> App::toNeuriploTensors(
     const std::vector<Tensor>& tensors) const {
     std::vector<neuriplo_tasks::Tensor> vision_tensors;
@@ -318,7 +661,7 @@ std::vector<neuriplo_tasks::Tensor> App::toNeuriploTensors(
 }
 
 bool App::isBatchableImageTask() const {
-    if (!task_ || max_batch_size_ <= 1) {
+    if (config_->GetInputMode() == "encoded-image" || !task_ || max_batch_size_ <= 1) {
         return false;
     }
     // Only independent-image families benefit from batched inference (see
@@ -630,14 +973,19 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
             return;
         }
         for (const auto& sourceName : sourceNames) {
-            cv::Mat image = cv::imread(sourceName);
-            if (image.empty()) {
-                logger_->Error("Could not open or read the image: " + sourceName);
-                continue;
+            const bool encodedImageMode = config_->GetInputMode() == "encoded-image";
+            cv::Mat image;
+            if (!encodedImageMode || config_->GetWriteFrame() || config_->GetShowFrame()) {
+                image = cv::imread(sourceName);
+                if (image.empty()) {
+                    logger_->Error("Could not open or read the image: " + sourceName);
+                    continue;
+                }
             }
 
             auto start = std::chrono::steady_clock::now();
-            std::vector<neuriplo_tasks::Result> predictions = processSource({image});
+            std::vector<neuriplo_tasks::Result> predictions =
+                encodedImageMode ? processEncodedImage(sourceName) : processSource({image});
             auto end = std::chrono::steady_clock::now();
             auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
             logger_->Info("Infer time for 1 image: " + std::to_string(diff) + " ms");
@@ -653,12 +1001,14 @@ void App::processImages(const std::vector<std::string>& sourceNames) {
                 renderPrediction(image, prediction);
             }
 
-            std::string outputDir = sourceDir + "/output";
-            std::filesystem::create_directories(outputDir);
-            std::string processedFrameFilename =
-                outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
-            logger_->Info("Saving frame to: " + processedFrameFilename);
-            cv::imwrite(processedFrameFilename, image);
+            if (config_->GetWriteFrame()) {
+                std::string outputDir = sourceDir + "/output";
+                std::filesystem::create_directories(outputDir);
+                std::string processedFrameFilename =
+                    outputDir + "/processed_frame_" + config_->GetModelName() + ".jpg";
+                logger_->Info("Saving frame to: " + processedFrameFilename);
+                cv::imwrite(processedFrameFilename, image);
+            }
         }
     }
 }
@@ -678,7 +1028,11 @@ void App::processVideo(const std::string& sourceName) {
         int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
         std::string outputDir = sourceDir + "/output";
         std::filesystem::create_directories(outputDir);
-        outputVideo.open(outputDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
+        // Name the file after the serving model, matching the still-image path. A
+        // fixed "processed.avi" means two configurations run against the same source
+        // silently overwrite each other's results.
+        outputVideo.open(outputDir + "/processed_" + config_->GetModelName() + ".avi", codec,
+                         cap.get(cv::CAP_PROP_FPS), S, true);
 
         if (!outputVideo.isOpened()) {
             logger_->Error("Could not open the output video for write: " + sourceName);
@@ -706,7 +1060,9 @@ void App::processVideo(const std::string& sourceName) {
             }
         } else {
             // Process single frame for other tasks
-            predictions = processSource({current_frame});
+            predictions = config_->GetInputMode() == "encoded-image"
+                              ? processEncodedFrame(current_frame)
+                              : processSource({current_frame});
         }
 
         auto end = std::chrono::steady_clock::now();
@@ -771,7 +1127,11 @@ void App::processVideoClassification(const std::string& sourceName) {
         int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
         std::string outputDir = sourceDir + "/output";
         std::filesystem::create_directories(outputDir);
-        outputVideo.open(outputDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
+        // Name the file after the serving model, matching the still-image path. A
+        // fixed "processed.avi" means two configurations run against the same source
+        // silently overwrite each other's results.
+        outputVideo.open(outputDir + "/processed_" + config_->GetModelName() + ".avi", codec,
+                         cap.get(cv::CAP_PROP_FPS), S, true);
         if (!outputVideo.isOpened()) {
             logger_->Warn("Could not open output video for write: " + sourceName);
         }
@@ -832,6 +1192,11 @@ void App::renderPrediction(cv::Mat& frame, const neuriplo_tasks::Result& predict
         drawLabel(frame, class_names_[static_cast<int>(c.class_id)], c.class_confidence, 30, 30);
     } else if (std::holds_alternative<neuriplo_tasks::Detection>(prediction)) {
         const auto& det = std::get<neuriplo_tasks::Detection>(prediction);
+        logger_->Debug("Detection: class_id=" + std::to_string(static_cast<int>(det.class_id)) +
+                       " confidence=" + std::to_string(det.class_confidence) + " bbox=[" +
+                       std::to_string(det.bbox.x) + "," + std::to_string(det.bbox.y) + "," +
+                       std::to_string(det.bbox.width) + "," + std::to_string(det.bbox.height) +
+                       "]");
         cv::Rect safeBbox =
             neuriplo_tasks::toCvRect(det.bbox) & cv::Rect(0, 0, frame.cols, frame.rows);
         if (safeBbox.width > 0 && safeBbox.height > 0) {
@@ -843,8 +1208,29 @@ void App::renderPrediction(cv::Mat& frame, const neuriplo_tasks::Result& predict
         const auto& seg = std::get<neuriplo_tasks::InstanceSegmentation>(prediction);
         cv::Rect safeBbox =
             neuriplo_tasks::toCvRect(seg.bbox) & cv::Rect(0, 0, frame.cols, frame.rows);
-        if (safeBbox.width > 0 && safeBbox.height > 0) {
-            cv::rectangle(frame, safeBbox, colors_[static_cast<int>(seg.class_id)], 2);
+        const auto color = colors_[static_cast<int>(seg.class_id)];
+        if (!seg.polygons.empty()) {
+            const auto drawRing = [&frame, &color](const auto& ring) {
+                std::vector<cv::Point> points;
+                points.reserve(ring.size());
+                for (const auto& point : ring)
+                    points.emplace_back(static_cast<int>(point.x), static_cast<int>(point.y));
+                if (points.size() < 3)
+                    return;
+                cv::polylines(frame, points, true, color, 2, cv::LINE_AA);
+                for (const auto& point : points)
+                    cv::circle(frame, point, 1, color, cv::FILLED, cv::LINE_AA);
+            };
+            for (const auto& polygon : seg.polygons) {
+                drawRing(polygon.exterior);
+                for (const auto& hole : polygon.holes)
+                    drawRing(hole);
+            }
+            if (safeBbox.width > 0 && safeBbox.height > 0)
+                drawLabel(frame, class_names_[static_cast<int>(seg.class_id)], seg.class_confidence,
+                          safeBbox.x, safeBbox.y - 1);
+        } else if (safeBbox.width > 0 && safeBbox.height > 0) {
+            cv::rectangle(frame, safeBbox, color, 2);
             drawLabel(frame, class_names_[static_cast<int>(seg.class_id)], seg.class_confidence,
                       safeBbox.x, safeBbox.y - 1);
 
@@ -856,10 +1242,10 @@ void App::renderPrediction(cv::Mat& frame, const neuriplo_tasks::Result& predict
                                const_cast<uint8_t*>(seg.mask_data.data()));
             }
             if (!mask.empty()) {
-                cv::Mat resized_mask;
-                cv::resize(mask, resized_mask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
+                cv::Mat resizedMask;
+                cv::resize(mask, resizedMask, safeBbox.size(), 0, 0, cv::INTER_NEAREST);
                 cv::Mat colorMask = cv::Mat::zeros(safeBbox.size(), CV_8UC3);
-                colorMask.setTo(colors_[static_cast<int>(seg.class_id)], resized_mask);
+                colorMask.setTo(color, resizedMask);
                 cv::Mat roi = frame(safeBbox);
                 if (roi.size() == colorMask.size())
                     cv::addWeighted(roi, 1, colorMask, 0.5, 0, roi);

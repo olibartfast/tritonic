@@ -1,0 +1,25 @@
+name: "yolo26seg_gpu_pre_cpu_post"
+platform: "ensemble"
+max_batch_size: 1
+input [{ name: "IMAGE" data_type: TYPE_UINT8 dims: [-1] }]
+output [
+  { name: "output0" data_type: TYPE_FP32 dims: [300, 38] },
+  { name: "output1" data_type: TYPE_FP32 dims: [32, 160, 160] },
+  { name: "ORIGINAL_SIZE" data_type: TYPE_INT64 dims: [2] }
+]
+ensemble_scheduling {
+  step [
+    {
+      model_name: "yolo26seg_dali_preprocess" model_version: -1
+      input_map { key: "IMAGE" value: "IMAGE" }
+      output_map { key: "PREPROCESSED" value: "model_input" }
+      output_map { key: "ORIGINAL_SIZE" value: "ORIGINAL_SIZE" }
+    },
+    {
+      model_name: "yolo26seg_trt" model_version: -1
+      input_map { key: "images" value: "model_input" }
+      output_map { key: "output0" value: "output0" }
+      output_map { key: "output1" value: "output1" }
+    }
+  ]
+}

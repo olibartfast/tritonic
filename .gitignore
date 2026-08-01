@@ -2,11 +2,25 @@ build
 build*
 /**.avi
 model_repository
+# Ensemble model repositories are source, not artifacts: config.pbtxt files define the
+# serving contract and each version dir carries a marker so it survives a fresh clone.
+# Generated engines, DALI pipelines and plugin .so files are re-ignored by the nested
+# .gitignore inside each model_repository/ and each model's version directory.
+!deploy/**/ensemble/model_repository/
+!deploy/**/ensemble/model_repository/**
+# build* above would otherwise swallow this script.
+!deploy/**/ensemble/dali_plugin/build_plugin.sh
 build_test
 triton_client_libs
 3rdparty
 weights
+# Model weights and compiled engines: large, regenerable, never source.
 **/*.pt
+**/*.onnx
+**/*.engine
+**/*.plan
+# Frames written by --write_frame=true
+data/images/output/
 # Prevent CMake artifacts in source directories
 tests/_deps/
 tests/CMakeFiles/

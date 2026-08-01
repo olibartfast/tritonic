@@ -1,0 +1,14 @@
+name: "yolo26det_dali_postprocess"
+backend: "dali"
+max_batch_size: 1
+input [
+  { name: "DETECTIONS" data_type: TYPE_FP32 dims: [300, 6] },
+  { name: "ORIGINAL_SIZE" data_type: TYPE_INT64 dims: [2] }
+]
+output [
+  { name: "NUM_DETECTIONS" data_type: TYPE_INT32 dims: [1] },
+  { name: "BOXES" data_type: TYPE_INT32 dims: [100, 4] },
+  { name: "SCORES" data_type: TYPE_FP32 dims: [100] },
+  { name: "CLASSES" data_type: TYPE_INT32 dims: [100] }
+]
+instance_group [{ kind: KIND_GPU count: 1 }]
