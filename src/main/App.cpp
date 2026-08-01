@@ -1028,7 +1028,11 @@ void App::processVideo(const std::string& sourceName) {
         int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
         std::string outputDir = sourceDir + "/output";
         std::filesystem::create_directories(outputDir);
-        outputVideo.open(outputDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
+        // Name the file after the serving model, matching the still-image path. A
+        // fixed "processed.avi" means two configurations run against the same source
+        // silently overwrite each other's results.
+        outputVideo.open(outputDir + "/processed_" + config_->GetModelName() + ".avi", codec,
+                         cap.get(cv::CAP_PROP_FPS), S, true);
 
         if (!outputVideo.isOpened()) {
             logger_->Error("Could not open the output video for write: " + sourceName);
@@ -1123,7 +1127,11 @@ void App::processVideoClassification(const std::string& sourceName) {
         int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
         std::string outputDir = sourceDir + "/output";
         std::filesystem::create_directories(outputDir);
-        outputVideo.open(outputDir + "/processed.avi", codec, cap.get(cv::CAP_PROP_FPS), S, true);
+        // Name the file after the serving model, matching the still-image path. A
+        // fixed "processed.avi" means two configurations run against the same source
+        // silently overwrite each other's results.
+        outputVideo.open(outputDir + "/processed_" + config_->GetModelName() + ".avi", codec,
+                         cap.get(cv::CAP_PROP_FPS), S, true);
         if (!outputVideo.isOpened()) {
             logger_->Warn("Could not open output video for write: " + sourceName);
         }

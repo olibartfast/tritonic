@@ -104,7 +104,8 @@ Run the polygon ensemble with:
 
 Video sources use the same arguments. Each OpenCV-decoded frame is JPEG-encoded
 in memory and sent through the full DALI-pre/TensorRT/DALI-post ensemble; the
-rendered polygon video is written to `<video-directory>/output/processed.avi`.
+rendered polygon video is written to
+`<video-directory>/output/processed_<model-name>.avi`.
 
 Use the matching ensemble model for `--segmentation_output=mask` (the default)
 or `polygon`; Tritonic rejects a mismatched tensor contract. CPU postprocessing
