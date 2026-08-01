@@ -101,8 +101,8 @@ TEST(GpuDetectionTest, RejectsNegativeCount) {
 TEST(GpuDetectionTest, RejectsTruncatedBoxes) {
     const auto info = MakeGpuDetectionModelInfo();
     auto tensors = MakeGpuDetectionOutputs();
-    tensors[1] = tritonic::core::Tensor(
-        std::vector<tritonic::core::TensorElement>(8, int32_t{0}), {1, 2, 4});
+    tensors[1] = tritonic::core::Tensor(std::vector<tritonic::core::TensorElement>(8, int32_t{0}),
+                                        {1, 2, 4});
     EXPECT_THROW(tritonic::core::DecodeGpuDetectionResults(tensors, info.output_names),
                  std::runtime_error);
 }
