@@ -69,6 +69,30 @@ public:
     void SetInputSizes(const std::vector<std::vector<int64_t>>& v) {
         input_sizes_ = v;
     }
+    const std::string& GetInputMode() const noexcept {
+        return input_mode_;
+    }
+    void SetInputMode(const std::string& v) {
+        input_mode_ = v;
+    }
+    const std::string& GetTaskModel() const noexcept {
+        return task_model_;
+    }
+    void SetTaskModel(const std::string& v) {
+        task_model_ = v;
+    }
+    const std::string& GetPostprocessMode() const noexcept {
+        return postprocess_mode_;
+    }
+    void SetPostprocessMode(const std::string& v) {
+        postprocess_mode_ = v;
+    }
+    const std::string& GetSegmentationOutput() const noexcept {
+        return segmentation_output_;
+    }
+    void SetSegmentationOutput(const std::string& v) {
+        segmentation_output_ = v;
+    }
 
     // Input/Output
     const std::string& GetSource() const noexcept {
@@ -94,6 +118,24 @@ public:
     }
     void SetInferenceTimeoutMs(int v) noexcept {
         inference_timeout_ms_ = v;
+    }
+    int GetBenchmarkWarmup() const noexcept {
+        return benchmark_warmup_;
+    }
+    void SetBenchmarkWarmup(int v) noexcept {
+        benchmark_warmup_ = v;
+    }
+    int GetBenchmarkIterations() const noexcept {
+        return benchmark_iterations_;
+    }
+    void SetBenchmarkIterations(int v) noexcept {
+        benchmark_iterations_ = v;
+    }
+    const std::string& GetBenchmarkOutput() const noexcept {
+        return benchmark_output_;
+    }
+    void SetBenchmarkOutput(const std::string& v) {
+        benchmark_output_ = v;
     }
 
     // Processing
@@ -278,11 +320,18 @@ private:
     std::string model_version_;
     std::string model_type_;
     std::vector<std::vector<int64_t>> input_sizes_;
+    std::string input_mode_{"preprocessed"};
+    std::string task_model_;
+    std::string postprocess_mode_{"cpu"};
+    std::string segmentation_output_{"mask"};
 
     std::string source_;
     std::string labels_file_;
     int batch_size_{1};
     int inference_timeout_ms_{0};
+    int benchmark_warmup_{0};
+    int benchmark_iterations_{0};
+    std::string benchmark_output_;
 
     bool show_frame_{false};
     bool write_frame_{true};

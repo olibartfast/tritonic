@@ -16,6 +16,9 @@ TEST(InferenceConfigTest, DefaultValues) {
     EXPECT_TRUE(config.GetLabelsFile().empty());
     EXPECT_EQ(config.GetBatchSize(), 1);
     EXPECT_EQ(config.GetInferenceTimeoutMs(), 0);
+    EXPECT_EQ(config.GetBenchmarkWarmup(), 0);
+    EXPECT_EQ(config.GetBenchmarkIterations(), 0);
+    EXPECT_TRUE(config.GetBenchmarkOutput().empty());
     EXPECT_FALSE(config.GetShowFrame());
     EXPECT_TRUE(config.GetWriteFrame());
     EXPECT_FLOAT_EQ(config.GetConfidenceThreshold(), 0.5f);
@@ -24,6 +27,10 @@ TEST(InferenceConfigTest, DefaultValues) {
     EXPECT_EQ(config.GetCudaDeviceId(), 0);
     EXPECT_EQ(config.GetLogLevel(), "info");
     EXPECT_TRUE(config.GetLogFile().empty());
+    EXPECT_EQ(config.GetInputMode(), "preprocessed");
+    EXPECT_TRUE(config.GetTaskModel().empty());
+    EXPECT_EQ(config.GetPostprocessMode(), "cpu");
+    EXPECT_EQ(config.GetSegmentationOutput(), "mask");
     EXPECT_TRUE(config.GetInputSizes().empty());
     EXPECT_FALSE(config.GetEnableMultimodal());
     EXPECT_TRUE(config.GetTextPrompt().empty());
@@ -193,6 +200,126 @@ TEST(ConfigManagerTest, ParsesBatchAndTimeout) {
     ASSERT_NE(config, nullptr);
     EXPECT_EQ(config->GetBatchSize(), 4);
     EXPECT_EQ(config->GetInferenceTimeoutMs(), 2500);
+}
+
+TEST(ConfigManagerTest, ParsesBenchmarkArgs) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--benchmark_warmup=5", "--benchmark_iterations=30",
+                          "--benchmark_output=/tmp/results.json"};
+    auto config = mgr.LoadFromCommandLine(4, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetBenchmarkWarmup(), 5);
+    EXPECT_EQ(config->GetBenchmarkIterations(), 30);
+    EXPECT_EQ(config->GetBenchmarkOutput(), "/tmp/results.json");
+}
+
+TEST(ConfigManagerTest, BenchmarkIterationsRequireOutput) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--benchmark_iterations=1"};
+    EXPECT_THROW(mgr.LoadFromCommandLine(2, argv), std::invalid_argument);
+}
+
+TEST(ConfigManagerTest, ParsesEncodedImageMode) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--input_mode=encoded-image", "--model_type=yolo",
+                          "--model=yolo_dali_ensemble", "--task_model=yolo_trt"};
+    auto config = mgr.LoadFromCommandLine(5, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetInputMode(), "encoded-image");
+    EXPECT_EQ(config->GetTaskModel(), "yolo_trt");
+}
+
+TEST(ConfigManagerTest, RejectsUnknownInputMode) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--input_mode=raw"};
+    EXPECT_THROW(mgr.LoadFromCommandLine(2, argv), std::invalid_argument);
+}
+
+TEST(ConfigManagerTest, EncodedImageRequiresTaskModel) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--input_mode=encoded-image", "--model_type=yolo"};
+    EXPECT_THROW(mgr.LoadFromCommandLine(3, argv), std::invalid_argument);
+}
+
+TEST(ConfigManagerTest, EncodedImageRejectsUnsupportedCombination) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--input_mode=encoded-image", "--model_type=vit",
+                          "--task_model=vit_trt"};
+    EXPECT_THROW(mgr.LoadFromCommandLine(4, argv), std::invalid_argument);
+}
+
+TEST(ConfigManagerTest, EncodedImageAcceptsYolo11Seg) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--input_mode=encoded-image", "--model_type=yolo11seg",
+                          "--task_model=yolo11seg_trt"};
+    auto config = mgr.LoadFromCommandLine(4, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetInputMode(), "encoded-image");
+}
+
+TEST(ConfigManagerTest, EncodedImageAcceptsYoloSeg) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--input_mode=encoded-image", "--model_type=yoloseg",
+                          "--task_model=yoloseg_trt"};
+    auto config = mgr.LoadFromCommandLine(4, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetInputMode(), "encoded-image");
+}
+
+TEST(ConfigManagerTest, GpuPostprocessAcceptsYolo11Seg) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic",
+                          "--input_mode=encoded-image",
+                          "--model_type=yolo11seg",
+                          "--model=yolo11seg_gpu_post",
+                          "--task_model=yolo11seg_trt",
+                          "--postprocess_mode=gpu"};
+    auto config = mgr.LoadFromCommandLine(6, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetInputMode(), "encoded-image");
+    EXPECT_EQ(config->GetPostprocessMode(), "gpu");
+}
+
+TEST(ConfigManagerTest, ParsesEncodedYolo26SegGpuPostprocess) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic",
+                          "--input_mode=encoded-image",
+                          "--model_type=yolo26seg",
+                          "--model=yolo26seg_gpu_pipeline",
+                          "--task_model=yolo26seg_trt",
+                          "--postprocess_mode=gpu",
+                          "--segmentation_output=polygon"};
+    auto config = mgr.LoadFromCommandLine(7, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetInputMode(), "encoded-image");
+    EXPECT_EQ(config->GetPostprocessMode(), "gpu");
+    EXPECT_EQ(config->GetSegmentationOutput(), "polygon");
+}
+
+TEST(ConfigManagerTest, GpuPostprocessRequiresEncodedYolo26Seg) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--postprocess_mode=gpu", "--model_type=yolo26seg"};
+    EXPECT_THROW(mgr.LoadFromCommandLine(3, argv), std::invalid_argument);
+}
+
+TEST(ConfigManagerTest, RejectsUnknownSegmentationOutput) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--segmentation_output=contours"};
+    EXPECT_THROW(mgr.LoadFromCommandLine(2, argv), std::invalid_argument);
+}
+
+TEST(ConfigManagerTest, GpuPostprocessAcceptsDefaultMaskOutput) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic",
+                          "--input_mode=encoded-image",
+                          "--model_type=yolo26seg",
+                          "--model=yolo26seg_gpu_pipeline",
+                          "--task_model=yolo26seg_trt",
+                          "--postprocess_mode=gpu"};
+    auto config = mgr.LoadFromCommandLine(6, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetPostprocessMode(), "gpu");
+    EXPECT_EQ(config->GetSegmentationOutput(), "mask");
 }
 
 TEST(InferenceConfigTest, MultimodalSettersGetters) {
