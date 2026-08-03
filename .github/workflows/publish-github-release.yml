@@ -9,6 +9,11 @@ on:
 permissions:
   contents: write
 
+# A release push updates master, develop and the tag at once; the resulting
+# runs race each other to create the same release. Serialize them instead.
+concurrency:
+  group: publish-github-release
+
 jobs:
   publish-release:
     name: Publish release from changelog
