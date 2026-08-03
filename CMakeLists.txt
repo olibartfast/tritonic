@@ -49,11 +49,21 @@ endif()
 
 set(NEURIPLO_TASKS_WITH_OPENCV ON CACHE BOOL "" FORCE)
 
-FetchContent_Declare(
-  neuriplo-tasks
-  GIT_REPOSITORY ${NEURIPLO_TASKS_REPO}
-  GIT_TAG v0.6.0
-)
+set(TRITONIC_NEURIPLO_TASKS_SOURCE_DIR "" CACHE PATH
+    "Optional local neuriplo-tasks checkout used instead of the pinned release")
+if(TRITONIC_NEURIPLO_TASKS_SOURCE_DIR)
+  message(STATUS "Using local neuriplo-tasks: ${TRITONIC_NEURIPLO_TASKS_SOURCE_DIR}")
+  FetchContent_Declare(
+    neuriplo-tasks
+    SOURCE_DIR "${TRITONIC_NEURIPLO_TASKS_SOURCE_DIR}"
+  )
+else()
+  FetchContent_Declare(
+    neuriplo-tasks
+    GIT_REPOSITORY ${NEURIPLO_TASKS_REPO}
+    GIT_TAG v0.7.0
+  )
+endif()
 FetchContent_MakeAvailable(neuriplo-tasks)
 
 
@@ -219,6 +229,8 @@ if(BUILD_TESTING)
         
         target_link_libraries(tritonic_unit_tests PRIVATE
             gtest gtest_main gmock
+            neuriplo-tasks::neuriplo-tasks
+            neuriplo-tasks::vision-opencv
             grpcclient
             httpclient
             ${OpenCV_LIBS}
@@ -232,6 +244,16 @@ if(BUILD_TESTING)
             PROPERTIES TIMEOUT 60
         )
     endif()
+
+    add_executable(yolo_preprocess_baseline
+        tests/tools/yolo_preprocess_baseline.cpp
+    )
+    tritonic_apply_strict_warnings(yolo_preprocess_baseline)
+    target_link_libraries(yolo_preprocess_baseline PRIVATE
+        neuriplo-tasks::neuriplo-tasks
+        neuriplo-tasks::vision-opencv
+        ${OpenCV_LIBS}
+    )
     
     # Create integration test executable if integration tests exist
     if(INTEGRATION_TEST_SOURCES)

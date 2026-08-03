@@ -1,52 +1,46 @@
-# Tritonic Deployment Tools
+# Triton Deployment Tools
 
-This directory contains Triton Inference Server-specific deployment utilities.
+Triton Inference Server model repository setup, ensemble configurations, and
+deployment scripts.  For model export instructions, see
+[neuriplo-tasks export documentation](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/README.md).
 
-## What's in this directory
-
-This directory now contains only Triton-specific deployment files:
+## Directory Structure
 
 ```
 deploy/
 ├── classifier/
-│   └── vit/
-│       ├── python_pipeline/     # Triton pipeline configs
-│       └── python_standard/     # Triton model repository structures
+│   └── vit/                          # [ViT Classifier](classifier/vit/README.md)
+│       ├── python_pipeline/           # HuggingFace pipeline backend
+│       ├── python_standard/           # VideoMAE-style Python backend
+│       └── docker/                    # Environment setup helper
 ├── instance_segmentation/
-│   └── rf-detr/
-│       ├── deploy_triton_model.sh  # Deploy TensorRT to Triton
-│       └── export_trt.sh           # TensorRT conversion
-└── pose_estimation/
-    └── vitpose/                 # Triton ensemble configs
-```
-
-## Export a model
-For detailed export instructions, see: [neuriplo-tasks export documentation](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/README.md)
-```bash
-# Using neuriplo-tasks export tools
-git clone https://github.com/olibartfast/neuriplo-tasks.git
-cd neuriplo-tasks/export/detection/yolo
-python export.py --model yolov8n.pt
-
-
-# Then deploy to Triton if needed
-## here below rf-detr instance  segmentation example
-cd tritonic/deploy/instance_segmentation/rf-detr
-./deploy_triton_model.sh model.engine
+│   ├── rf-detr/                       # [RF-DETR seg](instance_segmentation/rf-detr/README.md)
+│   │   ├── export_trt.sh             # ONNX → TensorRT via Docker
+│   │   └── deploy_triton_model.sh    # Copy engine to Triton repo
+│   └── yolo26/                        # [YOLO26 instance seg](instance_segmentation/yolo26/README.md)
+│       └── ensemble/                  # [DALI/TensorRT ensemble](instance_segmentation/yolo26/ensemble/README.md)
+│           ├── setup_model_repository.sh
+│           ├── dali_plugin/           # Custom CUDA postprocess operators
+│           └── model_repository/      # Ready-to-use Triton models
+└── object_detection/
+    ├── yolo/                          # [YOLOv5–v12, NAS](object_detection/yolo/README.md)
+    │   └── ensemble/                  # [GPU preprocessing ensemble](object_detection/yolo/ensemble/README.md)
+    │       └── dali/
+    │           ├── generate_pipeline.py
+    │           ├── setup_model_repository.sh
+    │           └── model_repository/  # DALI ensemble + TensorRT slot
+    └── yolo26/                        # [YOLO26 detection](object_detection/yolo26/README.md)
+        └── ensemble/                  # [DALI/TensorRT ensemble](object_detection/yolo26/ensemble/README.md)
+            ├── generate_pipeline.py
+            ├── generate_postprocess_pipeline.py
+            ├── setup_model_repository.sh
+            ├── dali_plugin/           # CUDA bbox decode operator
+            └── model_repository/      # Ready-to-use Triton models
 ```
 
 ## Triton-Specific Features
 
-The remaining files in this directory provide:
-
-1. **Triton Model Repository Setup**: Scripts to organize models in Triton's expected directory structure
-2. **Triton Configuration**: `config.pbtxt` templates and ensemble configurations  
-3. **TensorRT Deployment**: Scripts to deploy TensorRT engines to Triton
-4. **Pipeline Configurations**: Multi-stage inference pipelines for Triton
-
-## Usage Workflow
-
-1. **Export Model**: Use neuriplo-tasks export tools or manually to create ONNX/TensorRT models
-2. **Deploy to Triton**: Use scripts in this directory to set up Triton model repository
-3. **Configure**: Edit `config.pbtxt` files for your specific model requirements
-4. **Run**: Start Triton server with your model repository
+1. **Model Repository Setup** — scripts to organize engines in Triton's `1/model.plan` layout with `config.pbtxt`
+2. **Ensemble Configurations** — multi-stage pipelines (DALI preprocess → TensorRT → DALI postprocess)
+3. **TensorRT Deployment** — Docker-based ONNX→TensorRT conversion and engine staging
+4. **CUDA Plugins** — custom DALI operators for GPU-accelerated postprocessing
