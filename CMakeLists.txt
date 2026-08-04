@@ -61,7 +61,7 @@ else()
   FetchContent_Declare(
     neuriplo-tasks
     GIT_REPOSITORY ${NEURIPLO_TASKS_REPO}
-    GIT_TAG v0.7.0
+    GIT_TAG feature/yolo-depth
   )
 endif()
 FetchContent_MakeAvailable(neuriplo-tasks)
