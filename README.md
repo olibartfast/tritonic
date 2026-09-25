@@ -513,6 +513,7 @@ Real-time inference test (GPU RTX 3060):
 ## References
 - [Triton Inference Server Client Example](https://github.com/triton-inference-server/client/blob/r21.08/src/c%2B%2B/examples/image_client.cc)
 - [Triton User Guide](https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/getting_started/quickstart.html)
+- [Triton Inference Server Release Notes (PDF)](https://docs.nvidia.com/deeplearning/triton-inference-server/pdf/Triton-Inference-Server-Release-Notes.pdf)
 - [Triton Tutorials](https://github.com/triton-inference-server/tutorials)
 - [ONNX Models](https://onnx.ai/models/)
 - [Torchvision Models](https://pytorch.org/vision/stable/models.html)
