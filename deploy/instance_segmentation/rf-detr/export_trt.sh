@@ -1,6 +1,6 @@
 #!/bin/bash
 # chmod +x export_trt.sh
-export NGC_TAG_VERSION=25.06
+export NGC_TAG_VERSION=26.08
 
 # Get absolute path to workspace root to locate the output directory
 WORKSPACE_ROOT=$(realpath "$(dirname "$0")/../../..")

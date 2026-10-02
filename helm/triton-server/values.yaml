@@ -3,7 +3,7 @@ replicaCount: 1
 
 image:
   repository: nvcr.io/nvidia/tritonserver
-  tag: "25.12-py3"
+  tag: "26.08-py3"
   pullPolicy: IfNotPresent
 
 nameOverride: ""

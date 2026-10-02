@@ -4,7 +4,7 @@
 # 
 # Examples:
 # MODEL_REPOSITORY_HOST=$HOME/model_repository
-# TRITON_VERSION=25.06
+# TRITON_VERSION=26.08
 # ./docker_triton_run.sh $MODEL_REPOSITORY_HOST $TRITON_VERSION cpu
 # ./docker_triton_run.sh $MODEL_REPOSITORY_HOST $TRITON_VERSION gpu
 # ./docker_triton_run.sh $MODEL_REPOSITORY_HOST $TRITON_VERSION gpu python_backend
@@ -13,7 +13,7 @@ set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 # Default values
 MODEL_REPO=${1:-}
-TRITON_VERSION=${2:-25.06}
+TRITON_VERSION=${2:-26.08}
 DEVICE_TYPE=${3:-cpu}
 PYTHON_BACKEND_ARG=${4:-false}
 MODEL_CONTROL_MODE_ARG=${5:-poll}
@@ -38,13 +38,13 @@ if [ $# -lt 1 ] || [ -z "$MODEL_REPO" ]; then
     echo "Usage: $0 <model_repository_path> [triton_version] [cpu|gpu] [python_backend|true] [model_control_mode]"
     echo ""
     echo "Examples:"
-    echo "  $0 \$HOME/model_repository 25.06 cpu"
-    echo "  $0 \$HOME/model_repository 25.06 gpu python_backend"
-    echo "  $0 \$HOME/model_repository 25.06 gpu true explicit"
+    echo "  $0 \$HOME/model_repository 26.08 cpu"
+    echo "  $0 \$HOME/model_repository 26.08 gpu python_backend"
+    echo "  $0 \$HOME/model_repository 26.08 gpu true explicit"
     echo ""
     echo "Parameters:"
     echo "  model_repository_path: Path to your model repository (required)"
-    echo "  triton_version: Docker image version (default: 25.06)"
+    echo "  triton_version: Docker image version (default: 26.08)"
     echo "  device_type: cpu or gpu (default: cpu)"
     echo "  python_backend: python_backend|true|1|yes to enable (default: false)"
     echo "  model_control_mode: poll or explicit (default: poll)"

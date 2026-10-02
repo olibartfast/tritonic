@@ -47,14 +47,14 @@ cp "${engine}" "${repository}/yolo_trt/1/model.plan"
 
 docker run --gpus all --rm \
   -v "${repo_root}:/workspace" -w /workspace \
-  nvcr.io/nvidia/tritonserver:25.12-py3 \
+  nvcr.io/nvidia/tritonserver:26.08-py3 \
   python3 deploy/object_detection/yolo/ensemble/dali/generate_pipeline.py \
     --output "${relative_repository}/yolo_dali_preprocess/1/model.dali"
 
 engine_sha256="$(sha256sum "${repository}/yolo_trt/1/model.plan" | awk '{print $1}')"
 cat >"${repository}/reference_model.yaml" <<EOF
 engine_sha256: ${engine_sha256}
-triton_image: nvcr.io/nvidia/tritonserver:25.12-py3
+triton_image: nvcr.io/nvidia/tritonserver:26.08-py3
 input_name: images
 input_shape: [1, 3, 640, 640]
 input_datatype: FP32

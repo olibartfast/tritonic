@@ -146,7 +146,6 @@ tritonic_apply_strict_warnings(${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME}
     PRIVATE
     ${OpenCV_INCLUDE_DIRS}
-    ${TRITON_CLIENT_BUILD_DIR}/include
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/utils
@@ -154,6 +153,10 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/src/chat
     # neuriplo-tasks includes are provided automatically through target_link_libraries
 )
+
+# Third-party headers from the Triton SDK (grpc, protobuf, abseil) are not held to
+# TRITONIC_STRICT_WARNINGS: the 26.08 abseil headers fail -Wpedantic -Werror.
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE ${TRITON_CLIENT_BUILD_DIR}/include)
 
 # Set link directories for the target
 target_link_directories(${PROJECT_NAME}
@@ -173,6 +176,24 @@ target_link_libraries(${PROJECT_NAME}
     CURL::libcurl
     ${PROTOBUF_LIBRARIES}
 )
+
+# Unoptimized builds against the 26.08+ SDK instantiate abseil CHECK helpers from the
+# bundled protobuf headers; their definitions live in this static library, which the
+# shared client libraries do not export. Release builds inline them away.
+set(TRITONIC_ABSL_CHECK_LIBS)
+foreach(absl_lib log_internal_check_op leak_check strings strings_internal int128
+        raw_logging_internal throw_delegate base spinlock_wait log_severity)
+    set(absl_path "${TRITON_CLIENT_BUILD_DIR}/lib/libabsl_${absl_lib}.a")
+    if(EXISTS "${absl_path}")
+        list(APPEND TRITONIC_ABSL_CHECK_LIBS "${absl_path}")
+    endif()
+endforeach()
+add_library(tritonic_sdk_absl INTERFACE)
+if(TRITONIC_ABSL_CHECK_LIBS)
+    target_link_libraries(tritonic_sdk_absl INTERFACE
+        -Wl,--start-group ${TRITONIC_ABSL_CHECK_LIBS} -Wl,--end-group)
+endif()
+target_link_libraries(${PROJECT_NAME} PRIVATE tritonic_sdk_absl)
 
 # Add option for testing
 option(BUILD_TESTING "Build the testing tree." OFF)
@@ -211,6 +232,16 @@ if(BUILD_TESTING)
         )
         tritonic_apply_strict_warnings(tritonic_unit_tests)
 
+        # The Triton SDK install tree ships its own gtest/gmock headers. Included through
+        # -I they shadow the googletest these tests link (googletest's own directories are
+        # -isystem, searched after every -I, and GCC drops an -I that repeats an -isystem
+        # path), and gMock expectations then crash on the header/library mismatch. So the
+        # tests take the client headers as -isystem too, linked after gtest/gmock so that
+        # googletest's directories come first. They still precede /usr/include.
+        add_library(tritonic_test_triton_client_headers INTERFACE)
+        target_include_directories(tritonic_test_triton_client_headers SYSTEM INTERFACE
+            ${TRITON_CLIENT_BUILD_DIR}/include)
+
         target_include_directories(tritonic_unit_tests PRIVATE
             ${PROJECT_SOURCE_DIR}/include
             ${PROJECT_SOURCE_DIR}/src
@@ -219,7 +250,6 @@ if(BUILD_TESTING)
             ${PROJECT_SOURCE_DIR}/src/common
             ${PROJECT_SOURCE_DIR}/tests
             ${PROJECT_SOURCE_DIR}/tests/mocks
-            ${TRITON_CLIENT_BUILD_DIR}/include
             ${OpenCV_INCLUDE_DIRS}
         )
 
@@ -229,6 +259,7 @@ if(BUILD_TESTING)
         
         target_link_libraries(tritonic_unit_tests PRIVATE
             gtest gtest_main gmock
+            tritonic_test_triton_client_headers
             neuriplo-tasks::neuriplo-tasks
             neuriplo-tasks::vision-opencv
             grpcclient
@@ -236,6 +267,7 @@ if(BUILD_TESTING)
             ${OpenCV_LIBS}
             CURL::libcurl
             ${PROTOBUF_LIBRARIES}
+            tritonic_sdk_absl
         )
         
         include(GoogleTest)

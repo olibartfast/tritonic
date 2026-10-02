@@ -2,7 +2,7 @@
 # Build: docker build --rm -t tritonic .
 # Run: docker run --rm tritonic [args]
 
-ARG TRITON_VERSION=25.12
+ARG TRITON_VERSION=26.08
 FROM nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3-sdk
 
 # Install dependencies

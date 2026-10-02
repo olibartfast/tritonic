@@ -165,7 +165,7 @@ and its [atomic implementation roadmap](docs/ENSEMBLE_INFERENCE_ROADMAP.md).
 
 ## Build Client Libraries
 
-To build the client libraries, refer to the official [Triton Inference Server client libraries](https://github.com/triton-inference-server/client/tree/r25.06).
+To build the client libraries, refer to the official [Triton Inference Server client libraries](https://github.com/triton-inference-server/client/tree/r26.08).
 
 ### Alternative: Extract Client Libraries from Docker
 
@@ -177,7 +177,7 @@ For convenience, you can extract the pre-built Triton client libraries from the 
 ```
 
 This script will:
-1. Create a temporary Docker container from the `nvcr.io/nvidia/tritonserver:25.06-py3-sdk` image
+1. Create a temporary Docker container from the `nvcr.io/nvidia/tritonserver:26.08-py3-sdk` image
 2. Extract the Triton client libraries from `/workspace/install`
 3. Copy additional Triton server headers and libraries if available
 4. Save everything to `./triton_client_libs/` directory
@@ -199,7 +199,7 @@ Ensure the following dependencies are installed:
 
 1. **Nvidia Triton Inference Server**:
 ```bash
-docker pull nvcr.io/nvidia/tritonserver:25.06-py3
+docker pull nvcr.io/nvidia/tritonserver:26.08-py3
 ```
 
 2. **Triton client libraries**: Tested on Release r25.06
@@ -298,10 +298,10 @@ To deploy models, set up a model repository following the [Triton Model Reposito
 Use the provided script for easy setup:
 ```bash
 # Start Triton server with GPU support
-./docker/scripts/docker_triton_run.sh /path/to/model_repository 25.06 gpu
+./docker/scripts/docker_triton_run.sh /path/to/model_repository 26.08 gpu
 
 # Start with CPU only
-./docker/scripts/docker_triton_run.sh /path/to/model_repository 25.06 cpu
+./docker/scripts/docker_triton_run.sh /path/to/model_repository 26.08 cpu
 ```
 
 Or manually with Docker:
@@ -499,7 +499,7 @@ Default external access on minikube:
 - Metrics: `http://$(minikube ip):30802/metrics`
 
 Notes:
-- The deployment uses the Triton `25.12-py3` image by default for Kubernetes.
+- The deployment uses the Triton `26.08-py3` image by default for Kubernetes.
 - On minikube, if the Triton image is already present in host Docker, the deploy script loads it into the node before rollout to avoid long registry pulls.
 - GPU deployments use the `Recreate` strategy so updates work on single-node, single-GPU clusters.
 

@@ -203,7 +203,7 @@ For dynamic input sizes: `--input_sizes="c,h,w"` (e.g., `"3,640,640"` or `"3,640
 
 **Triton server (Docker):**
 ```bash
-./docker/scripts/docker_triton_run.sh /path/to/model_repository 25.06 gpu
+./docker/scripts/docker_triton_run.sh /path/to/model_repository 26.08 gpu
 ```
 
 ## Model Type Tags

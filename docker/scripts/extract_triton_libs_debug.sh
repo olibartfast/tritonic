@@ -4,7 +4,7 @@ set -e
 # =========================
 # Configuration
 # =========================
-TRITON_VERSION="${1:-25.12}"
+TRITON_VERSION="${1:-26.08}"
 BUILD_TYPE="${2:-debug}"
 
 if [ "$BUILD_TYPE" == "debug" ]; then

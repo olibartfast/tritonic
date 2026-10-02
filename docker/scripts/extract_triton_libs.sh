@@ -6,7 +6,7 @@ set -e
 # Configuration
 # =========================
 
-TRITON_VERSION="${1:-25.12}"
+TRITON_VERSION="${1:-26.08}"
 TRITON_IMAGE="nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3-sdk"
 
 CONTAINER_NAME="tritonic-extract-$(date +%s)"

@@ -3,13 +3,13 @@ set -euo pipefail
 
 # Overridable defaults. Set once here; override from the environment, e.g.
 #   TRITON_IMAGE=nvcr.io/nvidia/tritonserver:26.01-py3 CUDA_ARCH="86;89" ./build_plugin.sh
-TRITON_IMAGE="${TRITON_IMAGE:-nvcr.io/nvidia/tritonserver:25.12-py3}"
-TENSORRT_IMAGE="${TENSORRT_IMAGE:-nvcr.io/nvidia/tensorrt:25.12-py3}"
+TRITON_IMAGE="${TRITON_IMAGE:-nvcr.io/nvidia/tritonserver:26.08-py3}"
+TENSORRT_IMAGE="${TENSORRT_IMAGE:-nvcr.io/nvidia/tensorrt:26.08-py3}"
 # Semicolon-separated CUDA architectures; 86 is the RTX 30-series default.
 CUDA_ARCH="${CUDA_ARCH:-86}"
 BUILD_JOBS="${BUILD_JOBS:-2}"
 # Cache of DALI headers/libs extracted from the Triton image.
-DALI_VOLUME="${DALI_VOLUME:-tritonic-dali-25-12-build}"
+DALI_VOLUME="${DALI_VOLUME:-tritonic-dali-26-08-build}"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 docker volume create "${DALI_VOLUME}" >/dev/null
