@@ -12,7 +12,7 @@ docker run --rm \
 
 
 # supposing export with command:
-# export NGC_TAG_VERSION=25.12
+# export NGC_TAG_VERSION=26.08
 
 # export MODEL_ONNX_DIR=$HOME/model_repository/raft_large_onnx/1
 # export MODEL_TRT_DIR=$HOME/model_repository/raft_large_trt/1

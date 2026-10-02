@@ -7,6 +7,20 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Reference Triton image is now `nvcr.io/nvidia/tritonserver:26.08-py3` (with
+  `tensorrt:26.08-py3` and client libraries `r26.08`). Rebuild serialized DALI
+  pipelines, DALI plugins and TensorRT engines after upgrading.
+- The DALI plugin build cache volume is now `tritonic-dali-26-08-build`, so 25.12
+  files are not mixed into 26.08 builds.
+
+### Fixed
+- Builds against the 26.08 SDK: its include directory is now a system include (its
+  abseil headers failed `TRITONIC_STRICT_WARNINGS`), and builds without a build type
+  link the SDK's abseil `CHECK` libraries (previously unresolved symbols).
+- Unit tests compiled against the SDK's bundled gtest/gmock headers instead of the
+  linked googletest, which crashed any gMock expectation.
+
 ## [0.4.0] - 2026-08-03
 
 ### Added
