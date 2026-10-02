@@ -240,6 +240,12 @@ time. Segmentation, pose, and end-to-end NMS are separate contracts.
 
 ## Phase 2 - Option 2: native C++/CUDA preprocessing
 
+> **Superseded (2026-10-02)** by the spec-driven packet
+> [GPU preprocessing alternatives](../specs/2026-10-01-gpu-preprocess-alternatives/requirements.md),
+> which implements this backend for YOLO26 detection (variant V12) and compares it
+> with a TensorRT-graph letterbox (V13) and client-side CUDA (V2). The steps below
+> are kept for history.
+
 Option 2 is a Triton custom C++ backend, not CUDA inside the Tritonic client. It
 preserves the DALI preprocessor I/O so the ensemble and client do not fork.
 

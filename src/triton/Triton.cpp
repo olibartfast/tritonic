@@ -770,6 +770,21 @@ std::vector<Tensor> Triton::inferText(const std::vector<std::vector<std::string>
     return tensors;
 }
 
+#ifdef TRITONIC_ENABLE_CUDA
+namespace {
+// Triton maps a CUDA shared-memory region into the server process through an IPC handle.
+cudaIpcMemHandle_t CudaIpcHandle(const SharedMemoryRegion& region) {
+    cudaIpcMemHandle_t handle{};
+    const cudaError_t status = cudaIpcGetMemHandle(&handle, region.ptr);
+    if (status != cudaSuccess) {
+        throw std::runtime_error("Failed to get CUDA IPC handle for region '" + region.name +
+                                 "': " + cudaGetErrorString(status));
+    }
+    return handle;
+}
+}  // namespace
+#endif
+
 std::unique_ptr<SharedMemoryRegion> Triton::createSharedMemoryRegion(const std::string& name,
                                                                      size_t size) {
     if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
@@ -905,14 +920,13 @@ void Triton::registerInputSharedMemory() {
             }
         } else {
 #ifdef TRITONIC_ENABLE_CUDA
+            const cudaIpcMemHandle_t handle = CudaIpcHandle(*region);
             if (protocol_ == ProtocolType::HTTP) {
                 err = triton_client_.httpClient->RegisterCudaSharedMemory(
-                    region->name, reinterpret_cast<CUdeviceptr>(region->ptr), region->device_id,
-                    tensor_size);
+                    region->name, handle, region->device_id, tensor_size);
             } else {
                 err = triton_client_.grpcClient->RegisterCudaSharedMemory(
-                    region->name, reinterpret_cast<CUdeviceptr>(region->ptr), region->device_id,
-                    tensor_size);
+                    region->name, handle, region->device_id, tensor_size);
             }
 #endif
         }
@@ -958,14 +972,13 @@ void Triton::registerOutputSharedMemory() {
             }
         } else {
 #ifdef TRITONIC_ENABLE_CUDA
+            const cudaIpcMemHandle_t handle = CudaIpcHandle(*region);
             if (protocol_ == ProtocolType::HTTP) {
                 err = triton_client_.httpClient->RegisterCudaSharedMemory(
-                    region->name, reinterpret_cast<CUdeviceptr>(region->ptr), region->device_id,
-                    estimated_size);
+                    region->name, handle, region->device_id, estimated_size);
             } else {
                 err = triton_client_.grpcClient->RegisterCudaSharedMemory(
-                    region->name, reinterpret_cast<CUdeviceptr>(region->ptr), region->device_id,
-                    estimated_size);
+                    region->name, handle, region->device_id, estimated_size);
             }
 #endif
         }
@@ -1045,10 +1058,6 @@ void Triton::unregisterSharedMemory() {
 
 std::vector<Tensor> Triton::inferWithSharedMemory(
     const std::vector<std::vector<uint8_t>>& input_data) {
-    tc::Error err;
-    std::vector<std::unique_ptr<tc::InferInput>> inputs;
-    std::vector<std::unique_ptr<tc::InferRequestedOutput>> outputs;
-
     if (input_shm_regions_.empty()) {
         throw std::runtime_error(
             "Input shared memory regions not registered. Call registerInputSharedMemory() first.");
@@ -1060,7 +1069,9 @@ std::vector<Tensor> Triton::inferWithSharedMemory(
                                  std::to_string(input_data.size()));
     }
 
-    // Copy input data to shared memory and create InferInput objects
+    // Copy input data to shared memory
+    std::vector<size_t> input_bytes;
+    input_bytes.reserve(input_data.size());
     for (size_t i = 0; i < model_info_.input_names.size(); ++i) {
         const std::string& input_name = model_info_.input_names[i];
         const auto& region = input_shm_regions_[i];
@@ -1071,7 +1082,6 @@ std::vector<Tensor> Triton::inferWithSharedMemory(
                                      std::to_string(region->size) + ") for input " + input_name);
         }
 
-        // Copy input data to shared memory
         if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
             std::memcpy(region->ptr, input_data[i].data(), input_data[i].size());
         } else {
@@ -1084,6 +1094,47 @@ std::vector<Tensor> Triton::inferWithSharedMemory(
             }
 #endif
         }
+        input_bytes.push_back(input_data[i].size());
+    }
+    return inferFromInputRegions(input_bytes);
+}
+
+void* Triton::deviceInputBuffer(size_t bytes) {
+    if (shared_memory_type_ != SharedMemoryType::CUDA_SHARED_MEMORY) {
+        throw std::runtime_error("Device input requires CUDA shared memory");
+    }
+    if (model_info_.input_names.size() != 1) {
+        throw std::runtime_error("Device input supports single-input models only");
+    }
+    const size_t expected =
+        calculateTensorSize(model_info_.input_shapes[0], model_info_.input_datatypes[0]);
+    if (expected != bytes) {
+        throw std::runtime_error("Device input size mismatch for '" + model_info_.input_names[0] +
+                                 "': model expects " + std::to_string(expected) +
+                                 " bytes, preprocessor writes " + std::to_string(bytes));
+    }
+    if (input_shm_regions_.empty()) {
+        registerInputSharedMemory();
+    }
+    return input_shm_regions_[0]->ptr;
+}
+
+std::vector<Tensor> Triton::inferFromDeviceInput() {
+    if (shared_memory_type_ != SharedMemoryType::CUDA_SHARED_MEMORY ||
+        input_shm_regions_.size() != 1) {
+        throw std::runtime_error("Device input not prepared. Call deviceInputBuffer() first.");
+    }
+    return inferFromInputRegions({input_shm_regions_[0]->size});
+}
+
+std::vector<Tensor> Triton::inferFromInputRegions(const std::vector<size_t>& input_bytes) {
+    tc::Error err;
+    std::vector<std::unique_ptr<tc::InferInput>> inputs;
+    std::vector<std::unique_ptr<tc::InferRequestedOutput>> outputs;
+
+    for (size_t i = 0; i < model_info_.input_names.size(); ++i) {
+        const std::string& input_name = model_info_.input_names[i];
+        const auto& region = input_shm_regions_[i];
 
         // Create InferInput with shared memory
         tc::InferInput* input;
@@ -1094,7 +1145,7 @@ std::vector<Tensor> Triton::inferWithSharedMemory(
         }
 
         // Set shared memory for input
-        err = input->SetSharedMemory(region->name, input_data[i].size());
+        err = input->SetSharedMemory(region->name, input_bytes[i]);
         if (!err.IsOk()) {
             delete input;
             throw std::runtime_error("Failed to set shared memory for input " + input_name + ": " +
@@ -1102,8 +1153,8 @@ std::vector<Tensor> Triton::inferWithSharedMemory(
         }
 
         inputs.emplace_back(input);
-        logger->Info("Input '" + input_name + "' set with shared memory region '" + region->name +
-                     "'");
+        logger->Debug("Input '" + input_name + "' set with shared memory region '" + region->name +
+                      "'");
     }
 
     // Create outputs with shared memory (if available)
@@ -1126,8 +1177,8 @@ std::vector<Tensor> Triton::inferWithSharedMemory(
                 throw std::runtime_error("Failed to set shared memory for output " + output_name +
                                          ": " + err.Message());
             }
-            logger->Info("Output '" + output_name + "' set with shared memory region '" +
-                         region->name + "'");
+            logger->Debug("Output '" + output_name + "' set with shared memory region '" +
+                          region->name + "'");
         }
 
         outputs.emplace_back(output);
@@ -1170,7 +1221,7 @@ std::vector<Tensor> Triton::inferWithSharedMemory(
     auto tensors = getInferResults(result, model_info_.batch_size_, model_info_.output_names);
     result_ptr.reset(result);
 
-    logger->Info("Inference with shared memory completed successfully");
+    logger->Debug("Inference with shared memory completed successfully");
     return tensors;
 }
 
