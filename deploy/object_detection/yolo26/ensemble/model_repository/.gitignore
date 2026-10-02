@@ -1,3 +1,12 @@
 *.plan
 *.dali
 *.so
+# Variant models staged by setup_model_repository.sh from ../variants/
+# (--with-cuda-backend, --trt-pre-onnx); their sources live in ../variants/.
+/yolo26det_cuda_preprocess/
+/yolo26det_nvjpeg_decode/
+/yolo26det_trt_pre/
+/yolo26det_cudapre_cpu_post/
+/yolo26det_cudapre_gpu_post/
+/yolo26det_trtpre_cpu_post/
+/yolo26det_trtpre_gpu_post/

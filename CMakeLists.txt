@@ -71,6 +71,9 @@ option(WITH_SHOW_FRAME "Option description" OFF)
 option(WITH_WRITE_FRAME "Option description" ON)
 option(WITH_CHAT_BACKEND "Build OpenAI-compatible chat backend (requires CURL, already a dep)" ON)
 option(TRITONIC_STRICT_WARNINGS "Enable strict compiler warnings for tritonic targets." OFF)
+option(TRITONIC_ENABLE_CUDA
+    "Build CUDA support: CUDA shared memory and client-side GPU preprocessing (needs the CUDA toolkit)"
+    OFF)
 
 function(tritonic_apply_strict_warnings target_name)
   if(NOT TRITONIC_STRICT_WARNINGS)
@@ -103,6 +106,32 @@ find_package(TritonClient REQUIRED)
 find_package(CURL REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(RapidJSON REQUIRED)
+
+# CUDA is opt-in: with TRITONIC_ENABLE_CUDA=OFF the build has no CUDA dependency.
+if(TRITONIC_ENABLE_CUDA)
+    set(CUDA_ARCH "75;80;86;89" CACHE STRING "CUDA architectures for tritonic CUDA code")
+    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+        set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH})
+    endif()
+    enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
+
+    add_library(tritonic_cuda STATIC
+        ${PROJECT_SOURCE_DIR}/src/cuda/letterbox.cu
+        ${PROJECT_SOURCE_DIR}/src/cuda/letterbox_preprocessor.cpp
+    )
+    target_include_directories(tritonic_cuda PUBLIC
+        ${PROJECT_SOURCE_DIR}/include
+        ${OpenCV_INCLUDE_DIRS}
+    )
+    target_compile_features(tritonic_cuda PUBLIC cxx_std_20)
+    # TRITON_ENABLE_GPU makes the Triton client's ipc.h use the real cudaIpcMemHandle_t,
+    # matching the GPU-enabled client libraries' RegisterCudaSharedMemory signature.
+    target_compile_definitions(tritonic_cuda PUBLIC TRITONIC_ENABLE_CUDA TRITON_ENABLE_GPU)
+    target_link_libraries(tritonic_cuda PUBLIC CUDA::cudart ${OpenCV_LIBS})
+    set_target_properties(tritonic_cuda PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    message(STATUS "CUDA support enabled (architectures: ${CMAKE_CUDA_ARCHITECTURES})")
+endif()
 
 # Set the source files (only tritonic-specific sources)
 set(SOURCES
@@ -176,6 +205,9 @@ target_link_libraries(${PROJECT_NAME}
     CURL::libcurl
     ${PROTOBUF_LIBRARIES}
 )
+if(TRITONIC_ENABLE_CUDA)
+    target_link_libraries(${PROJECT_NAME} PRIVATE tritonic_cuda)
+endif()
 
 # Unoptimized builds against the 26.08+ SDK instantiate abseil CHECK helpers from the
 # bundled protobuf headers; their definitions live in this static library, which the
@@ -226,6 +258,7 @@ if(BUILD_TESTING)
         add_executable(tritonic_unit_tests
             ${TEST_MAIN}
             ${UNIT_TEST_SOURCES}
+            src/main/App.cpp
             src/triton/Triton.cpp
             ${INFRA_SOURCES}
             ${CHAT_SOURCES}
@@ -269,7 +302,10 @@ if(BUILD_TESTING)
             ${PROTOBUF_LIBRARIES}
             tritonic_sdk_absl
         )
-        
+        if(TRITONIC_ENABLE_CUDA)
+            target_link_libraries(tritonic_unit_tests PRIVATE tritonic_cuda)
+        endif()
+
         include(GoogleTest)
         gtest_discover_tests(tritonic_unit_tests
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
@@ -286,7 +322,14 @@ if(BUILD_TESTING)
         neuriplo-tasks::vision-opencv
         ${OpenCV_LIBS}
     )
-    
+
+    if(TRITONIC_ENABLE_CUDA)
+        add_executable(cuda_preprocess_dump tests/tools/cuda_preprocess_dump.cpp)
+        tritonic_apply_strict_warnings(cuda_preprocess_dump)
+        target_include_directories(cuda_preprocess_dump PRIVATE ${OpenCV_INCLUDE_DIRS})
+        target_link_libraries(cuda_preprocess_dump PRIVATE tritonic_cuda ${OpenCV_LIBS})
+    endif()
+
     # Create integration test executable if integration tests exist
     if(INTEGRATION_TEST_SOURCES)
         add_executable(tritonic_integration_tests

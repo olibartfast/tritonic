@@ -75,3 +75,49 @@ Identical to the [YOLO detection ensemble contract](../../yolo/ensemble/README.m
 decode as RGB, letterbox to 640×640 with zero padding (matching
 `neuriplo-tasks` v0.6.0 `YoloPreprocessor`), normalize by 1/255, no ImageNet
 mean/std.
+
+## Non-DALI GPU preprocessing variants
+
+Three CUDA C++ alternatives to the DALI preprocessing step are being evaluated against
+it ([spec](../../../../specs/2026-10-01-gpu-preprocess-alternatives/requirements.md)).
+They use the same letterbox semantics as above and are opt-in: the default
+repository contains only the DALI models.
+
+| Variant | Request model | Preprocessing |
+|---|---|---|
+| V12 | `yolo26det_cudapre_cpu_post`, `yolo26det_cudapre_gpu_post` | Custom Triton backend `yolopreprocess`: nvJPEG decode + CUDA letterbox kernel |
+| V13 | `yolo26det_trtpre_cpu_post`, `yolo26det_trtpre_gpu_post` | Same backend in decode-only mode, then letterbox inside the TensorRT engine `yolo26det_trt_pre` |
+| V2 | `yolo26det_trt` | Client-side CUDA letterbox written into CUDA shared memory (`--preprocess_device=cuda`) |
+
+Stage V12 and V13 next to the DALI models (the variant configs come from
+`variants/`; V13 also needs the YOLO26 ONNX export of the same model):
+
+```bash
+deploy/object_detection/yolo26/ensemble/setup_model_repository.sh \
+  --engine /path/to/yolo26-det.engine \
+  --trt-pre-onnx /path/to/yolo26-det.onnx
+```
+
+`--with-cuda-backend` stages only V12. Triton loads the backend from
+`libtriton_yolopreprocess.so` in each model directory, so the `docker run` command
+above needs no extra mount.
+
+Run V12 or V13 exactly like the DALI ensembles, changing only `--model`:
+
+```bash
+./build/tritonic --source=data/images/bus.jpg --model_type=yolo \
+  --model=yolo26det_cudapre_cpu_post --task_model=yolo26det_trt \
+  --labelsFile=labels/coco.txt --input_mode=encoded-image
+```
+
+V2 needs a client build with `-DTRITONIC_ENABLE_CUDA=ON` on the same host and GPU
+as Triton:
+
+```bash
+./build-cuda/tritonic --source=data/images/bus.jpg --model_type=yolo \
+  --model=yolo26det_trt --labelsFile=labels/coco.txt --protocol=grpc --port=8001 \
+  --preprocess_device=cuda --shared_memory_type=cuda
+```
+
+The parity, robustness and benchmark workflow is listed in the spec's
+[plan](../../../../specs/2026-10-01-gpu-preprocess-alternatives/plan.md#implementation-status-2026-10-02).

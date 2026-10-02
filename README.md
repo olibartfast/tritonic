@@ -376,6 +376,10 @@ inference, and — for the `gpu_pre_gpu_*` variants — a custom CUDA postproces
 | `yolo26seg_*` | Instance segmentation, GPU pre/post | [YOLO26 segmentation ensemble](deploy/instance_segmentation/yolo26/ensemble/README.md) |
 | `yolo11seg_*` | Instance segmentation, GPU pre/post | [YOLO11 segmentation ensemble](deploy/instance_segmentation/yolo11/ensemble/README.md) |
 
+Non-DALI GPU preprocessing for YOLO26 detection (a custom CUDA backend, a TensorRT-graph
+letterbox, and client-side CUDA via `--preprocess_device=cuda`) is under evaluation; see
+the [variants section](deploy/object_detection/yolo26/ensemble/README.md#non-dali-gpu-preprocessing-variants).
+
 Instance-segmentation tasks return raster masks by default. Select convex-hull polygon rings
 with `--segmentation_output=polygon`; exteriors and holes are returned in image
 coordinates. `--postprocess_mode=gpu` supports both representations

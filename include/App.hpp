@@ -12,6 +12,8 @@
 #include "neuriplo/tasks/core/batch_types.hpp"
 #include "neuriplo/tasks/core/result_types.hpp"
 #include "neuriplo/tasks/core/task_interface.hpp"
+#include "tritonic/core/device_preprocessor.hpp"
+#include "tritonic/triton/device_input.hpp"
 
 class App {
 public:
@@ -19,6 +21,10 @@ public:
         std::shared_ptr<Logger> logger);
 
     int run();
+
+    // Client-side device preprocessing for --preprocess_device=cuda (spec variant V2). The
+    // Triton client must also implement IDeviceInputInference.
+    void setDevicePreprocessor(std::shared_ptr<tritonic::core::IDevicePreprocessor> preprocessor);
 
 private:
     std::shared_ptr<ITriton> tritonClient_;
@@ -32,10 +38,13 @@ private:
     int num_frames_{16};     // Frame buffer size for video classification tasks
     int max_batch_size_{1};  // Engine batch cap from model config
     std::vector<std::vector<int64_t>> base_input_shapes_;  // Per-input shapes at N=1 ([1,C,H,W])
+    std::shared_ptr<tritonic::core::IDevicePreprocessor> devicePreprocessor_;
+    tritonic::triton::IDeviceInputInference* deviceInput_{nullptr};  // tritonClient_ capability
 
     neuriplo_tasks::ModelInfo convertToNeuriploTasksModelInfo(const TritonModelInfo& triton_info);
 
     std::vector<neuriplo_tasks::Result> processSource(const std::vector<cv::Mat>& source);
+    void preprocessOnDevice(const cv::Mat& frame);
     std::vector<neuriplo_tasks::Result> processEncodedImage(const std::string& sourceName);
     std::vector<neuriplo_tasks::Result> processEncodedFrame(const cv::Mat& frame);
     void benchmarkImage(const std::string& sourceName);

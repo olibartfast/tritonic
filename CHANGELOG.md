@@ -7,6 +7,20 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Evaluation of CUDA C++ alternatives to DALI preprocessing for YOLO26 detection
+  (`specs/2026-10-01-gpu-preprocess-alternatives/`): a custom Triton backend
+  `yolopreprocess` (nvJPEG + CUDA letterbox, plus a decode-only mode), a TensorRT
+  engine with the letterbox in-graph, and client-side CUDA preprocessing into CUDA
+  shared memory (`--preprocess_device=cuda`). All are opt-in, and the default
+  repository and client behavior are unchanged.
+- `TRITONIC_ENABLE_CUDA` CMake option (default OFF) building the shared CUDA
+  letterbox kernel and the CUDA shared-memory path.
+- Benchmark summary schema v4 (`benchmarks/yolo26-det/run.py`) with a variant
+  registry, environment identity, Triton per-model server statistics, and HTTP and
+  gRPC runs, plus `perf.py` (perf_analyzer) and `compare.py` (report generation).
+- Spec-driven development constitution under `specs/`.
+
 ### Changed
 - Reference Triton image is now `nvcr.io/nvidia/tritonserver:26.08-py3` (with
   `tensorrt:26.08-py3` and client libraries `r26.08`). Rebuild serialized DALI
@@ -20,6 +34,9 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
   link the SDK's abseil `CHECK` libraries (previously unresolved symbols).
 - Unit tests compiled against the SDK's bundled gtest/gmock headers instead of the
   linked googletest, which crashed any gMock expectation.
+- CUDA shared-memory registration passed a device pointer where the Triton client
+  API expects a `cudaIpcMemHandle_t`; it now registers an IPC handle. The path was
+  previously unreachable because no build defined `TRITONIC_ENABLE_CUDA`.
 
 ## [0.4.0] - 2026-08-03
 
