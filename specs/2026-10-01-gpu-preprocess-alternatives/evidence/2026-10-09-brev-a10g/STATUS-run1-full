@@ -1,0 +1,12 @@
+PASS env
+PASS libs
+PASS build
+PASS model
+PASS stage
+PASS triton
+PASS spikes
+PASS tensors
+FAIL gates (logs/gates.log)
+FAIL bench (logs/bench.log)
+FAIL sanitize (logs/sanitize.log)
+PASS report

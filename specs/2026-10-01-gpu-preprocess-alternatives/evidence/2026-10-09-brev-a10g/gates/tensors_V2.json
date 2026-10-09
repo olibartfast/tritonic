@@ -1,0 +1,59 @@
+{
+  "reference": "gate-results-tmp/dali_server",
+  "actual": "gate-results-tmp/kernel",
+  "results": [
+    {
+      "tensor": "bus.fp32",
+      "shape": [
+        3,
+        640,
+        640
+      ],
+      "max_abs": 0.11372548341751099,
+      "mean_abs": 0.001273364177905023,
+      "p99_abs": 0.0156862735748291,
+      "different_elements": 244085,
+      "passed": true
+    },
+    {
+      "tensor": "horses.fp32",
+      "shape": [
+        3,
+        640,
+        640
+      ],
+      "max_abs": 0.05098038911819458,
+      "mean_abs": 0.0003357364621479064,
+      "p99_abs": 0.00784313678741455,
+      "different_elements": 83712,
+      "passed": true
+    },
+    {
+      "tensor": "mug.fp32",
+      "shape": [
+        3,
+        640,
+        640
+      ],
+      "max_abs": 0.007843196392059326,
+      "mean_abs": 5.571193833020516e-05,
+      "p99_abs": 0.003921568393707275,
+      "different_elements": 17147,
+      "passed": true
+    },
+    {
+      "tensor": "person.fp32",
+      "shape": [
+        3,
+        640,
+        640
+      ],
+      "max_abs": 0.14509809017181396,
+      "mean_abs": 0.0008343674708157778,
+      "p99_abs": 0.011764705181121826,
+      "different_elements": 136238,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

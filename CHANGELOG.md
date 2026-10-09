@@ -20,6 +20,18 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
   registry, environment identity, Triton per-model server statistics, and HTTP and
   gRPC runs, plus `perf.py` (perf_analyzer) and `compare.py` (report generation).
 - Spec-driven development constitution under `specs/`.
+- GPU validation evidence from an A10G (Triton 26.08) and the report
+  `specs/2026-10-01-gpu-preprocess-alternatives/evidence/2026-10-09-brev-a10g/comparison.md`.
+  Recommendation: keep DALI as the server-side default, use client CUDA
+  preprocessing (`--preprocess_device=cuda`) when the client shares the GPU host
+  with Triton (3.1 ms vs 9.3 ms), and keep the custom backend as the DALI-free
+  option.
+- `versions.env`, the single source of dependency and container pins, read by
+  `cmake/versions.cmake` and `scripts/versions.sh`; `scripts/check_version_sync.sh`
+  (run in CI) checks the files that cannot read it.
+- `integration-tests/gpu-preprocess/run_gpu_host_gate.sh`, which runs the whole GPU
+  gate on any Docker GPU host, and a replication runbook
+  (`specs/2026-10-01-gpu-preprocess-alternatives/gpu-validation-runbook.md`).
 
 ### Changed
 - Reference Triton image is now `nvcr.io/nvidia/tritonserver:26.08-py3` (with
@@ -27,6 +39,12 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
   pipelines, DALI plugins and TensorRT engines after upgrading.
 - The DALI plugin build cache volume is now `tritonic-dali-26-08-build`, so 25.12
   files are not mixed into 26.08 builds.
+- neuriplo-tasks pinned to v0.8.2.
+- CUDA-enabled builds link the CUDA runtime statically, so the same binary runs on
+  CPU-only clients with the default `--preprocess_device=cpu`;
+  `--preprocess_device=cuda` without a GPU now fails at startup with a clear error.
+- Triton 26.08 disables client shared memory by default: start the server with
+  `--allow-client-shm=true` for `--preprocess_device=cuda` / `--shared_memory_type`.
 
 ### Fixed
 - Builds against the 26.08 SDK: its include directory is now a system include (its
@@ -37,6 +55,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
 - CUDA shared-memory registration passed a device pointer where the Triton client
   API expects a `cudaIpcMemHandle_t`; it now registers an IPC handle. The path was
   previously unreachable because no build defined `TRITONIC_ENABLE_CUDA`.
+- YOLO26 / YOLOv10 detections from ONNX and TensorRT `end2end` exports were 640×
+  too large (neuriplo-tasks v0.8.0 rescaled pixel coordinates as if normalized);
+  fixed by the v0.8.2 pin. The DALI GPU postprocess step for YOLO26 now reads
+  pixel coordinates (`normalized_boxes=False`).
 
 ## [0.4.0] - 2026-08-03
 

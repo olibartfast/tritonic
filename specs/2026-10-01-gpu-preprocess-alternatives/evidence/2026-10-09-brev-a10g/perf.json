@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "label": "NVIDIA-A10G-26.08",
+  "fixture": "bus_1080p",
+  "sdk_image": "nvcr.io/nvidia/tritonserver:26.08-py3-sdk",
+  "variants": {
+    "B0": {
+      "1": {
+        "inferences_per_second": 105.232,
+        "p50_us": 7141.0,
+        "p95_us": 7388.0,
+        "p99_us": 7638.0,
+        "gpu_utilization_mean": 0.2068888888888889,
+        "gpu_memory_peak_mib": 976.0,
+        "samples": 135,
+        "wall_s": 33.7
+      },
+      "4": {
+        "inferences_per_second": 208.771,
+        "p50_us": 13270.0,
+        "p95_us": 17244.0,
+        "p99_us": 19385.0,
+        "gpu_utilization_mean": 0.4450406504065041,
+        "gpu_memory_peak_mib": 976.0,
+        "samples": 123,
+        "wall_s": 30.8
+      },
+      "8": {
+        "error": " Successfully read data for 1 stream/streams with 1 step/steps.\n*** Measurement Settings ***\n  Batch size: 1\n  Service Kind: TRITON\n  Using \"time_windows\" mode for stabilization\n  Stabilizing using p95latency and throughput\n  Measurement window: 5000 msec\n  Latency limit: 0 msec\n  Concurrency limit: 8 concurrent requests\n  Using synchronous calls for inference\n\nRequest concurrency: 8\n",
+        "gpu_utilization_mean": 0.4396396396396397,
+        "gpu_memory_peak_mib": 976.0,
+        "samples": 111,
+        "wall_s": 28.0
+      }
+    },
+    "B1": {
+      "1": {
+        "inferences_per_second": 106.582,
+        "p50_us": 8983.0,
+        "p95_us": 9435.0,
+        "p99_us": 9845.0,
+        "gpu_utilization_mean": 0.24081081081081082,
+        "gpu_memory_peak_mib": 976.0,
+        "samples": 74,
+        "wall_s": 18.6
+      },
+      "4": {
+        "inferences_per_second": 161.829,
+        "p50_us": 24206.0,
+        "p95_us": 26162.0,
+        "p99_us": 26757.0,
+        "gpu_utilization_mean": 0.3956,
+        "gpu_memory_peak_mib": 976.0,
+        "samples": 75,
+        "wall_s": 18.7
+      },
+      "8": {
+        "inferences_per_second": 162.244,
+        "p50_us": 48849.0,
+        "p95_us": 50844.0,
+        "p99_us": 52687.0,
+        "gpu_utilization_mean": 0.4046666666666667,
+        "gpu_memory_peak_mib": 976.0,
+        "samples": 75,
+        "wall_s": 18.7
+      }
+    },
+    "V12": {
+      "1": {
+        "inferences_per_second": 84.2401,
+        "p50_us": 11582.0,
+        "p95_us": 12114.0,
+        "p99_us": 12323.0,
+        "gpu_utilization_mean": 0.22675675675675677,
+        "gpu_memory_peak_mib": 976.0,
+        "samples": 74,
+        "wall_s": 18.4
+      },
+      "4": {
+        "inferences_per_second": 117.876,
+        "p50_us": 33697.0,
+        "p95_us": 34701.0,
+        "p99_us": 34959.0,
+        "gpu_utilization_mean": 0.26756756756756755,
+        "gpu_memory_peak_mib": 976.0,
+        "samples": 74,
+        "wall_s": 18.6
+      },
+      "8": {
+        "inferences_per_second": 116.617,
+        "p50_us": 68282.0,
+        "p95_us": 70010.0,
+        "p99_us": 70547.0,
+        "gpu_utilization_mean": 0.2740540540540541,
+        "gpu_memory_peak_mib": 976.0,
+        "samples": 74,
+        "wall_s": 18.6
+      }
+    },
+    "V13": {
+      "1": {
+        "inferences_per_second": 83.9799,
+        "p50_us": 11642.0,
+        "p95_us": 12110.0,
+        "p99_us": 12272.0,
+        "gpu_utilization_mean": 0.2127027027027027,
+        "gpu_memory_peak_mib": 976.0,
+        "samples": 74,
+        "wall_s": 18.4
+      },
+      "4": {
+        "inferences_per_second": 117.262,
+        "p50_us": 33954.0,
+        "p95_us": 34808.0,
+        "p99_us": 36000.0,
+        "gpu_utilization_mean": 0.2835135135135135,
+        "gpu_memory_peak_mib": 976.0,
+        "samples": 74,
+        "wall_s": 18.5
+      },
+      "8": {
+        "inferences_per_second": 117.317,
+        "p50_us": 67851.0,
+        "p95_us": 69539.0,
+        "p99_us": 70629.0,
+        "gpu_utilization_mean": 0.2969333333333333,
+        "gpu_memory_peak_mib": 976.0,
+        "samples": 75,
+        "wall_s": 18.6
+      }
+    },
+    "V2": {
+      "skipped": "client-side preprocessing"
+    }
+  }
+}
