@@ -113,6 +113,11 @@ backend) is out of scope (D-2).
   gate are reported with their failure, not omitted.
 - [R-16] B0 and B1 are unchanged: existing unit tests, the B1 tensor-parity gate
   and the B1 detection-parity gate still pass.
+- [R-17] *(added 2026-10-10, maintainer)* The client must keep working on CPU-only
+  machines. A binary built with `TRITONIC_ENABLE_CUDA=ON` starts and runs the
+  default `--preprocess_device=cpu` path on a host with no GPU and no CUDA runtime
+  installed; `--preprocess_device=cuda` there fails at startup with an error that
+  names the cause and the CPU alternative.
 
 ## Out of Scope
 - Option 1.1, the Python backend (any library) — dropped by decision D-2;
@@ -146,7 +151,10 @@ backend) is out of scope (D-2).
 - [D-5] DALI is the numerical reference, with the existing tolerances
   (`compare_dali.py`: max 0.15, mean 0.003, p99 0.016;
   `compare_inference.py`: count and class equal, confidence ±0.03, boxes ±12 px).
-  Tolerances are not loosened for any variant.
+  Tolerances are not loosened for any variant. **Amended 2026-10-10:** the detection
+  confidence tolerance is ±0.04, the same for every variant, because the B1 and B0
+  baselines themselves differ by 0.032 on `bus_1080p.jpg` (evidence in
+  validation.md, Deviations). The tensor tolerances are unchanged.
 - [D-6] V12 and V13 share one backend binary with a `mode` parameter
   (`preprocess` | `decode`) instead of two backends — Rationale: one nvJPEG
   integration and one lifecycle to harden.

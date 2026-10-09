@@ -1,0 +1,7 @@
+Run 1 (2026-10-09, confidence tolerance 0.03) detection-parity failures:
+detections_B1_vs_B0.json: B1 vs B0 http bus_1080p.jpg: detection mismatch: confidence_error=0.032308, coordinate_error=1
+detections_B1_vs_B0.json: B1 vs B0 grpc bus_1080p.jpg: detection mismatch: confidence_error=0.032308, coordinate_error=1
+detections_B1_vs_B0.json: B1-gpupost vs B0 http bus_1080p.jpg: detection mismatch: confidence_error=0.032308, coordinate_error=1
+detections_B1_vs_B0.json: B1-gpupost vs B0 grpc bus_1080p.jpg: detection mismatch: confidence_error=0.032308, coordinate_error=1
+detections.json: V2 vs B1 http bus_1080p.jpg: detection mismatch: confidence_error=0.031427, coordinate_error=1
+detections.json: V2 vs B1 grpc bus_1080p.jpg: detection mismatch: confidence_error=0.031427, coordinate_error=1
