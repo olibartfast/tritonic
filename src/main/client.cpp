@@ -9,6 +9,7 @@
 #include "Logger.hpp"
 #include "Triton.hpp"
 #ifdef TRITONIC_ENABLE_CUDA
+#include "tritonic/cuda/device.hpp"
 #include "tritonic/cuda/letterbox_preprocessor.hpp"
 #endif
 #include "chat/ChatBackend.hpp"
@@ -267,6 +268,11 @@ int main(int argc, const char* argv[]) {
         // CUDA shared memory is only used by client-side CUDA preprocessing (variant V2),
         // which writes the model input in place; other paths keep the default.
         const bool cudaPreprocess = config->GetPreprocessDevice() == "cuda";
+#ifdef TRITONIC_ENABLE_CUDA
+        if (cudaPreprocess) {
+            tritonic::cuda::RequireCudaDevice(config->GetCudaDeviceId());
+        }
+#endif
         auto triton = std::make_shared<Triton>(
             url, protocol, config->GetModelName(), config->GetModelVersion(), config->GetVerbose(),
             cudaPreprocess ? SharedMemoryType::CUDA_SHARED_MEMORY

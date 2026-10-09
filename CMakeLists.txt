@@ -128,6 +128,7 @@ if(TRITONIC_ENABLE_CUDA)
     add_library(tritonic_cuda STATIC
         ${PROJECT_SOURCE_DIR}/src/cuda/letterbox.cu
         ${PROJECT_SOURCE_DIR}/src/cuda/letterbox_preprocessor.cpp
+        ${PROJECT_SOURCE_DIR}/src/cuda/device.cpp
     )
     target_include_directories(tritonic_cuda PUBLIC
         ${PROJECT_SOURCE_DIR}/include
@@ -137,7 +138,9 @@ if(TRITONIC_ENABLE_CUDA)
     # TRITON_ENABLE_GPU makes the Triton client's ipc.h use the real cudaIpcMemHandle_t,
     # matching the GPU-enabled client libraries' RegisterCudaSharedMemory signature.
     target_compile_definitions(tritonic_cuda PUBLIC TRITONIC_ENABLE_CUDA TRITON_ENABLE_GPU)
-    target_link_libraries(tritonic_cuda PUBLIC CUDA::cudart ${OpenCV_LIBS})
+    # Static cudart loads the driver (libcuda) lazily on the first CUDA call, so a CUDA-enabled
+    # binary still starts on CPU-only clients that run the default --preprocess_device=cpu.
+    target_link_libraries(tritonic_cuda PUBLIC CUDA::cudart_static ${OpenCV_LIBS})
     set_target_properties(tritonic_cuda PROPERTIES POSITION_INDEPENDENT_CODE ON)
     message(STATUS "CUDA support enabled (architectures: ${CMAKE_CUDA_ARCHITECTURES})")
 endif()
