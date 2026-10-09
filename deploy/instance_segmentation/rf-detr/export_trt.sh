@@ -1,6 +1,12 @@
 #!/bin/bash
 # chmod +x export_trt.sh
-export NGC_TAG_VERSION=26.08
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/../../.." && pwd)"
+source "${repo_root}/scripts/versions.sh"
+
+export NGC_TAG_VERSION="${NGC_CONTAINER_TAG}"
 
 # Get absolute path to workspace root to locate the output directory
 WORKSPACE_ROOT=$(realpath "$(dirname "$0")/../../..")
@@ -17,7 +23,7 @@ docker run --rm -it --gpus=all \
     --ulimit stack=67108864 \
     -v "$OUTPUT_DIR/inference_model.sim.onnx":/workspace/model.onnx \
     -w /workspace \
-    nvcr.io/nvidia/tensorrt:${NGC_TAG_VERSION}-py3 \
+    "${TENSORRT_IMAGE}" \
     /bin/bash -cx "trtexec --onnx=model.onnx \
                             --saveEngine=/exports/model.engine \
                             --memPoolSize=workspace:4096 \

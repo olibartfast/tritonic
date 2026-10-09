@@ -7,13 +7,13 @@
 # Overridable defaults, e.g. CUDA_ARCH="86;89" BUILD_JOBS=8 ./build_backend.sh
 set -euo pipefail
 
-TENSORRT_IMAGE="${TENSORRT_IMAGE:-nvcr.io/nvidia/tensorrt:26.08-py3}"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/../.." && pwd)"
+source "${repo_root}/scripts/versions.sh"
+
 # Semicolon-separated CUDA architectures; 86 is the RTX 30-series default.
 CUDA_ARCH="${CUDA_ARCH:-86}"
 BUILD_JOBS="${BUILD_JOBS:-2}"
-
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "${script_dir}/../.." && pwd)"
 
 # The backend compiles src/cuda/letterbox.cu from the repository root, so mount it whole.
 docker run --rm \

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/../../../.." && pwd)"
+source "${repo_root}/scripts/versions.sh"
+
 usage() {
   echo "Usage: $0 --engine /path/to/yolo26-det.engine [--repository path] [--triton-image ref]" >&2
   echo "          [--with-cuda-backend] [--trt-pre-onnx /path/to/yolo26-det.onnx]" >&2
@@ -9,11 +13,8 @@ usage() {
   echo "                        implies --with-cuda-backend for its nvJPEG decode step" >&2
 }
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "${script_dir}/../../../.." && pwd)"
 repository="${script_dir}/model_repository"
 # Overridable default: env var, or --triton-image on the command line.
-TRITON_IMAGE="${TRITON_IMAGE:-nvcr.io/nvidia/tritonserver:26.08-py3}"
 engine=""
 with_cuda_backend=false
 trt_pre_onnx=""

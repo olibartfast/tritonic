@@ -11,9 +11,13 @@
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/../.." && pwd)"
+source "${repo_root}/scripts/versions.sh"
+
 # Default values
 MODEL_REPO=${1:-}
-TRITON_VERSION=${2:-26.08}
+TRITON_VERSION=${2:-${NGC_CONTAINER_TAG}}
 DEVICE_TYPE=${3:-cpu}
 PYTHON_BACKEND_ARG=${4:-false}
 MODEL_CONTROL_MODE_ARG=${5:-poll}
@@ -91,7 +95,11 @@ case "${MODEL_CONTROL_MODE_ARG,,}" in
 esac
 
 # Determine Docker image early for GPU check
-BASE_IMAGE="nvcr.io/nvidia/tritonserver:$TRITON_VERSION-py3"
+# If TRITON_VERSION was overridden via positional arg, reconstruct the image URL
+BASE_IMAGE="${TRITON_IMAGE}"
+if [[ "$TRITON_VERSION" != "${NGC_CONTAINER_TAG}" ]]; then
+  BASE_IMAGE="nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3"
+fi
 
 # Validate GPU availability if requested
 if [ "$DEVICE_TYPE" = "gpu" ]; then

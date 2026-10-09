@@ -234,6 +234,14 @@ pip install pre-commit
 pre-commit install
 ```
 
+### Version Pins
+
+Dependency and container versions are centralized in `versions.env`, which is read by `cmake/versions.cmake` (for CMake builds) and `scripts/versions.sh` (for shell scripts). After editing `versions.env`, run `scripts/check_version_sync.sh` to verify consistency across all configuration files:
+
+```bash
+./scripts/check_version_sync.sh
+```
+
 ### Build and Compile
 
 1. Set the environment variable `TritonClientBuild_DIR` or update the `CMakeLists.txt` with the path to your installed Triton client libraries.

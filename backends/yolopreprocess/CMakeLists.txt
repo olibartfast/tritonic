@@ -4,16 +4,37 @@
 cmake_minimum_required(VERSION 3.24)
 project(tritonyolopreprocessbackend LANGUAGES C CXX CUDA)
 
+# Load centralized version pins from the parent tritonic build.
+include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/versions.cmake")
+
 set(TRITON_MIN_CXX_STANDARD 17 CACHE STRING "Minimum C++ standard for this backend.")
 set(TRITON_REPO_ORGANIZATION "https://github.com/triton-inference-server" CACHE STRING
     "Git repository to pull from")
 # Pinned to the reference server release (specs/tech-stack.md).
-set(TRITON_COMMON_REPO_TAG "r26.08" CACHE STRING "triton-inference-server/common tag")
-set(TRITON_CORE_REPO_TAG "r26.08" CACHE STRING "triton-inference-server/core tag")
-set(TRITON_BACKEND_REPO_TAG "r26.08" CACHE STRING "triton-inference-server/backend tag")
-set(CUDA_ARCH "75;80;86;89" CACHE STRING "CUDA architectures")
+set(TRITON_COMMON_REPO_TAG "" CACHE STRING
+    "triton-inference-server/common tag override; empty uses TRITON_REPO_TAG")
+set(TRITON_CORE_REPO_TAG "" CACHE STRING
+    "triton-inference-server/core tag override; empty uses TRITON_REPO_TAG")
+set(TRITON_BACKEND_REPO_TAG "" CACHE STRING
+    "triton-inference-server/backend tag override; empty uses TRITON_REPO_TAG")
+if(NOT TRITON_COMMON_REPO_TAG)
+  set(TRITON_COMMON_REPO_TAG "${TRITON_REPO_TAG}")
+endif()
+if(NOT TRITON_CORE_REPO_TAG)
+  set(TRITON_CORE_REPO_TAG "${TRITON_REPO_TAG}")
+endif()
+if(NOT TRITON_BACKEND_REPO_TAG)
+  set(TRITON_BACKEND_REPO_TAG "${TRITON_REPO_TAG}")
+endif()
+set(CUDA_ARCH "" CACHE STRING
+    "CUDA architectures override; empty uses CUDA_ARCHITECTURES from versions.env")
+if(CUDA_ARCH)
+  set(_triton_backend_cuda_arch "${CUDA_ARCH}")
+else()
+  set(_triton_backend_cuda_arch "${CUDA_ARCHITECTURES}")
+endif()
 if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-  set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH})
+  set(CMAKE_CUDA_ARCHITECTURES ${_triton_backend_cuda_arch})
 endif()
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)

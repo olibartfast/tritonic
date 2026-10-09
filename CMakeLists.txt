@@ -11,6 +11,9 @@ message(STATUS "${PROJECT_NAME} ${PROJECT_VERSION}")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Load centralized version pins for FetchContent and CMake caches.
+include(cmake/versions.cmake)
+
 set(TRITON_CLIENT_BUILD_DIR "$ENV{TritonClientBuild_DIR}" CACHE PATH "Path to Triton client build directory")
 
 # Set default if not provided
@@ -61,7 +64,7 @@ else()
   FetchContent_Declare(
     neuriplo-tasks
     GIT_REPOSITORY ${NEURIPLO_TASKS_REPO}
-    GIT_TAG v0.8.0
+    GIT_TAG ${NEURIPLO_TASKS_VERSION}
   )
 endif()
 FetchContent_MakeAvailable(neuriplo-tasks)
@@ -109,9 +112,15 @@ find_package(RapidJSON REQUIRED)
 
 # CUDA is opt-in: with TRITONIC_ENABLE_CUDA=OFF the build has no CUDA dependency.
 if(TRITONIC_ENABLE_CUDA)
-    set(CUDA_ARCH "75;80;86;89" CACHE STRING "CUDA architectures for tritonic CUDA code")
+    set(CUDA_ARCH "" CACHE STRING
+        "CUDA architectures override; empty uses CUDA_ARCHITECTURES from versions.env")
+    if(CUDA_ARCH)
+        set(_tritonic_cuda_arch "${CUDA_ARCH}")
+    else()
+        set(_tritonic_cuda_arch "${CUDA_ARCHITECTURES}")
+    endif()
     if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-        set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH})
+        set(CMAKE_CUDA_ARCHITECTURES ${_tritonic_cuda_arch})
     endif()
     enable_language(CUDA)
     find_package(CUDAToolkit REQUIRED)
@@ -240,7 +249,7 @@ if(BUILD_TESTING)
         FetchContent_Declare(
           googletest
           GIT_REPOSITORY https://github.com/google/googletest.git
-          GIT_TAG v1.14.0
+          GIT_TAG ${GTEST_VERSION}
         )
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
         FetchContent_MakeAvailable(googletest)
