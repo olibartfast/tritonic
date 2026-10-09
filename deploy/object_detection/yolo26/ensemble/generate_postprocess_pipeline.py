@@ -22,6 +22,8 @@ def pipeline():
         original_size,
         device="gpu",
         confidence_threshold=0.5,
+        # Ultralytics ONNX/TensorRT end2end exports emit xyxy in input pixels, not [0, 1].
+        normalized_boxes=False,
     )
     return tuple(outputs)
 
