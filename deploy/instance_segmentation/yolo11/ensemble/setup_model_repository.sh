@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/../../../.." && pwd)"
+source "${repo_root}/scripts/versions.sh"
+
 usage() {
   echo "Usage: $0 --engine /path/to/yolo11<n|s|m|l|x>-seg.engine [--repository path] [--triton-image ref]" >&2
 }
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "${script_dir}/../../../.." && pwd)"
 repository="${script_dir}/model_repository"
 # Overridable default: env var, or --triton-image on the command line.
-TRITON_IMAGE="${TRITON_IMAGE:-nvcr.io/nvidia/tritonserver:26.08-py3}"
 engine=""
 
 while [[ $# -gt 0 ]]; do
