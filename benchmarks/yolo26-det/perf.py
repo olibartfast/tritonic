@@ -18,7 +18,9 @@ import argparse
 import base64
 import csv
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -35,7 +37,22 @@ from common.fixtures import RESOLUTION_FIXTURES, make_resolution_fixture  # noqa
 from variants import PREPROCESSED_BYTES, select  # noqa: E402
 
 REPO_ROOT = HERE.parents[1]
-SDK_IMAGE = "nvcr.io/nvidia/tritonserver:26.08-py3-sdk"
+
+def _ngc_tag():
+    """Read NGC_CONTAINER_TAG from environment (if set) or versions.env."""
+    if "NGC_CONTAINER_TAG" in os.environ:
+        return os.environ["NGC_CONTAINER_TAG"]
+    versions_env = REPO_ROOT / "versions.env"
+    if not versions_env.exists():
+        raise RuntimeError(f"versions.env not found at {versions_env}")
+    with open(versions_env) as f:
+        for line in f:
+            match = re.match(r'^NGC_CONTAINER_TAG=(.+)$', line.strip())
+            if match:
+                return match.group(1)
+    raise RuntimeError("NGC_CONTAINER_TAG not found in versions.env")
+
+SDK_IMAGE = os.environ.get("TRITON_SDK_IMAGE") or f"nvcr.io/nvidia/tritonserver:{_ngc_tag()}-py3-sdk"
 METRIC = re.compile(r'^(nv_gpu_utilization|nv_gpu_memory_used_bytes)\{[^}]*\} ([0-9.e+]+)$')
 
 
@@ -85,10 +102,11 @@ def input_data(variant, jpeg: Path, work: Path) -> Path:
 
 def perf_analyzer(args, variant, data: Path, concurrency: int, work: Path):
     report = work / f"{variant.key}_c{concurrency}.csv"
+    # Inside the SDK image perf_analyzer is on PATH; elsewhere run it from that image.
+    prefix = [] if shutil.which("perf_analyzer") else [
+        "docker", "run", "--rm", "--network", "host", "-v", f"{work}:{work}", args.sdk_image]
     command = [
-        "docker", "run", "--rm", "--network", "host",
-        "-v", f"{work}:{work}",
-        args.sdk_image,
+        *prefix,
         "perf_analyzer",
         "-m", variant.model,
         "-u", f"{args.server}:{args.grpc_port}", "-i", "grpc",
@@ -99,7 +117,8 @@ def perf_analyzer(args, variant, data: Path, concurrency: int, work: Path):
         "-f", str(report),
     ]
     completed = subprocess.run(command, capture_output=True, text=True)
-    if completed.returncode != 0:
+    # perf_analyzer can exit 0 without a report, e.g. when no measurement window is stable.
+    if completed.returncode != 0 or not report.exists():
         return {"error": (completed.stdout + completed.stderr)[-2000:]}
     with report.open() as stream:
         row = next(csv.DictReader(stream))

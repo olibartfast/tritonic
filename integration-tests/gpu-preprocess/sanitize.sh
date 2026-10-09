@@ -16,11 +16,11 @@ set -euo pipefail
 
 MODE="${1:-all}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${REPO_ROOT}/scripts/versions.sh"
+
 BUILD_DIR="$(realpath -m "${2:-${REPO_ROOT}/build-cuda}")"
 OUT="${OUT:-/tmp/tritonic-gpu-preprocess/sanitizer}"
-TRITON_IMAGE="${TRITON_IMAGE:-nvcr.io/nvidia/tritonserver:26.08-py3}"
-TENSORRT_IMAGE="${TENSORRT_IMAGE:-nvcr.io/nvidia/tensorrt:26.08-py3}"
-SANITIZER_VOLUME="${SANITIZER_VOLUME:-tritonic-compute-sanitizer-26-08}"
+SANITIZER_VOLUME="${SANITIZER_VOLUME:-tritonic-compute-sanitizer-${NGC_CONTAINER_TAG//./-}}"
 REPOSITORY="${REPOSITORY:-${REPO_ROOT}/deploy/object_detection/yolo26/ensemble/model_repository}"
 FIXTURES=(data/images/bus.jpg data/images/horses.jpg data/images/person.jpg data/images/mug.jpg)
 mkdir -p "${OUT}"
@@ -47,7 +47,7 @@ run_kernel() {
 
 run_client() {
   record client_memcheck compute-sanitizer --tool memcheck --error-exitcode 1 \
-    "${BUILD_DIR}/tritonic" --source="${REPO_ROOT}/data/images/bus.jpg" --model_type=yolo \
+    "${BUILD_DIR}/tritonic" --source="${REPO_ROOT}/data/images/bus.jpg" --model_type=yolo26 \
     --model=yolo26det_trt --labelsFile="${REPO_ROOT}/labels/coco.txt" --protocol=grpc \
     --port=8001 --write_frame=false --preprocess_device=cuda --shared_memory_type=cuda
 }
@@ -55,7 +55,10 @@ run_client() {
 run_server() {
   docker volume create "${SANITIZER_VOLUME}" >/dev/null
   docker run --rm -v "${SANITIZER_VOLUME}:/export" "${TENSORRT_IMAGE}" \
-    sh -c 'cp -a "$(dirname "$(readlink -f "$(command -v compute-sanitizer)")")/." /export/'
+    sh -c 'd="$(dirname "$(readlink -f "$(command -v compute-sanitizer)")")"
+           # On PATH is a wrapper that execs ../compute-sanitizer/compute-sanitizer.
+           [ -d "${d}/../compute-sanitizer" ] && d="${d}/../compute-sanitizer"
+           cp -a "${d}/." /export/'
 
   local models=()
   for model in yolo26det_cuda_preprocess yolo26det_nvjpeg_decode; do
@@ -74,7 +77,7 @@ run_server() {
     /sanitizer/compute-sanitizer --tool memcheck --error-exitcode 1 \
     --log-file /out/server_memcheck.log \
     tritonserver --model-repository=/models --model-control-mode=explicit "${models[@]}" \
-    --disable-auto-complete-config >/dev/null
+    --disable-auto-complete-config --allow-client-shm=true >/dev/null
 
   # The sanitizer slows startup considerably.
   for _ in $(seq 1 120); do

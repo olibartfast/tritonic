@@ -33,3 +33,7 @@ tests/cmake_install.cmake
 tests/Makefile
 **/CMakeFiles/
 **/CMakeCache.txt
+# GPU host gate outputs (integration-tests/gpu-preprocess/run_gpu_host_gate.sh)
+gate-results*
+gate-models
+tritonic-gate.zip

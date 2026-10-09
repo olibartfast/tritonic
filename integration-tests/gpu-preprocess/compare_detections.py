@@ -4,7 +4,7 @@
 Runs Tritonic on every fixture for the reference variant and each candidate over
 HTTP and gRPC, then applies the tolerance used to accept the DALI path
 (integration-tests/yolo-ensemble/compare_inference.py): same count and classes,
-confidence within 0.03, boxes within 12 px. A candidate with GPU postprocessing
+confidence within 0.04 (0.03 for the original DALI acceptance), boxes within 12 px. A candidate with GPU postprocessing
 is compared against the DALI GPU-postprocess reference.
 
     compare_detections.py --candidates V12,V12-gpupost --protocols http,grpc
@@ -34,6 +34,12 @@ DETECTION = re.compile(
     r"bbox=\[(?P<x>-?\d+),(?P<y>-?\d+),(?P<w>-?\d+),(?P<h>-?\d+)\]"
 )
 STOCK = ["bus.jpg", "horses.jpg", "person.jpg", "mug.jpg"]
+
+# Spec V-7 (amended 2026-10-10): on bus_1080p the two reference pipelines themselves,
+# B1 (DALI/nvJPEG) and B0 (OpenCV/libjpeg-turbo), differ by 0.032 in confidence,
+# so 0.03 rejected the baselines.
+CONFIDENCE_TOLERANCE = 0.04
+COORDINATE_TOLERANCE = 12
 
 
 def detections(args, variant, protocol, fixture):
@@ -67,8 +73,11 @@ def detections(args, variant, protocol, fixture):
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--candidates", required=True, help="variant keys, e.g. V12,V13,V2")
+    parser.add_argument("--reference", default=None,
+                        help="override the reference variant (default: B1, or B1-gpupost for "
+                             "GPU-postprocess candidates); e.g. B0 to check B1 itself")
     parser.add_argument("--protocols", default="http,grpc")
-    parser.add_argument("--model-type", default="yolo")
+    parser.add_argument("--model-type", default="yolo26")
     parser.add_argument("--labels", default="labels/coco.txt")
     parser.add_argument("--server", default="localhost")
     parser.add_argument("--tritonic", type=Path, default=REPO / "build" / "tritonic")
@@ -83,7 +92,7 @@ def main() -> int:
                                              Path(work) / f"{name}.jpg", size)
                      for name, size in RESOLUTION_FIXTURES.items()]
         for candidate in select(args.candidates):
-            reference = VARIANTS["B1-gpupost" if "gpu-post" in candidate.tags else "B1"]
+            reference = VARIANTS[args.reference or ("B1-gpupost" if "gpu-post" in candidate.tags else "B1")]
             for protocol in args.protocols.split(","):
                 for fixture in fixtures:
                     entry = {"candidate": candidate.key, "reference": reference.key,
@@ -91,7 +100,7 @@ def main() -> int:
                     try:
                         expected = detections(args, reference, protocol, fixture)
                         actual = detections(args, candidate, protocol, fixture)
-                        compare(expected, actual)
+                        compare(expected, actual, confidence_tolerance=CONFIDENCE_TOLERANCE, coordinate_tolerance=COORDINATE_TOLERANCE)
                         entry.update(passed=True, detections=len(expected))
                     except (AssertionError, RuntimeError) as error:
                         entry.update(passed=False, error=str(error)[-1000:])
@@ -101,6 +110,7 @@ def main() -> int:
                     report["results"].append(entry)
 
     report["passed"] = not failed
+    report["tolerances"] = {"confidence": CONFIDENCE_TOLERANCE, "coordinates_px": COORDINATE_TOLERANCE}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(args.output)

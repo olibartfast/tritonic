@@ -10,8 +10,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-TRITON_IMAGE="${TRITON_IMAGE:-nvcr.io/nvidia/tritonserver:26.08-py3}"
-TENSORRT_IMAGE="${TENSORRT_IMAGE:-nvcr.io/nvidia/tensorrt:26.08-py3}"
+source "${REPO_ROOT}/scripts/versions.sh"
 
 image_json() {
   if docker image inspect "$1" >/dev/null 2>&1; then
@@ -25,8 +24,8 @@ gpu_csv="$(nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,
 
 python3 - "$TRITON_IMAGE" "$(image_json "$TRITON_IMAGE")" \
   "$TENSORRT_IMAGE" "$(image_json "$TENSORRT_IMAGE")" \
-  "$gpu_csv" "$(git -C "$REPO_ROOT" rev-parse HEAD)" \
-  "$(git -C "$REPO_ROOT" status --porcelain | wc -l)" \
+  "$gpu_csv" "$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || head -1 "$REPO_ROOT/COMMIT" 2>/dev/null || echo unknown)" \
+  "$( if git -C "$REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1; then (git -C "$REPO_ROOT" status --porcelain 2>/dev/null || echo) | grep -c . ; else echo unknown; fi )" \
   "$(lscpu 2>/dev/null | sed -n 's/^Model name: *//p' | head -1)" \
   "${1:-}" <<'EOF'
 import json
@@ -55,11 +54,13 @@ for line in filter(None, gpu_csv.splitlines()):
 
 server = describe(triton_image, triton_json)
 builder = describe(trt_image, trt_json)
+# dirty_files is None if git is unavailable (no .git directory); int otherwise
+dirty_files = None if dirty == "unknown" else int(dirty)
 report = {
     "gpus": gpus,
     "client_cpu": cpu,
     "commit": commit,
-    "dirty_files": int(dirty),
+    "dirty_files": dirty_files,
     "server_image": server,
     "tensorrt_image": builder,
     "images_consistent": bool(server["digest"] and builder["digest"])
