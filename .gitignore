@@ -8,8 +8,10 @@ model_repository
 # .gitignore inside each model_repository/ and each model's version directory.
 !deploy/**/ensemble/model_repository/
 !deploy/**/ensemble/model_repository/**
-# build* above would otherwise swallow this script.
+# build* above would otherwise swallow these scripts.
 !deploy/**/ensemble/dali_plugin/build_plugin.sh
+!deploy/**/ensemble/trt_pre/build_trt_pre_engine.sh
+!backends/*/build_backend.sh
 build_test
 triton_client_libs
 3rdparty

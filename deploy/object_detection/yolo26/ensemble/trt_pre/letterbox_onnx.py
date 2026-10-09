@@ -5,7 +5,7 @@ Input  `image`  UINT8 [1, H, W, 3] RGB, H and W dynamic
 Output `images` FP32  [1, 3, 640, 640], the YOLO26 TensorRT input
 
 The graph computes the spec R-2 letterbox from the runtime input shape:
-Shape -> size math -> Transpose -> Cast -> Resize (linear, half_pixel) -> Round ->
+Shape -> size math -> Cast -> Transpose -> Resize (linear, half_pixel) -> Round ->
 Clip -> Pad (constant 0, centered) -> Div 255.
 
 Run standalone to write the spike graph (plan T-2):
@@ -90,9 +90,11 @@ def build_letterbox_graph(
             ["lb_pads"],
             axis=0,
         ),
-        # Pixel path: NHWC uint8 -> NCHW float -> resize -> uint8 rounding -> pad -> /255.
-        helper.make_node("Transpose", [input_name], ["lb_nchw_u8"], perm=[0, 3, 1, 2]),
-        helper.make_node("Cast", ["lb_nchw_u8"], ["lb_nchw"], to=TensorProto.FLOAT),
+        # Pixel path: NHWC uint8 -> float -> NCHW -> resize -> uint8 rounding -> pad -> /255.
+        # Cast comes first: TensorRT accepts UINT8 tensors only as Cast inputs (spike T-2,
+        # TensorRT 11.2.1.2 rejected a Transpose on UINT8).
+        helper.make_node("Cast", [input_name], ["lb_nhwc"], to=TensorProto.FLOAT),
+        helper.make_node("Transpose", ["lb_nhwc"], ["lb_nchw"], perm=[0, 3, 1, 2]),
         helper.make_node(
             "Resize",
             ["lb_nchw", "", "", "lb_sizes"],
