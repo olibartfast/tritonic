@@ -8,9 +8,9 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${REPO_ROOT}/scripts/versions.sh"
+
 OUTPUT_DIR="$(mkdir -p "${1:-/tmp/tritonic-spikes}" && cd "${1:-/tmp/tritonic-spikes}" && pwd)"
-TRITON_IMAGE="${TRITON_IMAGE:-nvcr.io/nvidia/tritonserver:26.08-py3}"
-TENSORRT_IMAGE="${TENSORRT_IMAGE:-nvcr.io/nvidia/tensorrt:26.08-py3}"
 PIP_DEPS="numpy opencv-python-headless onnx"
 
 run_in() {

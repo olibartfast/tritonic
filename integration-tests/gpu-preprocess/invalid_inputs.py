@@ -131,7 +131,7 @@ def check_client(tritonic: Path):
 
 def run_client(tritonic: Path, variant, source: Path):
     return subprocess.run(
-        [str(tritonic), f"--source={source}", "--model_type=yolo", "--labelsFile=labels/coco.txt",
+        [str(tritonic), f"--source={source}", "--model_type=yolo26", "--labelsFile=labels/coco.txt",
          "--protocol=grpc", "--port=8001", "--write_frame=false", *variant.client_args()],
         text=True, capture_output=True, cwd=str(REPO))
 

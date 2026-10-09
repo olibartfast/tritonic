@@ -129,7 +129,7 @@ def main():
     parser.add_argument("--variants", default=None, help="comma-separated keys from variants.py")
     parser.add_argument("--protocols", default="grpc,http")
     parser.add_argument("--label", required=True, help="hardware/image label, e.g. rtx3060-2608")
-    parser.add_argument("--model-type", default="yolo")
+    parser.add_argument("--model-type", default="yolo26")
     parser.add_argument("--labels", default="labels/coco.txt")
     parser.add_argument("--server", default="localhost")
     parser.add_argument("--http-port", type=int, default=8000)
@@ -138,6 +138,8 @@ def main():
     parser.add_argument("--iterations", type=int, default=100)
     parser.add_argument("--tritonic", type=Path, default=TRITONIC)
     parser.add_argument("--output-dir", type=Path, default=None)
+    parser.add_argument("--environment", type=Path, default=None,
+                        help="env_probe.sh JSON collected beforehand (e.g. on the Docker host)")
     args = parser.parse_args()
 
     if not args.tritonic.exists():
@@ -156,7 +158,8 @@ def main():
         "model_family": "yolo26-det",
         "label": args.label,
         "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "environment": environment(out / "environment.json"),
+        "environment": json.loads(args.environment.read_text()) if args.environment
+        else environment(out / "environment.json"),
         "warmup": args.warmup,
         "iterations": args.iterations,
         "variants": {variant.key: {"title": variant.title, "model": variant.model,

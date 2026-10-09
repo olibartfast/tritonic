@@ -24,8 +24,10 @@ docker run --rm --gpus all --shm-size=1g \
   -v "$PWD/deploy/object_detection/yolo26/ensemble/model_repository:/models:ro" \
   nvcr.io/nvidia/tritonserver:26.08-py3 \
   tritonserver --model-repository=/models --disable-auto-complete-config \
-  --backend-config=dali,plugin_libs=/models/libyolo26_det_dali.so
+  --allow-client-shm=true --backend-config=dali,plugin_libs=/models/libyolo26_det_dali.so
 ```
+
+`--allow-client-shm=true` is required since Triton 26.08 for clients that register CUDA or system shared memory (variant V2).
 
 Models:
 - `yolo26det_trt`: raw TensorRT model
