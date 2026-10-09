@@ -65,7 +65,11 @@ that the check is defined before the code exists.
 | V-3b | CI job replicas: `cmake -S . -B build-ci -DTRITONIC_STRICT_WARNINGS=ON` (CUDA OFF and ON) and `cmake -S . -B build-ci-test -DBUILD_TESTING=ON` + `ctest` | pass | 2026-10-02 | Both strict builds link; the CI test job passes 110/110. |
 | V-4 | `TRITONIC_ENABLE_CUDA=ON` Release build + tests in the SDK image; `build_backend.sh` in `tensorrt:26.08-py3` | pass | 2026-10-02 | `tritonic`, `cuda_preprocess_dump`, `libtritonic_cuda.a` built for sm_86; 110/110 tests; backend built with `-Werror`, exports only the 6 `TRITONBACKEND_*` entry points, links `libcudart.so.13`/`libnvjpeg.so.13` (CUDA 13.4, same as the SDK). Not yet checked: that `libnvjpeg.so.13` is present in `tritonserver:26.08-py3` (image not pulled here). |
 | V-6 | `ctest` subsets `Config`, `AppDevicePreprocess`, `Letterbox` within the V-3/V-4 runs | pass | 2026-10-02 | 4 new config tests, 4 App device-path tests (mocked device input and preprocessor: preprocessed once per frame, no host `infer`, failure without a preprocessor or device-capable client, CPU mode ignores an injected preprocessor), 6 letterbox tests including D-5 parity of the shared kernel math against the neuriplo-tasks CPU preprocessor on the 4 fixtures. |
-| — | All [GPU] rows | not run | — | No NVIDIA GPU on the implementation machine. |
+| T-3 | `dali_letterbox_spike.py` on Colab T4 (DALI 2.2.0, CUDA 13.3 toolkit, driver 580.82) | pass | 2026-10-09 | Pad rounding floor (7/7 geometries; ceil 4/7). Reference vs DALI on DALI's own decode: max 0 (bus, person, mug), 1/255 (horses). Degenerate 1×1000: DALI emits a tensor (recorded difference). |
+| T-2 | `trt_letterbox_spike.py` (Python API runner) on Colab T4, TensorRT 11.2.1.2 | pass (after fix) | 2026-10-09 | First graph failed to parse (UINT8 `Transpose`); Cast-first graph builds; 9/9 cases vs reference (max 1/255, incl. 5×3 and 2160×3840), 4/4 vs DALI within D-5. |
+| V-5 | `cuda_preprocess_dump` (nvcc 13.3, sm_75) vs DALI tensors, `compare_tensors.py` | pass | 2026-10-09 | bus max 0.114 / mean 0.0013 / p99 0.0157; horses 0.051 / 0.00034 / 0.0078; person 0.145 / 0.00083 / 0.0118; mug 0.0078 / 0.00006 / 0.0039 (limits 0.15 / 0.003 / 0.016). The residual is OpenCV vs nvJPEG decode; on DALI's own decode the math is exact (T-3). |
+| V-14 (kernel) | `compute-sanitizer --tool memcheck` and `--tool racecheck` on `cuda_preprocess_dump` | pass | 2026-10-09 | `ERROR SUMMARY: 0 errors`; `RACECHECK SUMMARY: 0 hazards`. Client (V2) and server parts of V-14 not run. |
+| — | Remaining [GPU] rows (V-0c, V-1, V-2, V-7–V-13, V-14 client/server) | not run | — | Need Triton in Docker on a GPU host; Colab has no Docker. |
 
 ## Deviations
 - V-9 criterion revised on 2026-10-02, before the check existed or ran: "max abs ≤ 2"
@@ -87,6 +91,10 @@ that the check is defined before the code exists.
   with an empty entry, so a `g++` invoked directly from the repository root reads the
   new `specs/` directory as a GCC specs file and aborts. CMake builds run in the
   build directory and are unaffected.
+- Colab partial gate (2026-10-09) changed two implementation details, both before any
+  GPU gate had passed with the old form: the letterbox ONNX graph casts before
+  transposing, and the V13 profile minimum is 1×1 instead of 32×32. Neither changes a
+  criterion.
 - V-7/V-8/V-10 use the new `compare_detections.py` instead of extending
   `yolo-ensemble/compare_inference.py`. It imports that script's `compare()`, so
   the tolerances are the same code, not a copy.

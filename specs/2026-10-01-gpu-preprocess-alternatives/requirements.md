@@ -41,7 +41,9 @@ backend) is out of scope (D-2).
   `tests/unit/test_yolo_preprocessing_contract.cpp`, OddPaddingRemainderFallsOnBottomAndRight).
   Inputs whose aspect ratio exceeds 640:1 collapse one side to 0 pixels and are
   rejected (finding, 2026-10-02: the ONNX graph fails on 1×1000 and the reference
-  cannot represent it).
+  cannot represent it). DALI instead emits a one-row tensor for these (finding,
+  2026-10-09, spike T-3), so this rejection is a recorded difference from B1.
+  Pad rounding is floor, measured against DALI 2.2.0 (spike T-3, 2026-10-09).
 
 **V12 — custom C++ backend**
 - [R-3] A Triton C++ backend `yolopreprocess` serves `yolo26det_cuda_preprocess`
@@ -201,9 +203,14 @@ backend) is out of scope (D-2).
   `yolo` (YOLO11). This packet supersedes it for yolo26det and adds V13 and V2.
 
 ## Assumptions & Open Questions
-- [A-1] TensorRT 10.x in `tensorrt:26.08-py3` accepts a `UINT8` network input and
-  a data-dependent Resize/Pad output size inside one dynamic-shape profile —
-  Basis: TRT 10 release notes (inference). Probed first by spike T-2; if it
+- [A-1] TensorRT 11.2.1.2 in `tensorrt:26.08-py3` (finding, 2026-10-09: image
+  `TRT_VERSION`; the image's CUDA runtime is 13.4.1, and TensorRT is built against
+  CUDA 13.3) accepts a `UINT8` network input and a data-dependent Resize/Pad output
+  size inside one dynamic-shape profile — Basis: TensorRT 10 behavior (inference).
+  The DALI inside `tritonserver:26.08` is 2.2.0 (the pin in
+  olibartfast/rf-detr-cpp-inference `versions.env`). **Answered 2026-10-09 (spike T-2):**
+  true once `Cast` precedes `Transpose` (TensorRT 11.2 rejects UINT8 `Transpose`).
+- [A-2] answered 2026-10-09 (spike T-3): floor. Probed first by spike T-2; if it
   fails, V13 is replanned (e.g. resize in-graph to a fixed size, pad outside).
 - [A-2] DALI `fn.paste(paste_x=0.5)` places the image at
   `floor((640 - rw) / 2)` — Basis: none, assumption. Measured by spike T-3.

@@ -167,10 +167,10 @@ Code exists for every task. A group counts as done only when its exit check has 
 
 | Group | Code | Exit check | Where |
 |---|---|---|---|
-| 0.1 env + spikes | T-1 `benchmarks/yolo26-det/env_probe.sh`; T-2 `integration-tests/gpu-preprocess/trt_letterbox_spike.py`; T-3 `dali_letterbox_spike.py`; both run by `run_spikes.sh` | **pending [GPU]** | — |
+| 0.1 env + spikes | T-1 `benchmarks/yolo26-det/env_probe.sh`; T-2 `integration-tests/gpu-preprocess/trt_letterbox_spike.py`; T-3 `dali_letterbox_spike.py`; `run_spikes.sh` (Docker) or `colab_validation.ipynb` | spikes **done** on Colab (see Spike results); V-0 env probe on the Docker host pending | validation T-2/T-3 |
 | 0.2 harness v4 | T-4 `run.py` + `variants.py`; T-5 `benchmarks/common/fixtures.py`; T-6 `perf.py` | **pending [GPU]** | — |
 | 1.1 build plumbing | T-7 `TRITONIC_ENABLE_CUDA` in `CMakeLists.txt` | **done**: OFF unchanged (V-3, V-3b), ON builds (V-4) | validation V-3/V-4 |
-| 1.2 kernel | T-8 `src/cuda/letterbox.cu`, `include/tritonic/cuda/letterbox_pixel.hpp`; T-9 `tests/tools/cuda_preprocess_dump.cpp`; T-10 `compare_tensors.py` | math checked on CPU (C-1, C-2, C-5); GPU **pending** | validation C-1/C-2/C-5 |
+| 1.2 kernel | T-8 `src/cuda/letterbox.cu`, `include/tritonic/cuda/letterbox_pixel.hpp`; T-9 `tests/tools/cuda_preprocess_dump.cpp`; T-10 `compare_tensors.py` | **done**: GPU parity vs DALI (V-5) and sanitizers (V-14 kernel) on a T4 | validation V-5/V-14 |
 | 2.1 config | T-11 `--preprocess_device` + `test_config.cpp` | **done** (V-6) | validation V-6 |
 | 2.2 wiring | T-12 `IDeviceInputInference` on `Triton`; T-13 `App` device path + `test_app_device_preprocess.cpp`; T-14 registry entry `V2` | mock tests pass (V-6); **pending [GPU]** (V-7) | validation V-6 |
 | 3.1/3.2 backend | T-15 `backends/yolopreprocess/` (+ `build_backend.sh`); T-16/T-17 nvJPEG + kernel; T-18 `variants/` configs, `setup_model_repository.sh --with-cuda-backend` | builds (V-4), staging dry run (C-4); **pending [GPU]** (load, V-8) | validation V-4/C-4 |
@@ -192,7 +192,28 @@ Run order on the GPU host:
    `recommendation.md` (V-16).
 
 ## Spike results
-_Empty until T-2 and T-3 run._
+
+Run on Google Colab on 2026-10-09: Tesla T4 (sm_75), driver 580.82 (CUDA 13.0), CUDA 13.3
+toolkit, pip `nvidia-dali-cuda130==2.2.0` and `tensorrt-cu13==11.2.1.2` (the NGC 26.08
+pins), via `integration-tests/gpu-preprocess/colab_validation.ipynb`.
+
+- **T-3 (A-2) — answered: floor.** DALI's `fn.paste(paste_x=0.5)` offset matched floor on
+  all 7 probe geometries; ceil missed 3 (481×640, 640×481, 333×1000). Resampling is the R-2
+  convention: the NumPy reference applied to DALI's own decode reproduces DALI's tensor
+  (bus, person, mug bit-exact; horses max 1/255). R-2's `floor` default stands.
+- **T-3 finding — degenerate geometry differs from B1.** DALI does *not* reject 1×1000 /
+  1000×1; it emits a tensor with a single content row. The variants reject these inputs
+  (R-11); this is a deliberate, recorded difference from B1, not a parity failure.
+- **T-2 (A-1) — answered: yes, after one graph change.** TensorRT 11.2.1.2 rejected the
+  first graph: `Transpose` on a UINT8 tensor is not allowed (UINT8 is accepted only as a
+  Cast input). With `Cast` moved ahead of `Transpose` the engine builds with a dynamic
+  profile and matches the reference on all 9 cases (fixtures, odd/even padding, 5×3,
+  1080p, 2160p; max 1/255) and DALI on all 4 fixtures within D-5. The profile minimum was
+  lowered from 32×32 to 1×1 so V13 accepts small images like V12 and B1.
+- Harness lesson (not a TensorRT issue): the first Python-API runner uploaded with CuPy on
+  the default stream and executed on a separate non-blocking stream, which produced
+  partial, order-dependent errors on large inputs. Copies and inference now share one
+  stream; with that, every probe is exact regardless of order or content.
 
 ## Notes
 - Deviations from the task text, recorded on 2026-10-02: the perf wrapper is
