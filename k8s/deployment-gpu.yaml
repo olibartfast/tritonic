@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: triton-server
-        image: nvcr.io/nvidia/tritonserver:25.12-py3
+        image: nvcr.io/nvidia/tritonserver:26.08-py3
         ports:
         - containerPort: 8000
           name: http

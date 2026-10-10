@@ -1,522 +1,252 @@
-![Alt text](data/tritonic_logo_2.png)
+![TritonIC](data/tritonic_logo_2.png)
 
-# TritonIC - C++ Inference Client
+# TritonIC — C++ Inference Client
 
 [![CI](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml)
+[![C++](https://img.shields.io/badge/language-C++20-blue.svg)](https://en.cppreference.com/w/cpp)
+[![CMake](https://img.shields.io/badge/build%20system-CMake-blue.svg)](https://cmake.org/)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](https://github.com/olibartfast/tritonic/releases/tag/v0.5.0)
 
-TritonIC is a C++ application that supports two complementary inference modes:
+A C++20 client for computer vision on the
+[NVIDIA Triton Inference Server](https://github.com/triton-inference-server/server)
+(detection, segmentation, classification, pose, depth, optical flow, video classification)
+over HTTP or gRPC. It also works with any OpenAI-compatible `/v1/chat/completions`
+endpoint, for VLMs and LLMs.
 
-- **Triton backend** — computer vision tasks (object detection, segmentation, classification, optical flow, pose, depth) via the [NVIDIA Triton Inference Server](https://github.com/triton-inference-server/server) over HTTP or gRPC.
-- **Chat backend** — text and multimodal generation via any OpenAI-compatible `/v1/chat/completions` endpoint (Ollama, llama.cpp, SGLang, vLLM, OpenAI, etc.).
+Give it a model on Triton, an image or a video, and a labels file. It runs the model's
+preprocessing, inference and postprocessing, and writes back an annotated file.
 
-The two backends are complementary: use Triton for real-time computer vision at high throughput; use the Chat backend for VLMs and LLMs without a Triton server.
+**Start here, then go deeper:** this page is the short path: build, start Triton, run.
+[docs/usage.md](docs/usage.md) is the full command-line reference.
+[docs/models.md](docs/models.md) lists every supported model and its `--model_type`.
+The rest is indexed in **[docs/README.md](docs/README.md)**.
 
-> 🚧 Status: Under Development — expect frequent updates.
+---
 
 ## Table of Contents
-- [Project Structure](#project-structure)
-- [Architecture](#architecture)
-- [Tested Models](#tested-models)
-  - [Object Detection](#object-detection) · [Instance Segmentation](#instance-segmentation) · [Classification](#classification)
-  - [Optical Flow](#optical-flow) · [Open Vocabulary Detection](#open-vocabulary-detection) · [Pose Estimation](#pose-estimation)
-  - [Video Classification](#video-classification) · [Depth Estimation](#depth-estimation) · [Image Understanding (VLM)](#image-understanding-vlm)
-- [Build Client Libraries](#build-client-libraries)
-- [Dependencies](#dependencies)
-- [Development Setup](#development-setup)
-  - [Pre-commit Hooks](#pre-commit-hooks-recommended)
-  - [Build and Compile](#build-and-compile)
-- [Tasks](#tasks)
-- [Notes](#notes)
-- [Deploying Models](#deploying-models)
-  - [Model Repository Structure](#model-repository-structure)
-  - [Starting Triton Server](#starting-triton-server)
-- [Running Inference](#running-inference)
-  - [Command-line inference](#command-line-inference-on-video-or-image)
-  - [Shared Memory Support](#shared-memory-support)
-  - [Ensemble models](#ensemble-models)
-  - [Docker scripts](#running-with-the-docker-scripts)
-  - [Chat backend](#chat-backend-openai-compatible)
-- [Docker Support](#docker-support)
-- [Kubernetes Deployment](#kubernetes-deployment)
-- [Demo](#demo)
+- [Quick Start](#quick-start): from a clean Ubuntu box to an annotated image
+- [Running It](#running-it): images, video, GPU ensembles, chat
+- [Common Flags](#common-flags)
+- [Choosing Where Preprocessing Runs](#choosing-where-preprocessing-runs)
+- [Versions at a Glance](#versions-at-a-glance)
+- [Common Build Options](#common-build-options)
+- [Documentation](#documentation)
+- [Testing](#testing)
 - [References](#references)
-- [Feedback](#feedback)
 
-**Full documentation index: [docs/README.md](docs/README.md)**
+---
 
-## Project Structure
+## Quick Start
 
-```
-tritonic/
-├── src/
-│   ├── main/                     # Entry point (client.cpp), App, Logger, ConfigManager
-│   ├── triton/                   # Triton client (Triton.hpp/.cpp, forwarding headers)
-│   ├── chat/                     # OpenAI-compatible backend (ChatBackend, ChatSession)
-│   └── common/                   # Shared forwarding headers
-├── include/
-│   ├── tritonic/                 # Canonical namespaced headers
-│   │   ├── core/                 # types.hpp, interfaces.hpp
-│   │   ├── triton/               # model_info.hpp, itriton.hpp, triton_backend.hpp
-│   │   ├── chat/                 # ichat_backend.hpp
-│   │   └── infra/                # logger.hpp, config.hpp, config_manager.hpp
-│   └── *.hpp                     # Backward-compat forwarding headers
-├── deploy/                       # Model export scripts (per task type)
-├── scripts/                      # Docker, setup, and utility scripts
-├── config/                       # Configuration files
-├── docs/                         # Documentation and guides
-├── labels/                       # Label files (COCO, ImageNet, etc.)
-├── data/                         # Data files (images, videos, outputs)
-└── tests/                        # Unit and integration tests
-```
+Five steps on Ubuntu. You need Docker and, for a GPU server, the
+[NVIDIA Container Toolkit](docs/guides/Docker_setup.md).
 
-**CMake Fetched Dependencies:**
-- [neuriplo-tasks](https://github.com/olibartfast/neuriplo-tasks) (v0.7.0) — model pre/post processing and task management
-
-## Architecture
-
-TritonIC selects an inference backend at startup via `--backend`:
-
-| `--backend` | Requires | Best for |
-|-------------|----------|----------|
-| `triton` (default) | NVIDIA Triton server | CV tasks — detection, segmentation, classification, optical flow, pose, depth |
-| `chat` | Any OpenAI-compatible server | LLMs, VLMs, multimodal chat |
-
-The two modes are **not competing** — Triton handles binary tensor workloads at real-time throughput, while the Chat backend handles text/image generation over a REST API. Choose based on your model and server.
-
-Both implement the common `tritonic::core::IInferenceBackend` interface (Strategy pattern), enabling clean dependency injection and unit testing without live servers.
-
-> Note: "backend" here refers to *tritonic's* server selection (`--backend=triton` vs `--backend=chat`). This is distinct from the Triton server's own *framework backends* (TensorRT, ONNX Runtime, etc.), which are configured server-side.
-
-For full code structure and namespace layout see [AGENTS.md](AGENTS.md).
-
-The YOLO DALI ensemble can accept original JPEG bytes and run decode,
-letterboxing, normalization, and TensorRT inference on the server. See the
-[reproducible GPU-preprocessing workflow](deploy/object_detection/yolo/ensemble/README.md)
-and its [atomic implementation roadmap](docs/ENSEMBLE_INFERENCE_ROADMAP.md).
-
-## Tested Models
-
-### Object Detection
-
-- [YOLOv5](https://github.com/ultralytics/yolov5)
-- [YOLOv6](https://github.com/meituan/YOLOv6)
-- [YOLOv7](https://github.com/WongKinYiu/yolov7)
-- [YOLOv8/YOLO11/YOLO26](https://github.com/ultralytics/ultralytics)
-- [YOLOv9](https://github.com/WongKinYiu/yolov9)
-- [YOLOv10](https://github.com/THU-MIG/yolov10)
-- [YOLOv12](https://github.com/sunsmarterjie/yolov12)
-- [YOLO-NAS](https://github.com/Deci-AI/super-gradients)
-- [RT-DETR](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetr_pytorch)
-- [RT-DETRv2](https://github.com/lyuwenyu/RT-DETR/tree/main/rtdetrv2_pytorch)
-- [RT-DETRv4](https://github.com/RT-DETRs/RT-DETRv4)
-- [D-FINE](https://github.com/Peterande/D-FINE)
-- [DEIM](https://github.com/ShihuaHuang95/DEIM)
-- [DEIMv2](https://github.com/Intellindust-AI-Lab/DEIMv2)
-- [RF-DETR](https://github.com/roboflow/rf-detr)
-
-### Instance Segmentation
-
-- [YOLOv5](https://github.com/ultralytics/yolov5)
-- [YOLOv8/YOLO11/YOLO26](https://github.com/ultralytics/ultralytics)
-- [YOLOv10](https://github.com/THU-MIG/yolov10)
-- [YOLOv12](https://github.com/sunsmarterjie/yolov12)
-- [RF-DETR-Seg](https://github.com/roboflow/rf-detr)
-
-### Classification
-
-- [Torchvision Models](https://pytorch.org/vision/stable/models.html)
-- [TensorFlow-Keras Models](https://www.tensorflow.org/api_docs/python/tf/keras/applications)
-- [Hugging Face Vision Transformers (ViT)](https://huggingface.co/docs/transformers/model_doc/vit)
-
-### Optical Flow
-
-- [RAFT](https://pytorch.org/vision/stable/models/raft.html)
-
-### Open Vocabulary Detection
-
-- [OWLv2](https://huggingface.co/google/owlv2-base-patch16-ensemble)
-- [OWL-ViT](https://huggingface.co/google/owlvit-base-patch32)
-- [Grounding DINO](https://github.com/IDEA-Research/GroundingDINO)
-
-### Pose Estimation
-
-- [YOLOv5 Pose](https://github.com/ultralytics/yolov5)
-- [YOLOv8/YOLO11/YOLO26 Pose](https://github.com/ultralytics/ultralytics)
-- [ViTPose](https://github.com/ViTAE-Transformer/ViTPose)
-- [RF-DETR Keypoints](https://github.com/roboflow/rf-detr) (single-stage person keypoints, 17 COCO keypoints)
-- [YOLOv5 Pose](https://github.com/ultralytics/yolov5)
-- [YOLOv8/YOLO11/YOLO26 Pose](https://github.com/ultralytics/ultralytics)
-
-### Video Classification
-
-- [VideoMAE](https://github.com/MCG-NJU/VideoMAE)
-- [ViViT](https://github.com/google-research/scenic/tree/main/scenic/projects/vivit)
-- [TimeSformer](https://github.com/facebookresearch/TimeSformer)
-
-### Depth Estimation
-
-- [Depth Anything V2](https://github.com/ibaiGorordo/Depth-Anything-V2)
-
-### Image Understanding (VLM)
-
-- [Gemma 4](https://ai.google.dev/gemma/docs) and compatible vision-language models via llama.cpp (image captioning, visual Q&A)
-- LLaVA, LLaMA3-V, and other multimodal models via OpenAI-compatible endpoints
-
-
-## Build Client Libraries
-
-To build the client libraries, refer to the official [Triton Inference Server client libraries](https://github.com/triton-inference-server/client/tree/r25.06).
-
-### Alternative: Extract Client Libraries from Docker
-
-For convenience, you can extract the pre-built Triton client libraries from the official NVIDIA Triton Server SDK image using [Docker](docs/guides/Docker_setup.md):
+### 1. Install the toolchain
 
 ```bash
-# Run the extraction script
+sudo apt-get update
+sudo apt-get install -y cmake ninja-build g++ libopencv-dev rapidjson-dev \
+  libcurl4-openssl-dev libprotobuf-dev protobuf-compiler
+```
+
+### 2. Get the Triton client libraries
+
+```bash
 ./docker/scripts/extract_triton_libs.sh
-```
-
-This script will:
-1. Create a temporary Docker container from the `nvcr.io/nvidia/tritonserver:25.06-py3-sdk` image
-2. Extract the Triton client libraries from `/workspace/install`
-3. Copy additional Triton server headers and libraries if available
-4. Save everything to `./triton_client_libs/` directory
-
-After extraction, set the environment variable:
-```bash
 export TritonClientBuild_DIR=$(pwd)/triton_client_libs/install
 ```
 
-The extracted directory structure will contain:
-- `install/` - Triton client build artifacts
-- `triton_server_include/` - Triton server headers  
-- `triton_server_lib/` - Triton server libraries
-- `workspace/` - Additional workspace files
+This copies the prebuilt libraries out of the pinned `tritonserver:<tag>-py3-sdk` image.
+To build them from source instead, see [docs/building.md](docs/building.md#build-client-libraries).
 
-## Dependencies
-
-Ensure the following dependencies are installed:
-
-1. **Nvidia Triton Inference Server**:
-```bash
-docker pull nvcr.io/nvidia/tritonserver:25.06-py3
-```
-
-2. **Triton client libraries**: Tested on Release r25.06
-3. **Protobuf and gRPC++**: Versions compatible with Triton
-4. **RapidJSON**:
-```bash
-apt install rapidjson-dev
-```
-
-5. **libcurl**:
-```bash
-apt install libcurl4-openssl-dev
-```
-
-6. **OpenCV 4**: Tested version: 4.7.0
-```bash
-apt install libopencv-dev
-```
-
-## Development Setup
-
-### Pre-commit Hooks (Recommended)
-
-To maintain code quality and consistency, install pre-commit hooks:
+### 3. Build
 
 ```bash
-# Run the setup script
-./scripts/setup/pre_commit_setup.sh
-
-# Or install manually
-pip install pre-commit
-pre-commit install
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
 ```
 
-### Build and Compile
+[neuriplo-tasks](https://github.com/olibartfast/neuriplo-tasks), which does the model
+pre- and postprocessing, is fetched automatically.
 
-1. Set the environment variable `TritonClientBuild_DIR` or update the `CMakeLists.txt` with the path to your installed Triton client libraries.
+### 4. Serve a model
 
-2. Create a build directory:
-```bash
-mkdir build
-```
-
-3. Navigate to the build directory:
-```bash
-cd build
-```
-
-4. Run CMake to configure the build:
-```bash
-cmake -DCMAKE_BUILD_TYPE=Release ..
-```
-
-Optional flags:
-- `-DSHOW_FRAME`: Enable to display processed frames after inference
-- `-DWRITE_FRAME`: Enable to write processed frames to disk
-
-5. Build the application:
-```bash
-cmake --build .
-```
-
-## Tasks
-
-### Export Instructions
-- [Object Detection](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/detection/ObjectDetection.md)
-- [Classification](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/classification/Classification.md)
-- [Instance Segmentation](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/segmentation/InstanceSegmentation.md)
-- [Optical Flow](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/optical_flow/OpticalFlow.md)
-- [Open Vocabulary Detection](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/open_vocab_detection/OpenVocabDetection.md)
-- [Pose Estimation](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/pose_estimation/PoseEstimation.md)
-- [Video Classification](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/video_classification/VideoClassification.md)
-- [Depth Estimation](https://github.com/olibartfast/neuriplo-tasks/blob/master/export/depth_estimation/DepthEstimation.md)
-
-*Other tasks are in TODO list.*
-
-## Notes
-
-Ensure the model export versions match those supported by your Triton release. Check Triton releases [here](https://github.com/triton-inference-server/server/releases).
-
-## Deploying Models
-
-To deploy models, set up a model repository following the [Triton Model Repository schema](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_repository.md). The `config.pbtxt` file is optional unless you're using the OpenVino backend, implementing an Ensemble pipeline, or passing custom inference parameters.
-
-### Model Repository Structure
-```
-<model_repository>/
-    <model_name>/
-        config.pbtxt
-        <model_version>/
-            <model_binary>
-```
-
-### Starting Triton Server
-
-Use the provided script for easy setup:
-```bash
-# Start Triton server with GPU support
-./docker/scripts/docker_triton_run.sh /path/to/model_repository 25.06 gpu
-
-# Start with CPU only
-./docker/scripts/docker_triton_run.sh /path/to/model_repository 25.06 cpu
-```
-
-Or manually with Docker:
-```bash
-docker run --gpus=1 --rm \
-  -p 8000:8000 -p 8001:8001 -p 8002:8002 \
-  -v /full/path/to/model_repository:/models \
-  nvcr.io/nvidia/tritonserver:<xx.yy>-py3 tritonserver \
-  --model-repository=/models
-```
-
-*Omit the `--gpus` flag if using the CPU version.*
-
-## Running Inference
-
-### Command-Line Inference on Video or Image
-```bash
-./tritonic \
-    --source=/path/to/source.format \
-    --model_type=<model_type> \
-    --model=<model_name_folder_on_triton> \
-    --labelsFile=/path/to/labels/coco.names \
-    --protocol=<http or grpc> \
-    --serverAddress=<triton-ip> \
-    --port=<8000 for http, 8001 for grpc> \
-```
-
-For dynamic input sizes:
-```bash
-    --input_sizes="c,h,w"
-```
-
-### Shared Memory Support
-
-Tritonic supports shared memory to improve inference performance by reducing data copying between the client and Triton server. Two types of shared memory are available:
-
-#### System (POSIX) Shared Memory
-Uses CPU-based shared memory for efficient data transfer:
-```bash
-./tritonic \
-    --source=/path/to/source.format \
-    --model=<model_name> \
-    --shared_memory_type=system \
-    ...
-```
-
-#### CUDA Shared Memory
-Uses GPU memory directly for zero-copy inference (requires GPU support):
-```bash
-./tritonic \
-    --source=/path/to/source.format \
-    --model=<model_name> \
-    --shared_memory_type=cuda \
-    --cuda_device_id=0 \
-    ...
-```
-
-**Configuration Options:**
-- `--shared_memory_type` or `-smt`: Shared memory type (`none`, `system`, or `cuda`). Default: `none`
-- `--cuda_device_id` or `-cdi`: CUDA device ID when using CUDA shared memory. Default: `0`
-
-### Ensemble models
-
-Triton ensembles move preprocessing, and optionally postprocessing, onto the GPU: the
-client sends the encoded JPEG and the server runs DALI decode/resize/normalize, TensorRT
-inference, and — for the `gpu_pre_gpu_*` variants — a custom CUDA postprocess operator.
-
-| Ensemble | Task | Deployment guide |
-| --- | --- | --- |
-| `yolo_dali_ensemble` | Detection, GPU preprocess only | [YOLO ensemble](deploy/object_detection/yolo/ensemble/README.md) |
-| `yolo26det_*` | Detection, GPU pre/post | [YOLO26 detection ensemble](deploy/object_detection/yolo26/ensemble/README.md) |
-| `yolo26seg_*` | Instance segmentation, GPU pre/post | [YOLO26 segmentation ensemble](deploy/instance_segmentation/yolo26/ensemble/README.md) |
-| `yolo11seg_*` | Instance segmentation, GPU pre/post | [YOLO11 segmentation ensemble](deploy/instance_segmentation/yolo11/ensemble/README.md) |
-
-Instance-segmentation tasks return raster masks by default. Select convex-hull polygon rings
-with `--segmentation_output=polygon`; exteriors and holes are returned in image
-coordinates. `--postprocess_mode=gpu` supports both representations
-through separate encoded-image ensembles, so mask-only requests do not run polygon extraction.
-The `yolo26seg` examples below apply unchanged to `yolo11seg` by substituting the model names.
-
-GPU mask output (default):
+Export a detector and put it in a Triton model repository:
 
 ```bash
-./build/tritonic \
-  --source=data/images/bus.jpg \
-  --model_type=yolo26seg \
-  --model=yolo26seg_gpu_pre_gpu_mask_post \
-  --task_model=yolo26seg_trt \
-  --labelsFile=labels/coco.txt \
-  --input_mode=encoded-image \
-  --postprocess_mode=gpu
+pip install ultralytics
+yolo export model=yolo11s.pt format=onnx              # -> yolo11s.onnx
+mkdir -p model_repository/yolo11s_onnx/1
+mv yolo11s.onnx model_repository/yolo11s_onnx/1/model.onnx
+./docker/scripts/docker_triton_run.sh "$PWD/model_repository" 26.08 gpu   # or: cpu
 ```
 
-GPU polygon output:
+Exports for every other model family are linked from [docs/models.md](docs/models.md).
+
+### 5. Run
 
 ```bash
-./build/tritonic \
-  --source=data/images/bus.jpg \
-  --model_type=yolo26seg \
-  --model=yolo26seg_gpu_pre_gpu_post \
-  --task_model=yolo26seg_trt \
-  --labelsFile=labels/coco.txt \
-  --input_mode=encoded-image \
-  --postprocess_mode=gpu \
-  --segmentation_output=polygon
+./build/tritonic --source=data/images/bus.jpg --model_type=yolo \
+  --model=yolo11s_onnx --labelsFile=labels/coco.txt
 ```
 
-The same polygon ensemble accepts video sources. Tritonic JPEG-encodes each
-decoded frame in memory for DALI preprocessing and writes the rendered result to
-`<video-directory>/output/processed_<model-name>.avi`:
+Detections are printed to the console. The annotated image is written to
+`data/images/output/processed_frame_yolo11s_onnx.jpg`, an `output/` directory next to the
+source. Videos are written to `processed_<model>.avi` in the same directory.
+
+---
+
+## Running It
+
+`--model_type` selects the model's pre- and postprocessing, and `--model` names the model on Triton.
+Images and videos use the same command line.
 
 ```bash
-./build/tritonic \
-  --source=/path/to/input.mp4 \
-  --model_type=yolo26seg \
-  --model=yolo26seg_gpu_pre_gpu_post \
-  --task_model=yolo26seg_trt \
-  --labelsFile=labels/coco.txt \
-  --input_mode=encoded-image \
-  --postprocess_mode=gpu \
-  --segmentation_output=polygon
+# Object detection on an image (HTTP, localhost:8000 by default)
+./build/tritonic --source=data/images/bus.jpg --model_type=yolo26 \
+  --model=yolo26det_trt --labelsFile=labels/coco.txt
+
+# Video over gRPC
+./build/tritonic --source=video.mp4 --model_type=yolo26 --model=yolo26det_trt \
+  --labelsFile=labels/coco.txt --protocol=grpc --port=8001
+
+# Send the JPEG and let a Triton ensemble decode and preprocess it on the GPU (DALI)
+./build/tritonic --source=data/images/bus.jpg --model_type=yolo26 \
+  --model=yolo26det_gpu_pre_cpu_post --task_model=yolo26det_trt \
+  --labelsFile=labels/coco.txt --input_mode=encoded-image
+
+# Chat backend: any OpenAI-compatible server, no Triton needed
+./build/tritonic --backend=chat --api_endpoint=http://localhost:11434/v1/chat/completions \
+  --model=gemma3:4b --text_prompt="Describe this image" --source=data/images/bus.jpg
 ```
 
-Deployment instructions and both tensor ABIs are documented in the
-[YOLO26 segmentation ensemble guide](deploy/instance_segmentation/yolo26/ensemble/README.md).
-The reproducible CPU/GPU benchmark and semantic parity gate are in the
-[YOLO26-seg benchmark](benchmarks/yolo26-seg/README.md).
+Segmentation, pose, optical flow (`img1.jpg,img2.jpg`), video classification, and the chat
+REPL (`--interactive`) are covered in [docs/usage.md](docs/usage.md). To run TritonIC in a
+container without building it, see [docs/Docker_Scripts.md](docs/Docker_Scripts.md).
 
-### Running with the Docker scripts
+---
 
-Wrapper scripts run TritonIC in a container without a local build. The full
-placeholder and model-type-tag reference is in
-[Running Inference with the Docker Scripts](docs/Docker_Scripts.md).
+## Common Flags
 
-### Chat Backend (OpenAI-compatible)
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--source` | — | Image, video, or comma-separated image pair |
+| `--model_type` | — | Pre/postprocessing family, e.g. `yolo`, `yolo26`, `rfdetr`, `yolo26seg` ([all tags](docs/models.md#model-type-tags)) |
+| `--model` | — | Model name on the Triton server |
+| `--labelsFile` | — | Class names, one per line |
+| `--protocol` / `--serverAddress` / `--port` | `http` / `localhost` / `8000` | Server endpoint (gRPC uses `8001`) |
+| `--input_mode` | `preprocessed` | `encoded-image` sends the JPEG to a GPU ensemble (needs `--task_model`) |
+| `--postprocess_mode` | `cpu` | `gpu` for ensembles with a GPU postprocess step |
+| `--shared_memory_type` | `none` | `system` or `cuda` shared memory between client and server |
+| `--preprocess_device` | `cpu` | `cuda` preprocesses on the client GPU (CUDA build, same host as Triton) |
+| `--confidence_threshold` | `0.5` | Minimum confidence for a detection |
+| `--backend` | `triton` | `chat` for OpenAI-compatible endpoints |
 
-Skip Triton entirely and query any OpenAI-compatible server — Ollama, llama.cpp,
-SGLang, vLLM, OpenAI, Together AI, OpenRouter, Z.AI:
+Every flag is listed in **[docs/usage.md](docs/usage.md#command-line-flags)**.
+
+> [!NOTE]
+> Since Triton 26.08 the server refuses client shared memory unless it runs with
+> `--allow-client-shm=true`. With the run script, set `ALLOW_CLIENT_SHM=true`.
+
+---
+
+## Choosing Where Preprocessing Runs
+
+For YOLO26 detection, four placements were measured on an NVIDIA A10G with Triton 26.08.
+The numbers are the mean client latency per request over gRPC
+([full report](specs/2026-10-01-gpu-preprocess-alternatives/evidence/2026-10-09-brev-a10g/comparison.md)).
+
+| Placement | How | Latency | Use when |
+|-----------|-----|---------|----------|
+| **Client CPU** (default) | plain build, `--input_mode=preprocessed` | 27.0 ms | Any client, including CPU-only machines |
+| **Triton + DALI** | `--input_mode=encoded-image` with a `*_gpu_pre_*` ensemble | 9.3 ms | **Recommended server-side default**: remote clients sending JPEG. Best at large images (162 infer/s at 1080p). |
+| **Triton + custom CUDA backend** | `yolo26det_cudapre_*` ensembles | 11.2 ms | Deployments that must avoid DALI. Bit-exact with DALI and faster on images under about 1 MP. |
+| **Client GPU** | `-DTRITONIC_ENABLE_CUDA=ON`, `--preprocess_device=cuda --shared_memory_type=cuda` | 3.1 ms | Client and Triton on the same GPU host |
+
+A CUDA-enabled build still runs on CPU-only machines with the default
+`--preprocess_device=cpu`. Setup for each option is in the
+[YOLO26 detection ensemble guide](deploy/object_detection/yolo26/ensemble/README.md).
+
+---
+
+## Versions at a Glance
+
+> **Every version below is pinned once, in [`versions.env`](versions.env).** CMake reads it
+> through `cmake/versions.cmake` and the shell scripts through `scripts/versions.sh`. Any pin
+> can be overridden without editing the file (`cmake -DNEURIPLO_TASKS_VERSION=…`,
+> `TRITON_IMAGE=… ./docker/scripts/docker_triton_run.sh …`). `./scripts/check_version_sync.sh`
+> (run in CI) fails when a file that cannot read it drifts.
+
+| Component | Version | Needed for |
+|-----------|---------|-----------|
+| C++ compiler | GCC 12+ or Clang 15+ (C++20) | everything |
+| CMake | 3.20+ | everything |
+| **Triton server and client libraries** | **26.08** (`tritonserver:26.08-py3`, client `r26.08`) | inference server, client build |
+| **neuriplo-tasks** | **v0.8.2** (auto-fetched) | model pre/postprocessing |
+| TensorRT | 11.2.1.2 (in `tensorrt:26.08-py3`) | building `.engine` / `.plan` models |
+| NVIDIA DALI | 2.2.0 (in `tritonserver:26.08-py3`) | GPU preprocessing ensembles |
+| CUDA Toolkit | 13.3 series | `-DTRITONIC_ENABLE_CUDA=ON`, custom backend |
+| OpenCV | 4.x (system) | image/video I/O |
+| GoogleTest | 1.14.0 (auto-fetched) | tests |
+
+---
+
+## Common Build Options
+
+| Option | Default | Effect |
+|--------|---------|--------|
+| `-DCMAKE_BUILD_TYPE=Release/Debug` | — | Use `Release` for any timing |
+| `-DWITH_SHOW_FRAME=ON/OFF` | `OFF` | Show frames in a window during inference |
+| `-DWITH_WRITE_FRAME=ON/OFF` | `ON` | Write annotated frames/video to disk |
+| `-DWITH_CHAT_BACKEND=ON/OFF` | `ON` | OpenAI-compatible chat backend |
+| `-DTRITONIC_ENABLE_CUDA=ON/OFF` | `OFF` | Client-side CUDA preprocessing; needs the CUDA Toolkit at build time only |
+| `-DBUILD_TESTING=ON/OFF` | `OFF` | Unit and integration tests |
+| `-DTRITONIC_STRICT_WARNINGS=ON/OFF` | `OFF` | Strict warnings, as in CI |
+
+Dependencies, client-library builds and pre-commit hooks are covered in
+[docs/building.md](docs/building.md).
+
+---
+
+## Documentation
+
+| Document | Covers |
+|----------|--------|
+| **[docs/usage.md](docs/usage.md)** | Every flag, shared memory, GPU ensembles, segmentation output, Docker scripts, chat backend |
+| **[docs/models.md](docs/models.md)** | Supported models, `--model_type` tags, export instructions |
+| **[docs/building.md](docs/building.md)** | Dependencies, Triton client libraries, build options, version pins, tests |
+| **[docs/deployment.md](docs/deployment.md)** | Model repositories, starting Triton, Docker image, Kubernetes |
+| **[docs/architecture.md](docs/architecture.md)** | Project layout, Triton and chat backends |
+| **[docs/README.md](docs/README.md)** | Index of all guides, per-model deployment guides and benchmarks, roadmaps |
+| [AGENTS.md](AGENTS.md) | Code structure and conventions for contributors |
+| [CHANGELOG.md](CHANGELOG.md) | Released changes |
+
+---
+
+## Testing
 
 ```bash
-./build/tritonic --backend=chat --chat_url=http://localhost:11434/v1/chat/completions \
-  --model=gemma3:4b --prompt="Describe this image" --source=data/images/bus.jpg
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
 ```
 
-Full flag reference in [Chat Backend](docs/Chat_Backend.md); the test procedure is
-in [Chat Backend Testing](docs/Chat_Backend_Testing.md).
+Unit tests use mocked Triton and chat backends, so they need no server or GPU.
+CI (`.github/workflows/ci.yml`) runs the version-sync and format checks, cppcheck, a
+strict-warnings build and the tests. GPU paths are validated separately with
+[`run_gpu_host_gate.sh`](integration-tests/gpu-preprocess/run_gpu_host_gate.sh)
+([runbook](specs/2026-10-01-gpu-preprocess-alternatives/gpu-validation-runbook.md)).
 
-
-## Docker Support
-For detailed instructions on installing Docker and the NVIDIA Container Toolkit, refer to the [Docker Setup Document](docs/guides/Docker_setup.md).
-
-### Build
-
-```bash
-docker build --rm -t tritonic -f docker/Dockerfile .
-```
-
-### Run Container
-```bash
-docker run --rm \
-  -v /path/to/host/data:/app/data \
-  tritonic \
-  --network host \
-  --source=<path_to_source_on_container> \
-  --model_type=<model_type> \
-  --model=<model_name_folder_on_triton> \
-  --labelsFile=<path_to_labels_on_container> \
-  --protocol=<http or grpc> \
-  --serverAddress=<triton-ip> \
-  --port=<8000 for http, 8001 for grpc>
-```
-
-## Kubernetes Deployment
-
-For Kubernetes setup and deployment details, see:
-- [Kubernetes Deployment Guide](docs/guides/Kubernetes_setup.md)
-- [K8s Scripts Usage](k8s/scripts/README.md)
-
-Quick start:
-```bash
-./k8s/scripts/check_and_deploy_triton.sh
-```
-
-This script performs:
-1. `kubectl` installation check (and install if missing)
-2. Kubernetes cluster liveness check — automatically starts or installs a local cluster (minikube → kind → k3s) if none is reachable; installs `kind` via Docker if no tool is present
-3. NVIDIA GPU availability check inside cluster — installs `nvidia-container-toolkit` and the NVIDIA device plugin automatically if the host has a GPU
-4. Triton deployment status check and reconciliation against the current manifests
-5. Triton deploy or update (GPU or CPU manifest)
-6. External Triton endpoint summary for the `NodePort` service
-
-Default external access on minikube:
-- HTTP: `http://$(minikube ip):30800`
-- gRPC: `$(minikube ip):30801`
-- Metrics: `http://$(minikube ip):30802/metrics`
-
-Notes:
-- The deployment uses the Triton `25.12-py3` image by default for Kubernetes.
-- On minikube, if the Triton image is already present in host Docker, the deploy script loads it into the node before rollout to avoid long registry pulls.
-- GPU deployments use the `Recreate` strategy so updates work on single-node, single-GPU clusters.
-
-## Demo
-
-Real-time inference test (GPU RTX 3060):
-- YOLOv7-tiny exported to ONNX: [Demo Video](https://youtu.be/lke5TcbP2a0)
-- YOLO11s exported to onnx: [Demo Video](https://youtu.be/whP-FF__4IM)
-- RAFT Optical Flow Large(exported to traced torchscript): [Demo Video](https://www.youtube.com/watch?v=UvKCjYI_9aQ)
+---
 
 ## References
-- [Triton Inference Server Client Example](https://github.com/triton-inference-server/client/blob/r21.08/src/c%2B%2B/examples/image_client.cc)
-- [Triton User Guide](https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/getting_started/quickstart.html)
-- [Triton Tutorials](https://github.com/triton-inference-server/tutorials)
-- [ONNX Models](https://onnx.ai/models/)
-- [Torchvision Models](https://pytorch.org/vision/stable/models.html)
-- [Tensorflow Model Garden](https://github.com/tensorflow/models/tree/master/official)
 
-## Feedback
-Any feedback is greatly appreciated. If you have any suggestions, bug reports, or questions, don't hesitate to open an [issue](https://github.com/olibartfast/tritonic/issues). Contributions, corrections, and suggestions are welcome to keep this repository relevant and useful.
+- [Triton User Guide](https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/getting_started/quickstart.html)
+  · [Release notes](https://docs.nvidia.com/deeplearning/triton-inference-server/pdf/Triton-Inference-Server-Release-Notes.pdf)
+  · [Tutorials](https://github.com/triton-inference-server/tutorials)
+  · [Client example](https://github.com/triton-inference-server/client/blob/r21.08/src/c%2B%2B/examples/image_client.cc)
+- Demos (RTX 3060): [YOLOv7-tiny](https://youtu.be/lke5TcbP2a0) ·
+  [YOLO11s](https://youtu.be/whP-FF__4IM) ·
+  [RAFT optical flow](https://www.youtube.com/watch?v=UvKCjYI_9aQ)
+- Feedback, bug reports and contributions are welcome via
+  [issues](https://github.com/olibartfast/tritonic/issues).

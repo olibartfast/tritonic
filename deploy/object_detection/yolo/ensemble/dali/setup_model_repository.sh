@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/../../../../.." && pwd)"
+source "${repo_root}/scripts/versions.sh"
+
 usage() {
   echo "Usage: $0 --engine /path/to/model.plan [--repository path/inside/checkout]" >&2
 }
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "${script_dir}/../../../../.." && pwd)"
 repository="${script_dir}/model_repository"
 engine=""
 
@@ -47,14 +49,14 @@ cp "${engine}" "${repository}/yolo_trt/1/model.plan"
 
 docker run --gpus all --rm \
   -v "${repo_root}:/workspace" -w /workspace \
-  nvcr.io/nvidia/tritonserver:25.12-py3 \
+  "${TRITON_IMAGE}" \
   python3 deploy/object_detection/yolo/ensemble/dali/generate_pipeline.py \
     --output "${relative_repository}/yolo_dali_preprocess/1/model.dali"
 
 engine_sha256="$(sha256sum "${repository}/yolo_trt/1/model.plan" | awk '{print $1}')"
 cat >"${repository}/reference_model.yaml" <<EOF
 engine_sha256: ${engine_sha256}
-triton_image: nvcr.io/nvidia/tritonserver:25.12-py3
+triton_image: ${TRITON_IMAGE}
 input_name: images
 input_shape: [1, 3, 640, 640]
 input_datatype: FP32

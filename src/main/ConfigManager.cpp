@@ -62,6 +62,7 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
         "{task_model tm |      | inner Triton model used for task metadata in encoded-image mode}"
         "{postprocess_mode pm |cpu | postprocessing placement: cpu or gpu}"
         "{segmentation_output so |mask | segmentation representation: mask or polygon}"
+        "{preprocess_device pd |cpu | client preprocessing device: cpu or cuda}"
         "{batch_size bs  |1     | batch size}"
         "{inference_timeout it |0 | inference timeout in milliseconds (0 = no timeout)}"
         "{benchmark_warmup bw |0 | benchmark warmup iterations}"
@@ -118,6 +119,7 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
     config->SetTaskModel(parser.get<cv::String>("task_model"));
     config->SetPostprocessMode(parser.get<cv::String>("postprocess_mode"));
     config->SetSegmentationOutput(parser.get<cv::String>("segmentation_output"));
+    config->SetPreprocessDevice(parser.get<cv::String>("preprocess_device"));
     config->SetInferenceTimeoutMs(parser.get<int>("inference_timeout"));
     config->SetBenchmarkWarmup(parser.get<int>("benchmark_warmup"));
     config->SetBenchmarkIterations(parser.get<int>("benchmark_iterations"));
@@ -213,6 +215,41 @@ std::unique_ptr<InferenceConfig> ConfigManager::LoadFromCommandLine(int argc, co
             throw std::invalid_argument(
                 "--postprocess_mode=gpu supports --model_type=yolo26seg, yolo11seg, yoloseg, "
                 "yolo26, or yolo");
+        }
+    }
+
+    const std::string preprocessDevice = Normalize(config->GetPreprocessDevice());
+    if (preprocessDevice == "cpu" || preprocessDevice == "cuda") {
+        config->SetPreprocessDevice(preprocessDevice);
+    } else {
+        throw std::invalid_argument("--preprocess_device must be either 'cpu' or 'cuda'");
+    }
+    if (preprocessDevice == "cuda") {
+        // The CUDA letterbox writes the YOLO input tensor straight into a CUDA shared-memory
+        // region registered with Triton, so it needs a co-located server and one image per
+        // request (specs/2026-10-01-gpu-preprocess-alternatives R-8).
+        if (Normalize(config->GetBackend()) != "triton") {
+            throw std::invalid_argument("--preprocess_device=cuda requires --backend=triton");
+        }
+        if (config->GetInputMode() != "preprocessed") {
+            throw std::invalid_argument(
+                "--preprocess_device=cuda requires --input_mode=preprocessed");
+        }
+        if (Normalize(config->GetSharedMemoryType()) != "cuda") {
+            throw std::invalid_argument(
+                "--preprocess_device=cuda requires --shared_memory_type=cuda");
+        }
+        const std::string modelType = Normalize(config->GetModelType());
+        if (modelType != "yolo" && modelType != "yolo26") {
+            throw std::invalid_argument(
+                "--preprocess_device=cuda supports --model_type=yolo or yolo26");
+        }
+        if (config->GetBatchSize() != 1) {
+            throw std::invalid_argument("--preprocess_device=cuda requires --batch_size=1");
+        }
+        if (!config->GetInputSizes().empty()) {
+            throw std::invalid_argument(
+                "--input_sizes must not be set with --preprocess_device=cuda");
         }
     }
 
