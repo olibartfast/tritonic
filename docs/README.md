@@ -4,6 +4,16 @@ Everything under `docs/`, plus the per-model deployment and benchmark guides tha
 live next to the code they describe. Start from the
 [project README](../README.md) for build and quick-start instructions.
 
+## Reference
+
+| Document | What it covers |
+| --- | --- |
+| [Supported Models](models.md) | Tested models and model-type tags |
+| [Building](building.md) | Dependencies, client library setup, build instructions, and CMake options |
+| [Running Inference](usage.md) | Command-line flags, shared memory, ensemble models, and chat backend |
+| [Deployment](deployment.md) | Model repository setup, Triton server, Docker, and Kubernetes |
+| [Architecture](architecture.md) | Project structure and dual-backend design |
+
 ## Guides
 
 | Guide | What it covers |
@@ -29,7 +39,7 @@ Deployment guides sit beside the model repositories they configure:
 | Model | Deployment | Benchmark |
 | --- | --- | --- |
 | YOLO (detection) | [ensemble](../deploy/object_detection/yolo/ensemble/README.md) | — |
-| YOLO26 (detection) | [ensemble](../deploy/object_detection/yolo26/ensemble/README.md) | — |
+| YOLO26 (detection) | [ensemble](../deploy/object_detection/yolo26/ensemble/README.md) | [benchmark](../benchmarks/yolo26-det/) |
 | YOLO26-seg | [ensemble](../deploy/instance_segmentation/yolo26/ensemble/README.md) | [benchmark](../benchmarks/yolo26-seg/README.md) |
 | YOLO11-seg | [ensemble](../deploy/instance_segmentation/yolo11/ensemble/README.md) | [benchmark](../benchmarks/yolo11-seg/README.md) |
 | RF-DETR-seg | [export and deploy](../deploy/instance_segmentation/rf-detr/README.md) | — |

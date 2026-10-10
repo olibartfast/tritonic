@@ -51,7 +51,7 @@ Run the GPU-post ensemble:
 ```bash
 ./build/tritonic \
   --source=data/images/bus.jpg \
-  --model_type=yolo \
+  --model_type=yolo26 \
   --model=yolo26det_gpu_pre_gpu_post \
   --task_model=yolo26det_trt \
   --labelsFile=labels/coco.txt \
@@ -107,19 +107,18 @@ above needs no extra mount.
 Run V12 or V13 exactly like the DALI ensembles, changing only `--model`:
 
 ```bash
-./build/tritonic --source=data/images/bus.jpg --model_type=yolo \
+./build/tritonic --source=data/images/bus.jpg --model_type=yolo26 \
   --model=yolo26det_cudapre_cpu_post --task_model=yolo26det_trt \
   --labelsFile=labels/coco.txt --input_mode=encoded-image
 ```
 
 V2 needs a client build with `-DTRITONIC_ENABLE_CUDA=ON` on the same host and GPU
-as Triton:
+as Triton. The Triton server must run with `--allow-client-shm=true` and share the host IPC namespace with the client (`docker run --ipc=host ...`):
 
 ```bash
-./build-cuda/tritonic --source=data/images/bus.jpg --model_type=yolo \
+./build-cuda/tritonic --source=data/images/bus.jpg --model_type=yolo26 \
   --model=yolo26det_trt --labelsFile=labels/coco.txt --protocol=grpc --port=8001 \
   --preprocess_device=cuda --shared_memory_type=cuda
 ```
 
-The parity, robustness and benchmark workflow is listed in the spec's
-[plan](../../../../specs/2026-10-01-gpu-preprocess-alternatives/plan.md#implementation-status-2026-10-02).
+Results and the recommendation are in the [A10G comparison report](../../../../specs/2026-10-01-gpu-preprocess-alternatives/evidence/2026-10-09-brev-a10g/comparison.md); the gate is reproducible with [run_gpu_host_gate.sh](../../../../integration-tests/gpu-preprocess/run_gpu_host_gate.sh) ([runbook](../../../../specs/2026-10-01-gpu-preprocess-alternatives/gpu-validation-runbook.md)).
