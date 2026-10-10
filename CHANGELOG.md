@@ -7,6 +7,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-10
+
 ### Added
 - Evaluation of CUDA C++ alternatives to DALI preprocessing for YOLO26 detection
   (`specs/2026-10-01-gpu-preprocess-alternatives/`): a custom Triton backend
@@ -151,7 +153,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/).
 - Pinned `neuriplo-tasks` to **v0.5.0**, which adds the `RfDetrPose` keypoint
   task and batch-ready postprocessors/preprocess strategies.
 
-[Unreleased]: https://github.com/olibartfast/tritonic/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/olibartfast/tritonic/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/olibartfast/tritonic/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/olibartfast/tritonic/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/olibartfast/tritonic/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/olibartfast/tritonic/compare/v0.1.0...v0.2.0
