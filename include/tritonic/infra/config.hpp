@@ -93,6 +93,12 @@ public:
     void SetSegmentationOutput(const std::string& v) {
         segmentation_output_ = v;
     }
+    const std::string& GetPreprocessDevice() const noexcept {
+        return preprocess_device_;
+    }
+    void SetPreprocessDevice(const std::string& v) {
+        preprocess_device_ = v;
+    }
 
     // Input/Output
     const std::string& GetSource() const noexcept {
@@ -324,6 +330,7 @@ private:
     std::string task_model_;
     std::string postprocess_mode_{"cpu"};
     std::string segmentation_output_{"mask"};
+    std::string preprocess_device_{"cpu"};
 
     std::string source_;
     std::string labels_file_;

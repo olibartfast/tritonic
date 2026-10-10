@@ -19,7 +19,7 @@ python3 -c "from ultralytics import YOLO; YOLO('yolo11m-seg.pt').export(format='
 
 # 2. Build a TensorRT FP16 engine
 docker run --rm --gpus all -v "$PWD:/workspace" -w /workspace \
-  nvcr.io/nvidia/tensorrt:25.12-py3 \
+  nvcr.io/nvidia/tensorrt:26.08-py3 \
   trtexec --onnx=yolo11m-seg.onnx --saveEngine=yolo11m-seg.engine --fp16
 
 # 3. Stage the repository
@@ -27,7 +27,7 @@ deploy/instance_segmentation/yolo11/ensemble/setup_model_repository.sh \
   --engine "$PWD/yolo11m-seg.engine"
 ```
 
-Step 3 builds the CUDA plugin against the DALI libraries from Triton 25.12,
+Step 3 builds the CUDA plugin against the DALI libraries from Triton 26.08,
 serializes the preprocess, mask-postprocess and polygon-postprocess pipelines,
 copies each model's `config.pbtxt`, and stages the engine and plugin. Pass
 `--repository <path>` to stage somewhere other than the in-tree
@@ -39,7 +39,7 @@ copies each model's `config.pbtxt`, and stages the engine and plugin. Pass
 docker run --rm --gpus all --shm-size=1g \
   -p 8000:8000 -p 8001:8001 -p 8002:8002 \
   -v "$PWD/deploy/instance_segmentation/yolo11/ensemble/model_repository:/models:ro" \
-  nvcr.io/nvidia/tritonserver:25.12-py3 \
+  nvcr.io/nvidia/tritonserver:26.08-py3 \
   tritonserver --model-repository=/models --disable-auto-complete-config \
   --backend-config=dali,plugin_libs=/models/libyolo11_seg_dali.so
 ```

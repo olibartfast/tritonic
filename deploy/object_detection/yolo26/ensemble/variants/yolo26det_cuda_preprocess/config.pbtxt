@@ -1,0 +1,14 @@
+name: "yolo26det_cuda_preprocess"
+backend: "yolopreprocess"
+max_batch_size: 1
+input [{ name: "IMAGE" data_type: TYPE_UINT8 dims: [-1] }]
+output [
+  { name: "PREPROCESSED" data_type: TYPE_FP32 dims: [3, 640, 640] },
+  { name: "ORIGINAL_SIZE" data_type: TYPE_INT64 dims: [2] }
+]
+instance_group [{ kind: KIND_GPU count: 1 }]
+parameters [
+  { key: "mode" value: { string_value: "preprocess" } },
+  { key: "pad_rounding" value: { string_value: "floor" } },
+  { key: "max_side" value: { string_value: "8192" } }
+]

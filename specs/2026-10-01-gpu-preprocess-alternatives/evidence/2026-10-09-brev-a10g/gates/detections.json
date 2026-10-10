@@ -1,0 +1,489 @@
+{
+  "results": [
+    {
+      "candidate": "V2",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V2",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "V2",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "V2",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "V2",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V2",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V2",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V2",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "V2",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "V2",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "V2",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V2",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V12",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V12",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "V12",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "V12",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "V12",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V12",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V12",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V12",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "V12",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "V12",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "V12",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V12",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V12-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "http",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V12-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "http",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "V12-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "http",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "V12-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "http",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "V12-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "http",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V12-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "http",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V12-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "grpc",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V12-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "grpc",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "V12-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "grpc",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "V12-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "grpc",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "V12-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "grpc",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V12-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "grpc",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V13",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V13",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "V13",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "V13",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "V13",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V13",
+      "reference": "B1",
+      "protocol": "http",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V13",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V13",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "V13",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "V13",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "V13",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V13",
+      "reference": "B1",
+      "protocol": "grpc",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V13-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "http",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V13-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "http",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "V13-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "http",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "V13-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "http",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "V13-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "http",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V13-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "http",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V13-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "grpc",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V13-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "grpc",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "V13-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "grpc",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "V13-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "grpc",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "V13-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "grpc",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "V13-gpupost",
+      "reference": "B1-gpupost",
+      "protocol": "grpc",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    }
+  ],
+  "passed": true,
+  "tolerances": {
+    "confidence": 0.04,
+    "coordinates_px": 12
+  }
+}

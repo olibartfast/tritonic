@@ -1,0 +1,201 @@
+{
+  "results": [
+    {
+      "candidate": "B1",
+      "reference": "B0",
+      "protocol": "http",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "B1",
+      "reference": "B0",
+      "protocol": "http",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "B1",
+      "reference": "B0",
+      "protocol": "http",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "B1",
+      "reference": "B0",
+      "protocol": "http",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "B1",
+      "reference": "B0",
+      "protocol": "http",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "B1",
+      "reference": "B0",
+      "protocol": "http",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "B1",
+      "reference": "B0",
+      "protocol": "grpc",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "B1",
+      "reference": "B0",
+      "protocol": "grpc",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "B1",
+      "reference": "B0",
+      "protocol": "grpc",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "B1",
+      "reference": "B0",
+      "protocol": "grpc",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "B1",
+      "reference": "B0",
+      "protocol": "grpc",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "B1",
+      "reference": "B0",
+      "protocol": "grpc",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "B1-gpupost",
+      "reference": "B0",
+      "protocol": "http",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "B1-gpupost",
+      "reference": "B0",
+      "protocol": "http",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "B1-gpupost",
+      "reference": "B0",
+      "protocol": "http",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "B1-gpupost",
+      "reference": "B0",
+      "protocol": "http",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "B1-gpupost",
+      "reference": "B0",
+      "protocol": "http",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "B1-gpupost",
+      "reference": "B0",
+      "protocol": "http",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "B1-gpupost",
+      "reference": "B0",
+      "protocol": "grpc",
+      "fixture": "bus.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "B1-gpupost",
+      "reference": "B0",
+      "protocol": "grpc",
+      "fixture": "horses.jpg",
+      "passed": true,
+      "detections": 4
+    },
+    {
+      "candidate": "B1-gpupost",
+      "reference": "B0",
+      "protocol": "grpc",
+      "fixture": "person.jpg",
+      "passed": true,
+      "detections": 3
+    },
+    {
+      "candidate": "B1-gpupost",
+      "reference": "B0",
+      "protocol": "grpc",
+      "fixture": "mug.jpg",
+      "passed": true,
+      "detections": 1
+    },
+    {
+      "candidate": "B1-gpupost",
+      "reference": "B0",
+      "protocol": "grpc",
+      "fixture": "bus_1080p.jpg",
+      "passed": true,
+      "detections": 5
+    },
+    {
+      "candidate": "B1-gpupost",
+      "reference": "B0",
+      "protocol": "grpc",
+      "fixture": "bus_2160p.jpg",
+      "passed": true,
+      "detections": 5
+    }
+  ],
+  "passed": true,
+  "tolerances": {
+    "confidence": 0.04,
+    "coordinates_px": 12
+  }
+}

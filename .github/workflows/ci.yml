@@ -13,6 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check version pins
+        run: ./scripts/check_version_sync.sh
+
       - name: Check formatting
         run: |
           echo "🔍 Checking C++ code formatting..."
@@ -54,7 +57,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: triton_client_libs
-          key: triton-client-r25.06-${{ runner.os }}
+          key: triton-client-r26.08-${{ runner.os }}
 
       - name: Extract Triton Client Libraries
         if: steps.cache-triton.outputs.cache-hit != 'true'
@@ -84,7 +87,9 @@ jobs:
 
       - name: Run clang-tidy
         run: |
-          find src -type f -name '*.cpp' | \
+          # Lint the sources this configuration compiles. src/cuda/ builds only with
+          # TRITONIC_ENABLE_CUDA=ON (CUDA toolkit), which this job does not install.
+          python3 -c "import json, os; print('\n'.join(sorted({os.path.relpath(e['file']) for e in json.load(open('build/compile_commands.json'))} & {str(p) for p in __import__('pathlib').Path('src').rglob('*.cpp')})))" | \
             xargs clang-tidy -p build --header-filter='^(include|src)/'
 
   cppcheck:
@@ -120,7 +125,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: triton_client_libs
-          key: triton-client-r25.06-${{ runner.os }}
+          key: triton-client-r26.08-${{ runner.os }}
 
       - name: Extract Triton Client Libraries
         if: steps.cache-triton.outputs.cache-hit != 'true'
@@ -168,7 +173,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: triton_client_libs
-          key: triton-client-r25.06-${{ runner.os }}
+          key: triton-client-r26.08-${{ runner.os }}
 
       - name: Extract Triton Client Libraries
         if: steps.cache-triton.outputs.cache-hit != 'true'

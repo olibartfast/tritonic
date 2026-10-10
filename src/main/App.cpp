@@ -144,6 +144,10 @@ App::App(std::shared_ptr<ITriton> triton, std::shared_ptr<InferenceConfig> confi
          std::shared_ptr<Logger> logger)
     : tritonClient_(triton), config_(config), logger_(logger) {}
 
+void App::setDevicePreprocessor(std::shared_ptr<tritonic::core::IDevicePreprocessor> preprocessor) {
+    devicePreprocessor_ = std::move(preprocessor);
+}
+
 int App::run() {
     try {
         logger_->Info("Starting Triton Client Application");
@@ -258,6 +262,26 @@ int App::run() {
             throw std::runtime_error("Failed to create task instance");
         }
 
+        if (config_->GetPreprocessDevice() == "cuda") {
+            if (!devicePreprocessor_) {
+                throw std::runtime_error(
+                    "--preprocess_device=cuda requires a device preprocessor (build with "
+                    "TRITONIC_ENABLE_CUDA=ON)");
+            }
+            deviceInput_ =
+                dynamic_cast<tritonic::triton::IDeviceInputInference*>(tritonClient_.get());
+            if (!deviceInput_) {
+                throw std::runtime_error(
+                    "--preprocess_device=cuda requires a Triton client with device input");
+            }
+            if (task_->getTaskType() != neuriplo_tasks::TaskType::Detection) {
+                throw std::runtime_error("--preprocess_device=cuda supports detection tasks only");
+            }
+            logger_->Info("Client preprocessing on CUDA into CUDA shared memory");
+        } else {
+            devicePreprocessor_.reset();
+        }
+
         // Extract frame buffer size for video classification from 5D input shape [B, T, C, H, W]
         if (task_->getTaskType() == neuriplo_tasks::TaskType::VideoClassification &&
             !processingModelInfo.input_shapes.empty()) {
@@ -365,7 +389,22 @@ neuriplo_tasks::ModelInfo App::convertToNeuriploTasksModelInfo(const TritonModel
     return model_info;
 }
 
+void App::preprocessOnDevice(const cv::Mat& frame) {
+    void* destination = deviceInput_->deviceInputBuffer(devicePreprocessor_->outputBytes());
+    devicePreprocessor_->preprocess(frame, destination);
+}
+
 std::vector<neuriplo_tasks::Result> App::processSource(const std::vector<cv::Mat>& source) {
+    if (devicePreprocessor_) {
+        // The letterboxed tensor is written straight into the registered CUDA input region;
+        // only the original frame size is needed for postprocessing.
+        if (source.size() != 1) {
+            throw std::runtime_error("CUDA preprocessing handles one frame per request");
+        }
+        preprocessOnDevice(source.front());
+        auto tensors = deviceInput_->inferFromDeviceInput();
+        return task_->postprocess(ToTaskSize(source.front()), toNeuriploTensors(tensors));
+    }
     const auto input_data = task_->preprocess(ToTaskImages(source));
     auto tensors = tritonClient_->infer(input_data);
     auto vision_tensors = toNeuriploTensors(tensors);
@@ -447,11 +486,14 @@ void App::benchmarkImage(const std::string& sourceName) {
         if (encodedImageMode) {
             tritonClient_->setInputShapes(encodedRequest.shapes);
             inputs = encodedRequest.inputs;
+        } else if (devicePreprocessor_) {
+            preprocessOnDevice(image);
         } else {
             inputs = task_->preprocess(ToTaskImages({image}));
         }
         const auto preprocessEnd = std::chrono::steady_clock::now();
-        auto tensors = tritonClient_->infer(inputs);
+        auto tensors = devicePreprocessor_ ? deviceInput_->inferFromDeviceInput()
+                                           : tritonClient_->infer(inputs);
         const auto inferEnd = std::chrono::steady_clock::now();
         if (encodedImageMode && config_->GetPostprocessMode() == "gpu") {
             if (isSeg) {
@@ -505,6 +547,7 @@ void App::benchmarkImage(const std::string& sourceName) {
     output << "  \"request_model\": " << std::quoted(config_->GetModelName()) << ",\n";
     output << "  \"source\": " << std::quoted(sourceName) << ",\n";
     output << "  \"input_mode\": " << std::quoted(config_->GetInputMode()) << ",\n";
+    output << "  \"preprocess_device\": " << std::quoted(config_->GetPreprocessDevice()) << ",\n";
     output << "  \"postprocess_mode\": " << std::quoted(config_->GetPostprocessMode()) << ",\n";
     if (isSeg) {
         output << "  \"segmentation_output\": " << std::quoted(config_->GetSegmentationOutput())
@@ -661,7 +704,8 @@ std::vector<neuriplo_tasks::Tensor> App::toNeuriploTensors(
 }
 
 bool App::isBatchableImageTask() const {
-    if (config_->GetInputMode() == "encoded-image" || !task_ || max_batch_size_ <= 1) {
+    if (config_->GetInputMode() == "encoded-image" || devicePreprocessor_ || !task_ ||
+        max_batch_size_ <= 1) {
         return false;
     }
     // Only independent-image families benefit from batched inference (see
