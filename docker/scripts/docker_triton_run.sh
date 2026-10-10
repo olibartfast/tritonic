@@ -1,13 +1,14 @@
 #!/bin/bash
 # chmod +x docker_triton_run.sh
 # ./docker_triton_run.sh <path_to_models_host> <triton_version> [cpu|gpu] [python_backend]
-# 
+#
 # Examples:
 # MODEL_REPOSITORY_HOST=$HOME/model_repository
 # TRITON_VERSION=26.08
 # ./docker_triton_run.sh $MODEL_REPOSITORY_HOST $TRITON_VERSION cpu
 # ./docker_triton_run.sh $MODEL_REPOSITORY_HOST $TRITON_VERSION gpu
 # ./docker_triton_run.sh $MODEL_REPOSITORY_HOST $TRITON_VERSION gpu python_backend
+# ALLOW_CLIENT_SHM=true ./docker_triton_run.sh $MODEL_REPOSITORY_HOST $TRITON_VERSION gpu
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
@@ -21,6 +22,7 @@ TRITON_VERSION=${2:-${NGC_CONTAINER_TAG}}
 DEVICE_TYPE=${3:-cpu}
 PYTHON_BACKEND_ARG=${4:-false}
 MODEL_CONTROL_MODE_ARG=${5:-poll}
+ALLOW_CLIENT_SHM=${ALLOW_CLIENT_SHM:-false}
 
 # Smart detection: if 4th arg is explicit/poll, treat it as model mode
 if [[ "${PYTHON_BACKEND_ARG,,}" == "explicit" || "${PYTHON_BACKEND_ARG,,}" == "poll" ]]; then
@@ -154,6 +156,12 @@ DOCKER_PORTS="-p8000:8000 -p8001:8001 -p8002:8002"
 DOCKER_VOLUME="-v \"$MODEL_REPO\":/models"
 DOCKER_IMAGE="$BASE_IMAGE"
 
+# Handle shared memory for client access
+DOCKER_IPC=""
+if [[ "${ALLOW_CLIENT_SHM,,}" == "true" ]]; then
+    DOCKER_IPC="--ipc=host"
+fi
+
 # Add GPU support if needed
 if [ "$DEVICE_TYPE" = "gpu" ]; then
     echo "🎮 Using GPU acceleration"
@@ -166,6 +174,11 @@ fi
 # Triton server arguments
 TRITON_ARGS="--model-repository=/models --model-control-mode=$MODEL_CONTROL_MODE"
 
+# Add client shared memory support if enabled
+if [[ "${ALLOW_CLIENT_SHM,,}" == "true" ]]; then
+    TRITON_ARGS="$TRITON_ARGS --allow-client-shm=true"
+fi
+
 # Add CPU-specific optimizations
 if [ "$DEVICE_TYPE" = "cpu" ]; then
     TRITON_ARGS="$TRITON_ARGS --backend-config=tensorflow,allow_soft_placement=true"
@@ -173,9 +186,9 @@ fi
 
 # Build final command
 if [ -n "$PYTHON_INSTALL_CMD" ]; then
-    FULL_CMD="$DOCKER_BASE $DOCKER_GPU $DOCKER_PORTS $DOCKER_VOLUME $DOCKER_IMAGE bash -c \"$PYTHON_INSTALL_CMD tritonserver $TRITON_ARGS\""
+    FULL_CMD="$DOCKER_BASE $DOCKER_GPU $DOCKER_IPC $DOCKER_PORTS $DOCKER_VOLUME $DOCKER_IMAGE bash -c \"$PYTHON_INSTALL_CMD tritonserver $TRITON_ARGS\""
 else
-    FULL_CMD="$DOCKER_BASE $DOCKER_GPU $DOCKER_PORTS $DOCKER_VOLUME $DOCKER_IMAGE tritonserver $TRITON_ARGS"
+    FULL_CMD="$DOCKER_BASE $DOCKER_GPU $DOCKER_IPC $DOCKER_PORTS $DOCKER_VOLUME $DOCKER_IMAGE tritonserver $TRITON_ARGS"
 fi
 
 # Display the command being executed (for debugging)

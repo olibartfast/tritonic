@@ -72,6 +72,23 @@ expect helm/triton-server/values.yaml "NGC_CONTAINER_TAG [helm tag]" "${NGC_CONT
 expect .github/workflows/ci.yml "TRITON_REPO_TAG [cache key]" "${TRITON_REPO_TAG}" \
     "key: triton-client-$(lit "${TRITON_REPO_TAG}")-"
 
+# --- README "Versions at a Glance" table ---------------
+# Prose that states pins: only this table, so it is checked row by row.
+expect README.md "NGC_CONTAINER_TAG [README]" "${NGC_CONTAINER_TAG}" \
+    "^\| \*\*Triton server and client libraries\*\* \| \*\*$(lit "${NGC_CONTAINER_TAG}")\*\* \(\`tritonserver:$(lit "${NGC_CONTAINER_TAG}")-py3\`, client \`$(lit "${TRITON_REPO_TAG}")\`\)"
+expect README.md "NEURIPLO_TASKS_VERSION [README]" "${NEURIPLO_TASKS_VERSION}" \
+    "^\| \*\*neuriplo-tasks\*\* \| \*\*$(lit "${NEURIPLO_TASKS_VERSION}")\*\*"
+expect README.md "NGC_TENSORRT_VERSION [README]" "${NGC_TENSORRT_VERSION}" \
+    "^\| TensorRT \| $(lit "${NGC_TENSORRT_VERSION}") \(in \`tensorrt:$(lit "${NGC_CONTAINER_TAG}")-py3\`\)"
+expect README.md "NGC_DALI_VERSION [README]" "${NGC_DALI_VERSION}" \
+    "^\| NVIDIA DALI \| $(lit "${NGC_DALI_VERSION}") \(in \`tritonserver:$(lit "${NGC_CONTAINER_TAG}")-py3\`\)"
+expect README.md "NGC_CUDA_VERSION [README]" "${NGC_CUDA_VERSION}" \
+    "^\| CUDA Toolkit \| $(lit "${NGC_CUDA_VERSION}") series"
+expect README.md "NGC_CONTAINER_TAG [README quick start]" "${NGC_CONTAINER_TAG}" \
+    "docker_triton_run\.sh \"\\\$PWD/model_repository\" $(lit "${NGC_CONTAINER_TAG}") gpu"
+expect README.md "GTEST_VERSION [README]" "${GTEST_VERSION}" \
+    "^\| GoogleTest \| $(lit "${GTEST_VERSION#v}") "
+
 # --- Colab notebook version literals ------------------
 # The notebook ships standalone to Colab and cannot read versions.env.
 # These are Python string assignments in a JSON notebook file (with \n escape at line end).
