@@ -1,0 +1,151 @@
+{
+  "reference": "dali",
+  "model": "yolo26det_nvjpeg_decode",
+  "limits": {
+    "mean_abs": 1.0,
+    "p99_abs": 3.0
+  },
+  "results": [
+    {
+      "fixture": "bus.jpg",
+      "shape": [
+        1080,
+        810,
+        3
+      ],
+      "original_size": [
+        1080,
+        810
+      ],
+      "max_abs": 0,
+      "mean_abs": 0.0,
+      "p99_abs": 0.0,
+      "swapped_mean_abs": 18.321838134430728,
+      "passed": true,
+      "opencv_max_abs": 41,
+      "opencv_mean_abs": 0.6023704465782656,
+      "opencv_p99_abs": 7.0
+    },
+    {
+      "fixture": "horses.jpg",
+      "shape": [
+        512,
+        773,
+        3
+      ],
+      "original_size": [
+        512,
+        773
+      ],
+      "max_abs": 0,
+      "mean_abs": 0.0,
+      "p99_abs": 0.0,
+      "swapped_mean_abs": 24.796027719383353,
+      "passed": true,
+      "opencv_max_abs": 15,
+      "opencv_mean_abs": 0.17794324735877534,
+      "opencv_p99_abs": 2.0
+    },
+    {
+      "fixture": "person.jpg",
+      "shape": [
+        424,
+        640,
+        3
+      ],
+      "original_size": [
+        424,
+        640
+      ],
+      "max_abs": 0,
+      "mean_abs": 0.0,
+      "p99_abs": 0.0,
+      "swapped_mean_abs": 33.4769924331761,
+      "passed": true,
+      "opencv_max_abs": 37,
+      "opencv_mean_abs": 0.32115271226415093,
+      "opencv_p99_abs": 4.0
+    },
+    {
+      "fixture": "mug.jpg",
+      "shape": [
+        960,
+        1280,
+        3
+      ],
+      "original_size": [
+        960,
+        1280
+      ],
+      "max_abs": 0,
+      "mean_abs": 0.0,
+      "p99_abs": 0.0,
+      "swapped_mean_abs": 7.1962841796875,
+      "passed": true,
+      "opencv_max_abs": 3,
+      "opencv_mean_abs": 0.019462076822916667,
+      "opencv_p99_abs": 1.0
+    },
+    {
+      "fixture": "bus_1080p.jpg",
+      "shape": [
+        1080,
+        1920,
+        3
+      ],
+      "original_size": [
+        1080,
+        1920
+      ],
+      "max_abs": 0,
+      "mean_abs": 0.0,
+      "p99_abs": 0.0,
+      "swapped_mean_abs": 18.119999678497944,
+      "passed": true,
+      "opencv_max_abs": 29,
+      "opencv_mean_abs": 0.35962352109053497,
+      "opencv_p99_abs": 4.0
+    },
+    {
+      "fixture": "bus_2160p.jpg",
+      "shape": [
+        2160,
+        3840,
+        3
+      ],
+      "original_size": [
+        2160,
+        3840
+      ],
+      "max_abs": 0,
+      "mean_abs": 0.0,
+      "p99_abs": 0.0,
+      "swapped_mean_abs": 18.155333799511318,
+      "passed": true,
+      "opencv_max_abs": 25,
+      "opencv_mean_abs": 0.1768528163580247,
+      "opencv_p99_abs": 2.0
+    },
+    {
+      "fixture": "bus_gray.jpg",
+      "shape": [
+        1080,
+        810,
+        3
+      ],
+      "original_size": [
+        1080,
+        810
+      ],
+      "max_abs": 0,
+      "mean_abs": 0.0,
+      "p99_abs": 0.0,
+      "swapped_mean_abs": 0.0,
+      "passed": true,
+      "opencv_max_abs": 1,
+      "opencv_mean_abs": 0.018449931412894374,
+      "opencv_p99_abs": 1.0
+    }
+  ],
+  "passed": true
+}

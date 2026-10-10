@@ -4,12 +4,17 @@ set -e
 # =========================
 # Configuration
 # =========================
-TRITON_VERSION="${1:-25.12}"
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/../.." && pwd)"
+source "${repo_root}/scripts/versions.sh"
+
+TRITON_VERSION="${1:-${NGC_CONTAINER_TAG}}"
 BUILD_TYPE="${2:-debug}"
 
 if [ "$BUILD_TYPE" == "debug" ]; then
     echo "🔨 Building Triton C++ Client Libraries in DEBUG mode"
-    
+
     cat > Dockerfile.triton-debug <<EOF
 FROM nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3
 
@@ -76,7 +81,10 @@ EOF
     INSTALL_PATH="/workspace/install_debug"
 else
     echo "📦 Extracting RELEASE libraries from official image"
-    TRITON_IMAGE="nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3-sdk"
+    TRITON_IMAGE="${TRITON_SDK_IMAGE}"
+    if [[ "$TRITON_VERSION" != "${NGC_CONTAINER_TAG}" ]]; then
+      TRITON_IMAGE="nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3-sdk"
+    fi
     HOST_EXTRACT_DIR="./triton_client_libs"
     INSTALL_PATH="/workspace/install"
 fi

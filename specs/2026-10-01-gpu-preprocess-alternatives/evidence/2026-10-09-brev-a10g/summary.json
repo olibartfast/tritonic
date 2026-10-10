@@ -1,0 +1,4520 @@
+{
+  "schema_version": 4,
+  "model_family": "yolo26-det",
+  "label": "NVIDIA-A10G-26.08",
+  "created_utc": "2026-10-09T22:46:58+00:00",
+  "environment": {
+    "gpus": [
+      {
+        "name": "NVIDIA A10G",
+        "driver": "595.91.07",
+        "memory": "23028 MiB"
+      }
+    ],
+    "client_cpu": "AMD EPYC 7R32",
+    "commit": "f84bac5",
+    "dirty_files": 0,
+    "server_image": {
+      "image": "nvcr.io/nvidia/tritonserver:26.08-py3",
+      "digest": [
+        "nvcr.io/nvidia/tritonserver@sha256:9185ba5b33d2c85c9204b208957b4bbfc6b2b89066efc9192e0f60c2ab58cec0"
+      ],
+      "cuda_version": "13.4.1.012",
+      "trt_version": "11.2.1.2+cuda13.3",
+      "nvidia_triton_server_version": "26.08",
+      "triton_server_version": "2.72.0",
+      "dali_version": "2.2.0",
+      "nvidia_build_id": "64703337"
+    },
+    "tensorrt_image": {
+      "image": "nvcr.io/nvidia/tensorrt:26.08-py3",
+      "digest": [
+        "nvcr.io/nvidia/tensorrt@sha256:3b127f45630cd56bf43d2ef70d7f50a7ee37e42bda4ba11adaaa069af2098125"
+      ],
+      "cuda_version": "13.4.1.012",
+      "trt_version": "11.2.1.2+cuda13.3",
+      "tensorrt_version": "11.2.1.2+cuda13.3",
+      "dali_version": "2.2.0",
+      "nvidia_build_id": "406036793"
+    },
+    "images_consistent": true
+  },
+  "warmup": 5,
+  "iterations": 100,
+  "variants": {
+    "B0": {
+      "title": "CPU preprocessing (client, neuriplo-tasks)",
+      "model": "yolo26det_trt",
+      "payload": "preprocessed"
+    },
+    "B1": {
+      "title": "DALI preprocessing",
+      "model": "yolo26det_gpu_pre_cpu_post",
+      "payload": "encoded"
+    },
+    "B1-gpupost": {
+      "title": "DALI preprocessing + GPU postprocess",
+      "model": "yolo26det_gpu_pre_gpu_post",
+      "payload": "encoded"
+    },
+    "V12": {
+      "title": "Custom C++ backend (nvJPEG + CUDA kernel)",
+      "model": "yolo26det_cudapre_cpu_post",
+      "payload": "encoded"
+    },
+    "V12-gpupost": {
+      "title": "Custom C++ backend + GPU postprocess",
+      "model": "yolo26det_cudapre_gpu_post",
+      "payload": "encoded"
+    },
+    "V13": {
+      "title": "nvJPEG decode + letterbox in TensorRT graph",
+      "model": "yolo26det_trtpre_cpu_post",
+      "payload": "encoded"
+    },
+    "V13-gpupost": {
+      "title": "nvJPEG decode + TensorRT-graph letterbox + GPU postprocess",
+      "model": "yolo26det_trtpre_gpu_post",
+      "payload": "encoded"
+    },
+    "V2": {
+      "title": "Client-side CUDA kernel into CUDA shared memory",
+      "model": "yolo26det_trt",
+      "payload": "cuda-shm"
+    }
+  },
+  "protocols": {
+    "grpc": {
+      "bus": {
+        "B0": {
+          "request_bytes": 4915200,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 21.87369782,
+              "median_ms": 21.851408,
+              "p95_ms": 22.215998499999998,
+              "p99_ms": 22.288373580000005
+            },
+            "infer": {
+              "mean_ms": 7.67873032,
+              "median_ms": 7.6083125,
+              "p95_ms": 8.0919871,
+              "p99_ms": 10.14770301
+            },
+            "postprocess": {
+              "mean_ms": 0.01088107,
+              "median_ms": 0.010510499999999999,
+              "p95_ms": 0.01126845,
+              "p99_ms": 0.012687900000000148
+            },
+            "total": {
+              "mean_ms": 29.56330921,
+              "median_ms": 29.451611,
+              "p95_ms": 30.21107205,
+              "p99_ms": 31.960962420000005
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.05876207619047619,
+              "compute_input_ms": 0.8660384285714285,
+              "compute_infer_ms": 2.843792028571429,
+              "compute_output_ms": 0.09042727619047619
+            }
+          }
+        },
+        "B1": {
+          "request_bytes": 487438,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.03952591,
+              "median_ms": 0.038261,
+              "p95_ms": 0.042066,
+              "p99_ms": 0.0719918
+            },
+            "infer": {
+              "mean_ms": 9.8281196,
+              "median_ms": 9.8436455,
+              "p95_ms": 10.146036,
+              "p99_ms": 10.190232100000001
+            },
+            "postprocess": {
+              "mean_ms": 0.01064614,
+              "median_ms": 0.0105005,
+              "p95_ms": 0.011072499999999999,
+              "p99_ms": 0.012005900000000071
+            },
+            "total": {
+              "mean_ms": 9.87829165,
+              "median_ms": 9.892781,
+              "p95_ms": 10.2007985,
+              "p99_ms": 10.2386919
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.029030704761904762,
+              "compute_input_ms": 0.0051571619047619055,
+              "compute_infer_ms": 8.497068104761905,
+              "compute_output_ms": 0.08061186666666667
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03949481904761905,
+              "compute_input_ms": 0.04151934285714286,
+              "compute_infer_ms": 1.9066290285714285,
+              "compute_output_ms": 0.0754498380952381
+            }
+          }
+        },
+        "B1-gpupost": {
+          "request_bytes": 487438,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.0415699,
+              "median_ms": 0.039755,
+              "p95_ms": 0.06603,
+              "p99_ms": 0.0710845
+            },
+            "infer": {
+              "mean_ms": 10.27217763,
+              "median_ms": 10.285767499999999,
+              "p95_ms": 10.613666499999999,
+              "p99_ms": 10.707190910000001
+            },
+            "postprocess": {
+              "mean_ms": 0.00371157,
+              "median_ms": 0.00364,
+              "p95_ms": 0.00434245,
+              "p99_ms": 0.0044602
+            },
+            "total": {
+              "mean_ms": 10.3174591,
+              "median_ms": 10.3291825,
+              "p95_ms": 10.670441499999999,
+              "p99_ms": 10.75279311
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.029098504761904762,
+              "compute_input_ms": 0.00421084761904762,
+              "compute_infer_ms": 6.767955704761905,
+              "compute_output_ms": 0.0786952380952381
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.04454329523809524,
+              "compute_input_ms": 0.042612114285714285,
+              "compute_infer_ms": 1.9354082857142856,
+              "compute_output_ms": 0.07319225714285714
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.02486995238095238,
+              "compute_input_ms": 0.005833,
+              "compute_infer_ms": 0.277942,
+              "compute_output_ms": 0.2291323238095238
+            }
+          }
+        },
+        "V12": {
+          "request_bytes": 487438,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.03941381,
+              "median_ms": 0.035880499999999996,
+              "p95_ms": 0.06543650000000001,
+              "p99_ms": 0.07743420000000001
+            },
+            "infer": {
+              "mean_ms": 8.68709473,
+              "median_ms": 8.864025999999999,
+              "p95_ms": 9.2973435,
+              "p99_ms": 9.482541110000001
+            },
+            "postprocess": {
+              "mean_ms": 0.01033249,
+              "median_ms": 0.010284999999999999,
+              "p95_ms": 0.01145,
+              "p99_ms": 0.011711100000000002
+            },
+            "total": {
+              "mean_ms": 8.73684103,
+              "median_ms": 8.908952,
+              "p95_ms": 9.356588050000001,
+              "p99_ms": 9.536097520000002
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03011669523809524,
+              "compute_input_ms": 0.0009993333333333334,
+              "compute_infer_ms": 5.73176899047619,
+              "compute_output_ms": 0.024943961904761905
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.040925,
+              "compute_input_ms": 0.04201026666666667,
+              "compute_infer_ms": 1.8817898190476192,
+              "compute_output_ms": 0.07690447619047619
+            }
+          }
+        },
+        "V12-gpupost": {
+          "request_bytes": 487438,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.03926255,
+              "median_ms": 0.0358955,
+              "p95_ms": 0.0645245,
+              "p99_ms": 0.07247180000000007
+            },
+            "infer": {
+              "mean_ms": 9.23635254,
+              "median_ms": 9.365753999999999,
+              "p95_ms": 9.82406955,
+              "p99_ms": 10.134602710000001
+            },
+            "postprocess": {
+              "mean_ms": 0.00343261,
+              "median_ms": 0.003365,
+              "p95_ms": 0.0041210000000000005,
+              "p99_ms": 0.004781200000000001
+            },
+            "total": {
+              "mean_ms": 9.2790477,
+              "median_ms": 9.4065345,
+              "p95_ms": 9.86505,
+              "p99_ms": 10.194932710000002
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03150995238095238,
+              "compute_input_ms": 0.0010054380952380952,
+              "compute_infer_ms": 5.773721819047618,
+              "compute_output_ms": 0.025740876190476193
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.039415009523809524,
+              "compute_input_ms": 0.043112304761904766,
+              "compute_infer_ms": 1.9047754095238096,
+              "compute_output_ms": 0.07267589523809524
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.030134961904761906,
+              "compute_input_ms": 0.0065608,
+              "compute_infer_ms": 0.2849781809523809,
+              "compute_output_ms": 0.2293332857142857
+            }
+          }
+        },
+        "V13": {
+          "request_bytes": 487438,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.03580602,
+              "median_ms": 0.0337555,
+              "p95_ms": 0.04468494999999999,
+              "p99_ms": 0.06901900000000004
+            },
+            "infer": {
+              "mean_ms": 8.71539974,
+              "median_ms": 8.827320499999999,
+              "p95_ms": 9.115003,
+              "p99_ms": 9.153613810000001
+            },
+            "postprocess": {
+              "mean_ms": 0.01101748,
+              "median_ms": 0.01034,
+              "p95_ms": 0.011305999999999998,
+              "p99_ms": 0.04031280000000001
+            },
+            "total": {
+              "mean_ms": 8.76222324,
+              "median_ms": 8.872086,
+              "p95_ms": 9.159327500000002,
+              "p99_ms": 9.196088900000001
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.027451523809523808,
+              "compute_input_ms": 0.0011654285714285714,
+              "compute_infer_ms": 5.722659847619047,
+              "compute_output_ms": 0.023260590476190474
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.03962513333333333,
+              "compute_input_ms": 0.041923771428571434,
+              "compute_infer_ms": 1.978129638095238,
+              "compute_output_ms": 0.07515173333333333
+            }
+          }
+        },
+        "V13-gpupost": {
+          "request_bytes": 487438,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.03839706,
+              "median_ms": 0.037001,
+              "p95_ms": 0.04328454999999999,
+              "p99_ms": 0.07014250000000004
+            },
+            "infer": {
+              "mean_ms": 9.13103898,
+              "median_ms": 9.2458165,
+              "p95_ms": 9.535007499999999,
+              "p99_ms": 9.57657664
+            },
+            "postprocess": {
+              "mean_ms": 0.00295883,
+              "median_ms": 0.002935,
+              "p95_ms": 0.0034145,
+              "p99_ms": 0.0036440000000000023
+            },
+            "total": {
+              "mean_ms": 9.17239487,
+              "median_ms": 9.2860525,
+              "p95_ms": 9.57516555,
+              "p99_ms": 9.625270650000003
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.02854772380952381,
+              "compute_input_ms": 0.001021152380952381,
+              "compute_infer_ms": 5.678022514285715,
+              "compute_output_ms": 0.023619
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.03812851428571429,
+              "compute_input_ms": 0.044986152380952375,
+              "compute_infer_ms": 1.948378219047619,
+              "compute_output_ms": 0.07331745714285713
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.03207362857142857,
+              "compute_input_ms": 0.006636771428571428,
+              "compute_infer_ms": 0.27254621904761905,
+              "compute_output_ms": 0.216555
+            }
+          }
+        },
+        "V2": {
+          "request_bytes": 0,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.30660358,
+              "median_ms": 0.30322,
+              "p95_ms": 0.33002555,
+              "p99_ms": 0.33310939999999994
+            },
+            "infer": {
+              "mean_ms": 2.43845659,
+              "median_ms": 2.436911,
+              "p95_ms": 2.4744015499999996,
+              "p99_ms": 2.50328291
+            },
+            "postprocess": {
+              "mean_ms": 0.008603,
+              "median_ms": 0.00796,
+              "p95_ms": 0.0083405,
+              "p99_ms": 0.03434860000000001
+            },
+            "total": {
+              "mean_ms": 2.75366317,
+              "median_ms": 2.7524604999999998,
+              "p95_ms": 2.7922535500000003,
+              "p99_ms": 2.81409261
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03598020952380952,
+              "compute_input_ms": 0.021269066666666666,
+              "compute_infer_ms": 1.820476619047619,
+              "compute_output_ms": 0.16658971428571429
+            }
+          }
+        }
+      },
+      "horses": {
+        "B0": {
+          "request_bytes": 4915200,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 19.81375562,
+              "median_ms": 19.793318,
+              "p95_ms": 20.144973999999998,
+              "p99_ms": 20.424985670000005
+            },
+            "infer": {
+              "mean_ms": 7.60683275,
+              "median_ms": 7.604233,
+              "p95_ms": 7.815590500000001,
+              "p99_ms": 7.929284140000002
+            },
+            "postprocess": {
+              "mean_ms": 0.01019286,
+              "median_ms": 0.010125,
+              "p95_ms": 0.0109465,
+              "p99_ms": 0.01157229
+            },
+            "total": {
+              "mean_ms": 27.43078123,
+              "median_ms": 27.3957505,
+              "p95_ms": 27.807750499999997,
+              "p99_ms": 28.202860980000004
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.06138634285714286,
+              "compute_input_ms": 0.8707584857142857,
+              "compute_infer_ms": 1.824650895238095,
+              "compute_output_ms": 0.0868263238095238
+            }
+          }
+        },
+        "B1": {
+          "request_bytes": 133495,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00907664,
+              "median_ms": 0.00865,
+              "p95_ms": 0.010004,
+              "p99_ms": 0.02043299000000001
+            },
+            "infer": {
+              "mean_ms": 5.4058383,
+              "median_ms": 5.352434,
+              "p95_ms": 5.603588,
+              "p99_ms": 5.635622410000001
+            },
+            "postprocess": {
+              "mean_ms": 0.00942586,
+              "median_ms": 0.0093,
+              "p95_ms": 0.01063845,
+              "p99_ms": 0.011151689999999999
+            },
+            "total": {
+              "mean_ms": 5.4243408,
+              "median_ms": 5.3708244999999994,
+              "p95_ms": 5.62117895,
+              "p99_ms": 5.653652910000001
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.027917542857142857,
+              "compute_input_ms": 0.004115971428571429,
+              "compute_infer_ms": 2.7111924857142857,
+              "compute_output_ms": 0.06938572380952382
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.040876228571428565,
+              "compute_input_ms": 0.037747380952380956,
+              "compute_infer_ms": 1.8341785142857143,
+              "compute_output_ms": 0.0759893238095238
+            }
+          }
+        },
+        "B1-gpupost": {
+          "request_bytes": 133495,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00905637,
+              "median_ms": 0.00897,
+              "p95_ms": 0.0099955,
+              "p99_ms": 0.011192810000000003
+            },
+            "infer": {
+              "mean_ms": 5.80257039,
+              "median_ms": 5.7706505,
+              "p95_ms": 5.99712055,
+              "p99_ms": 6.0459081900000005
+            },
+            "postprocess": {
+              "mean_ms": 0.00310914,
+              "median_ms": 0.003065,
+              "p95_ms": 0.0037005000000000002,
+              "p99_ms": 0.003772800000000001
+            },
+            "total": {
+              "mean_ms": 5.8147359,
+              "median_ms": 5.783020499999999,
+              "p95_ms": 6.008658049999999,
+              "p99_ms": 6.05781489
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.02792655238095238,
+              "compute_input_ms": 0.004097695238095238,
+              "compute_infer_ms": 2.7278536666666664,
+              "compute_output_ms": 0.07200974285714286
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03333044761904762,
+              "compute_input_ms": 0.03815659047619047,
+              "compute_infer_ms": 1.839259638095238,
+              "compute_output_ms": 0.07285086666666667
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.03057284761904762,
+              "compute_input_ms": 0.0057809904761904765,
+              "compute_infer_ms": 0.24831119047619046,
+              "compute_output_ms": 0.20426383809523807
+            }
+          }
+        },
+        "V12": {
+          "request_bytes": 133495,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00811311,
+              "median_ms": 0.00787,
+              "p95_ms": 0.00888105,
+              "p99_ms": 0.009177690000000125
+            },
+            "infer": {
+              "mean_ms": 4.44148206,
+              "median_ms": 4.4678715,
+              "p95_ms": 4.5540575,
+              "p99_ms": 4.627266320000015
+            },
+            "postprocess": {
+              "mean_ms": 0.0090009,
+              "median_ms": 0.008925,
+              "p95_ms": 0.009713,
+              "p99_ms": 0.0104307
+            },
+            "total": {
+              "mean_ms": 4.45859607,
+              "median_ms": 4.484961500000001,
+              "p95_ms": 4.5705160000000005,
+              "p99_ms": 4.643738120000014
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.029179266666666665,
+              "compute_input_ms": 0.000982761904761905,
+              "compute_infer_ms": 1.8313075333333335,
+              "compute_output_ms": 0.02315104761904762
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03584647619047619,
+              "compute_input_ms": 0.03662805714285714,
+              "compute_infer_ms": 1.8306185904761905,
+              "compute_output_ms": 0.06832291428571428
+            }
+          }
+        },
+        "V12-gpupost": {
+          "request_bytes": 133495,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00881282,
+              "median_ms": 0.00821,
+              "p95_ms": 0.009073,
+              "p99_ms": 0.03685790000000001
+            },
+            "infer": {
+              "mean_ms": 4.84969911,
+              "median_ms": 4.9015474999999995,
+              "p95_ms": 4.975039949999999,
+              "p99_ms": 4.9900020000000005
+            },
+            "postprocess": {
+              "mean_ms": 0.00237584,
+              "median_ms": 0.0023550000000000003,
+              "p95_ms": 0.0026709999999999998,
+              "p99_ms": 0.0027558000000000027
+            },
+            "total": {
+              "mean_ms": 4.86088777,
+              "median_ms": 4.911982999999999,
+              "p95_ms": 4.98542395,
+              "p99_ms": 5.0008788
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.027405742857142857,
+              "compute_input_ms": 0.0009477238095238096,
+              "compute_infer_ms": 1.8567712761904762,
+              "compute_output_ms": 0.02324355238095238
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03432528571428572,
+              "compute_input_ms": 0.03696911428571428,
+              "compute_infer_ms": 1.8320619904761906,
+              "compute_output_ms": 0.07027240952380952
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.03718776190476191,
+              "compute_input_ms": 0.006125914285714286,
+              "compute_infer_ms": 0.25108283809523807,
+              "compute_output_ms": 0.1995496
+            }
+          }
+        },
+        "V13": {
+          "request_bytes": 133495,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00835856,
+              "median_ms": 0.00801,
+              "p95_ms": 0.009690499999999998,
+              "p99_ms": 0.011359290000000105
+            },
+            "infer": {
+              "mean_ms": 4.50397408,
+              "median_ms": 4.526792,
+              "p95_ms": 4.645676,
+              "p99_ms": 4.691232100000001
+            },
+            "postprocess": {
+              "mean_ms": 0.00968473,
+              "median_ms": 0.00888,
+              "p95_ms": 0.009883499999999998,
+              "p99_ms": 0.03889739000000002
+            },
+            "total": {
+              "mean_ms": 4.52201737,
+              "median_ms": 4.543452500000001,
+              "p95_ms": 4.66490805,
+              "p99_ms": 4.74134271
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.02856544761904762,
+              "compute_input_ms": 0.0009606857142857143,
+              "compute_infer_ms": 1.8209877333333333,
+              "compute_output_ms": 0.023044933333333333
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.03551794285714286,
+              "compute_input_ms": 0.03500238095238095,
+              "compute_infer_ms": 1.913978314285714,
+              "compute_output_ms": 0.07616874285714285
+            }
+          }
+        },
+        "V13-gpupost": {
+          "request_bytes": 133495,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00970248,
+              "median_ms": 0.008879999999999999,
+              "p95_ms": 0.012915,
+              "p99_ms": 0.014407410000000122
+            },
+            "infer": {
+              "mean_ms": 4.94398458,
+              "median_ms": 4.926913,
+              "p95_ms": 5.230228099999999,
+              "p99_ms": 5.467551450000005
+            },
+            "postprocess": {
+              "mean_ms": 0.00293355,
+              "median_ms": 0.00257,
+              "p95_ms": 0.0037324999999999997,
+              "p99_ms": 0.004376910000000132
+            },
+            "total": {
+              "mean_ms": 4.95662061,
+              "median_ms": 4.936818499999999,
+              "p95_ms": 5.24820055,
+              "p99_ms": 5.483342850000005
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.02808735238095238,
+              "compute_input_ms": 0.0009920380952380952,
+              "compute_infer_ms": 1.8038581523809525,
+              "compute_output_ms": 0.023759771428571427
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.03625239047619048,
+              "compute_input_ms": 0.03942937142857143,
+              "compute_infer_ms": 1.9222300190476191,
+              "compute_output_ms": 0.07224680952380953
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.02669307619047619,
+              "compute_input_ms": 0.006120104761904762,
+              "compute_infer_ms": 0.27071692380952384,
+              "compute_output_ms": 0.2103607523809524
+            }
+          }
+        },
+        "V2": {
+          "request_bytes": 0,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.19575622,
+              "median_ms": 0.191403,
+              "p95_ms": 0.21897049999999998,
+              "p99_ms": 0.22926192000000054
+            },
+            "infer": {
+              "mean_ms": 2.42039288,
+              "median_ms": 2.416896,
+              "p95_ms": 2.48062905,
+              "p99_ms": 2.547757040000001
+            },
+            "postprocess": {
+              "mean_ms": 0.00804717,
+              "median_ms": 0.00737,
+              "p95_ms": 0.008909499999999999,
+              "p99_ms": 0.028047100000000012
+            },
+            "total": {
+              "mean_ms": 2.62419627,
+              "median_ms": 2.618494,
+              "p95_ms": 2.700815,
+              "p99_ms": 2.782569730000001
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.032029657142857146,
+              "compute_input_ms": 0.020703314285714286,
+              "compute_infer_ms": 1.8226321714285714,
+              "compute_output_ms": 0.17011320000000002
+            }
+          }
+        }
+      },
+      "person": {
+        "B0": {
+          "request_bytes": 4915200,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 19.78739575,
+              "median_ms": 19.787923,
+              "p95_ms": 20.0162755,
+              "p99_ms": 20.107667699999997
+            },
+            "infer": {
+              "mean_ms": 7.70426975,
+              "median_ms": 7.7089045,
+              "p95_ms": 7.88944055,
+              "p99_ms": 7.969059110000001
+            },
+            "postprocess": {
+              "mean_ms": 0.01063742,
+              "median_ms": 0.010125499999999999,
+              "p95_ms": 0.0109445,
+              "p99_ms": 0.03155810000000003
+            },
+            "total": {
+              "mean_ms": 27.50230292,
+              "median_ms": 27.5083175,
+              "p95_ms": 27.80308055,
+              "p99_ms": 27.9225844
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.057908019047619046,
+              "compute_input_ms": 0.8794560285714286,
+              "compute_infer_ms": 1.8217836571428572,
+              "compute_output_ms": 0.08535554285714286
+            }
+          }
+        },
+        "B1": {
+          "request_bytes": 113880,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00786282,
+              "median_ms": 0.00756,
+              "p95_ms": 0.0083015,
+              "p99_ms": 0.009684200000000125
+            },
+            "infer": {
+              "mean_ms": 5.04917324,
+              "median_ms": 5.045895,
+              "p95_ms": 5.1729895,
+              "p99_ms": 5.2125637000000005
+            },
+            "postprocess": {
+              "mean_ms": 0.00910204,
+              "median_ms": 0.009000500000000002,
+              "p95_ms": 0.00978355,
+              "p99_ms": 0.010372800000000001
+            },
+            "total": {
+              "mean_ms": 5.0661381,
+              "median_ms": 5.062545,
+              "p95_ms": 5.1891945,
+              "p99_ms": 5.248286010000001
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.029210847619047617,
+              "compute_input_ms": 0.004491619047619048,
+              "compute_infer_ms": 2.4347289523809525,
+              "compute_output_ms": 0.07077786666666668
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03716888571428571,
+              "compute_input_ms": 0.0375255619047619,
+              "compute_infer_ms": 1.8326473047619047,
+              "compute_output_ms": 0.06792662857142857
+            }
+          }
+        },
+        "B1-gpupost": {
+          "request_bytes": 113880,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00842124,
+              "median_ms": 0.0075650000000000005,
+              "p95_ms": 0.010308999999999992,
+              "p99_ms": 0.034048390000000026
+            },
+            "infer": {
+              "mean_ms": 5.46626761,
+              "median_ms": 5.4516945,
+              "p95_ms": 5.6437725,
+              "p99_ms": 5.77609332
+            },
+            "postprocess": {
+              "mean_ms": 0.00292997,
+              "median_ms": 0.00285,
+              "p95_ms": 0.0035819999999999997,
+              "p99_ms": 0.003922600000000001
+            },
+            "total": {
+              "mean_ms": 5.47761882,
+              "median_ms": 5.4625845,
+              "p95_ms": 5.65339045,
+              "p99_ms": 5.79240871
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.027348380952380954,
+              "compute_input_ms": 0.004280647619047619,
+              "compute_infer_ms": 2.439084780952381,
+              "compute_output_ms": 0.07124668571428572
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03963055238095238,
+              "compute_input_ms": 0.03800241904761905,
+              "compute_infer_ms": 1.8349879904761905,
+              "compute_output_ms": 0.0670348761904762
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.037687838095238096,
+              "compute_input_ms": 0.005560066666666667,
+              "compute_infer_ms": 0.24677221904761906,
+              "compute_output_ms": 0.20664860000000002
+            }
+          }
+        },
+        "V12": {
+          "request_bytes": 113880,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.0076954,
+              "median_ms": 0.007005,
+              "p95_ms": 0.01083,
+              "p99_ms": 0.01168960000000005
+            },
+            "infer": {
+              "mean_ms": 4.05111949,
+              "median_ms": 4.033594,
+              "p95_ms": 4.299182,
+              "p99_ms": 4.362267230000001
+            },
+            "postprocess": {
+              "mean_ms": 0.00969835,
+              "median_ms": 0.00872,
+              "p95_ms": 0.011661499999999997,
+              "p99_ms": 0.030712200000000002
+            },
+            "total": {
+              "mean_ms": 4.06851324,
+              "median_ms": 4.0486995,
+              "p95_ms": 4.3220925,
+              "p99_ms": 4.3797463400000005
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.026927799999999998,
+              "compute_input_ms": 0.0010035428571428572,
+              "compute_infer_ms": 1.480968238095238,
+              "compute_output_ms": 0.02401585714285714
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03630086666666667,
+              "compute_input_ms": 0.037935695238095236,
+              "compute_infer_ms": 1.8387327047619046,
+              "compute_output_ms": 0.0699911619047619
+            }
+          }
+        },
+        "V12-gpupost": {
+          "request_bytes": 113880,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00749424,
+              "median_ms": 0.00695,
+              "p95_ms": 0.010964499999999999,
+              "p99_ms": 0.013258110000000108
+            },
+            "infer": {
+              "mean_ms": 4.45186311,
+              "median_ms": 4.4427900000000005,
+              "p95_ms": 4.79718005,
+              "p99_ms": 5.001042330000001
+            },
+            "postprocess": {
+              "mean_ms": 0.00241524,
+              "median_ms": 0.00231,
+              "p95_ms": 0.0033399999999999997,
+              "p99_ms": 0.003764100000000002
+            },
+            "total": {
+              "mean_ms": 4.46177259,
+              "median_ms": 4.451829999999999,
+              "p95_ms": 4.809126549999999,
+              "p99_ms": 5.015520230000001
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.02930995238095238,
+              "compute_input_ms": 0.001013247619047619,
+              "compute_infer_ms": 1.5032004285714287,
+              "compute_output_ms": 0.023392619047619048
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.035936857142857145,
+              "compute_input_ms": 0.03665269523809524,
+              "compute_infer_ms": 1.8413658,
+              "compute_output_ms": 0.06903518095238095
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.032262961904761904,
+              "compute_input_ms": 0.005457866666666667,
+              "compute_infer_ms": 0.24940133333333334,
+              "compute_output_ms": 0.2001733238095238
+            }
+          }
+        },
+        "V13": {
+          "request_bytes": 113880,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00655114,
+              "median_ms": 0.0062050000000000004,
+              "p95_ms": 0.007502999999999999,
+              "p99_ms": 0.008114010000000105
+            },
+            "infer": {
+              "mean_ms": 4.07107679,
+              "median_ms": 4.039534,
+              "p95_ms": 4.21272555,
+              "p99_ms": 4.2253564
+            },
+            "postprocess": {
+              "mean_ms": 0.00845354,
+              "median_ms": 0.0084005,
+              "p95_ms": 0.00896295,
+              "p99_ms": 0.009831089999999999
+            },
+            "total": {
+              "mean_ms": 4.08608147,
+              "median_ms": 4.0539439999999995,
+              "p95_ms": 4.22827,
+              "p99_ms": 4.2411502
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.02872914285714286,
+              "compute_input_ms": 0.0008944095238095237,
+              "compute_infer_ms": 1.4732531142857141,
+              "compute_output_ms": 0.022114733333333334
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.03393189523809524,
+              "compute_input_ms": 0.0327300380952381,
+              "compute_infer_ms": 1.9113458,
+              "compute_output_ms": 0.07652531428571428
+            }
+          }
+        },
+        "V13-gpupost": {
+          "request_bytes": 113880,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00697128,
+              "median_ms": 0.0069005,
+              "p95_ms": 0.00769,
+              "p99_ms": 0.007818400000000005
+            },
+            "infer": {
+              "mean_ms": 4.46968312,
+              "median_ms": 4.47018,
+              "p95_ms": 4.611377,
+              "p99_ms": 4.6799794
+            },
+            "postprocess": {
+              "mean_ms": 0.00215352,
+              "median_ms": 0.00213,
+              "p95_ms": 0.0025304999999999998,
+              "p99_ms": 0.0026210000000000005
+            },
+            "total": {
+              "mean_ms": 4.47880792,
+              "median_ms": 4.4787105,
+              "p95_ms": 4.620980449999999,
+              "p99_ms": 4.6893054
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.028619742857142857,
+              "compute_input_ms": 0.0011777238095238094,
+              "compute_infer_ms": 1.4778879904761906,
+              "compute_output_ms": 0.022615961904761905
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.036063533333333335,
+              "compute_input_ms": 0.03325628571428572,
+              "compute_infer_ms": 1.910038980952381,
+              "compute_output_ms": 0.07003981904761905
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.030628542857142855,
+              "compute_input_ms": 0.00551312380952381,
+              "compute_infer_ms": 0.24207356190476192,
+              "compute_output_ms": 0.19611962857142856
+            }
+          }
+        },
+        "V2": {
+          "request_bytes": 0,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.17289522,
+              "median_ms": 0.17069800000000002,
+              "p95_ms": 0.1904465,
+              "p99_ms": 0.19640230000000003
+            },
+            "infer": {
+              "mean_ms": 2.42756113,
+              "median_ms": 2.427781,
+              "p95_ms": 2.4738700000000002,
+              "p99_ms": 2.4909826099999997
+            },
+            "postprocess": {
+              "mean_ms": 0.00751021,
+              "median_ms": 0.0073355,
+              "p95_ms": 0.007823,
+              "p99_ms": 0.008556690000000054
+            },
+            "total": {
+              "mean_ms": 2.60796656,
+              "median_ms": 2.6062380000000003,
+              "p95_ms": 2.6604605,
+              "p99_ms": 2.6682152
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03417490476190476,
+              "compute_input_ms": 0.020557019047619047,
+              "compute_infer_ms": 1.8224370857142858,
+              "compute_output_ms": 0.1661066
+            }
+          }
+        }
+      },
+      "mug": {
+        "B0": {
+          "request_bytes": 4915200,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 22.38399921,
+              "median_ms": 22.384767,
+              "p95_ms": 22.679520600000004,
+              "p99_ms": 22.98233325
+            },
+            "infer": {
+              "mean_ms": 7.61460731,
+              "median_ms": 7.590486,
+              "p95_ms": 7.911888,
+              "p99_ms": 8.03457101
+            },
+            "postprocess": {
+              "mean_ms": 0.01039254,
+              "median_ms": 0.00971,
+              "p95_ms": 0.010715,
+              "p99_ms": 0.03819261
+            },
+            "total": {
+              "mean_ms": 30.00899906,
+              "median_ms": 30.0093045,
+              "p95_ms": 30.5207,
+              "p99_ms": 31.012697240000005
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.059099533333333336,
+              "compute_input_ms": 0.8713920666666667,
+              "compute_infer_ms": 1.827986142857143,
+              "compute_output_ms": 0.0795648380952381
+            }
+          }
+        },
+        "B1": {
+          "request_bytes": 156774,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.01652452,
+              "median_ms": 0.015515000000000001,
+              "p95_ms": 0.017087499999999995,
+              "p99_ms": 0.04653641000000001
+            },
+            "infer": {
+              "mean_ms": 10.84911239,
+              "median_ms": 10.810698,
+              "p95_ms": 11.0987335,
+              "p99_ms": 11.669192820000001
+            },
+            "postprocess": {
+              "mean_ms": 0.01053851,
+              "median_ms": 0.010225000000000001,
+              "p95_ms": 0.0109725,
+              "p99_ms": 0.01173430000000014
+            },
+            "total": {
+              "mean_ms": 10.87617542,
+              "median_ms": 10.837588499999999,
+              "p95_ms": 11.1252215,
+              "p99_ms": 11.698799820000001
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03303935238095238,
+              "compute_input_ms": 0.005330009523809524,
+              "compute_infer_ms": 7.903615485714286,
+              "compute_output_ms": 0.08832325714285715
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.04341135238095238,
+              "compute_input_ms": 0.04470314285714286,
+              "compute_infer_ms": 1.8763867809523809,
+              "compute_output_ms": 0.06678219047619047
+            }
+          }
+        },
+        "B1-gpupost": {
+          "request_bytes": 156774,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.01599285,
+              "median_ms": 0.015655000000000002,
+              "p95_ms": 0.01723595,
+              "p99_ms": 0.018160610000000108
+            },
+            "infer": {
+              "mean_ms": 11.35759121,
+              "median_ms": 11.301120000000001,
+              "p95_ms": 11.6456392,
+              "p99_ms": 12.064553500000002
+            },
+            "postprocess": {
+              "mean_ms": 0.00382405,
+              "median_ms": 0.00353,
+              "p95_ms": 0.003982,
+              "p99_ms": 0.004410900000000153
+            },
+            "total": {
+              "mean_ms": 11.37740811,
+              "median_ms": 11.3197555,
+              "p95_ms": 11.692159649999999,
+              "p99_ms": 12.084313000000003
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.027288847619047617,
+              "compute_input_ms": 0.004070628571428572,
+              "compute_infer_ms": 7.9402529714285714,
+              "compute_output_ms": 0.09027842857142857
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.042431771428571435,
+              "compute_input_ms": 0.045615171428571424,
+              "compute_infer_ms": 1.9267672761904762,
+              "compute_output_ms": 0.06806282857142858
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.029983114285714284,
+              "compute_input_ms": 0.007072190476190476,
+              "compute_infer_ms": 0.2712868190476191,
+              "compute_output_ms": 0.2713382380952381
+            }
+          }
+        },
+        "V12": {
+          "request_bytes": 156774,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.01477395,
+              "median_ms": 0.0147655,
+              "p95_ms": 0.0158605,
+              "p99_ms": 0.0161808
+            },
+            "infer": {
+              "mean_ms": 9.54788804,
+              "median_ms": 9.548464,
+              "p95_ms": 9.6355325,
+              "p99_ms": 9.66965594
+            },
+            "postprocess": {
+              "mean_ms": 0.01072533,
+              "median_ms": 0.0101455,
+              "p95_ms": 0.011248,
+              "p99_ms": 0.025864310000000057
+            },
+            "total": {
+              "mean_ms": 9.57338732,
+              "median_ms": 9.5735895,
+              "p95_ms": 9.66024555,
+              "p99_ms": 9.694392240000003
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.02964766666666667,
+              "compute_input_ms": 0.0009981047619047618,
+              "compute_infer_ms": 6.788268904761905,
+              "compute_output_ms": 0.027970704761904764
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.039422314285714286,
+              "compute_input_ms": 0.043805228571428566,
+              "compute_infer_ms": 1.8639136095238096,
+              "compute_output_ms": 0.0640085238095238
+            }
+          }
+        },
+        "V12-gpupost": {
+          "request_bytes": 156774,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.01588975,
+              "median_ms": 0.01546,
+              "p95_ms": 0.016707499999999997,
+              "p99_ms": 0.030339800000000073
+            },
+            "infer": {
+              "mean_ms": 10.0393305,
+              "median_ms": 10.0035865,
+              "p95_ms": 10.24678115,
+              "p99_ms": 10.969847120000003
+            },
+            "postprocess": {
+              "mean_ms": 0.00371449,
+              "median_ms": 0.00361,
+              "p95_ms": 0.003991499999999999,
+              "p99_ms": 0.004581800000000062
+            },
+            "total": {
+              "mean_ms": 10.05893474,
+              "median_ms": 10.0241665,
+              "p95_ms": 10.264900149999999,
+              "p99_ms": 10.987768030000002
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.029300638095238096,
+              "compute_input_ms": 0.0010171619047619049,
+              "compute_infer_ms": 6.745280142857142,
+              "compute_output_ms": 0.0295102
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.04150026666666667,
+              "compute_input_ms": 0.04477035238095238,
+              "compute_infer_ms": 1.8911616761904761,
+              "compute_output_ms": 0.06773892380952382
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.030411009523809523,
+              "compute_input_ms": 0.008297228571428571,
+              "compute_infer_ms": 0.28911086666666663,
+              "compute_output_ms": 0.2570929142857143
+            }
+          }
+        },
+        "V13": {
+          "request_bytes": 156774,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.01611585,
+              "median_ms": 0.014884999999999999,
+              "p95_ms": 0.0177695,
+              "p99_ms": 0.04255389000000001
+            },
+            "infer": {
+              "mean_ms": 9.63825378,
+              "median_ms": 9.603890499999999,
+              "p95_ms": 9.81631155,
+              "p99_ms": 10.441557320000001
+            },
+            "postprocess": {
+              "mean_ms": 0.01059745,
+              "median_ms": 0.01037,
+              "p95_ms": 0.0113315,
+              "p99_ms": 0.013061400000000072
+            },
+            "total": {
+              "mean_ms": 9.66496708,
+              "median_ms": 9.6307555,
+              "p95_ms": 9.84296505,
+              "p99_ms": 10.4681525
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.029632161904761905,
+              "compute_input_ms": 0.0010363142857142858,
+              "compute_infer_ms": 6.763080676190476,
+              "compute_output_ms": 0.027801771428571428
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.04335384761904762,
+              "compute_input_ms": 0.04899215238095238,
+              "compute_infer_ms": 1.958618619047619,
+              "compute_output_ms": 0.06846780952380953
+            }
+          }
+        },
+        "V13-gpupost": {
+          "request_bytes": 156774,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.01666181,
+              "median_ms": 0.015900499999999998,
+              "p95_ms": 0.017277,
+              "p99_ms": 0.03764691000000005
+            },
+            "infer": {
+              "mean_ms": 10.02777564,
+              "median_ms": 10.020041500000001,
+              "p95_ms": 10.130558500000001,
+              "p99_ms": 10.15385592
+            },
+            "postprocess": {
+              "mean_ms": 0.00318785,
+              "median_ms": 0.0031850000000000003,
+              "p95_ms": 0.0036935,
+              "p99_ms": 0.0038527000000000014
+            },
+            "total": {
+              "mean_ms": 10.0476253,
+              "median_ms": 10.044927,
+              "p95_ms": 10.1504945,
+              "p99_ms": 10.17426261
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.028908885714285716,
+              "compute_input_ms": 0.0010685809523809523,
+              "compute_infer_ms": 6.680193590476191,
+              "compute_output_ms": 0.025640609523809522
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.04169637142857143,
+              "compute_input_ms": 0.04674095238095238,
+              "compute_infer_ms": 1.9559854761904762,
+              "compute_output_ms": 0.06691893333333333
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.03419832380952381,
+              "compute_input_ms": 0.007884257142857143,
+              "compute_infer_ms": 0.2800938476190476,
+              "compute_output_ms": 0.2613872666666667
+            }
+          }
+        },
+        "V2": {
+          "request_bytes": 0,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.39302488,
+              "median_ms": 0.3874105,
+              "p95_ms": 0.4173945,
+              "p99_ms": 0.42701131000000003
+            },
+            "infer": {
+              "mean_ms": 2.4366904,
+              "median_ms": 2.4344455,
+              "p95_ms": 2.47328645,
+              "p99_ms": 2.49247599
+            },
+            "postprocess": {
+              "mean_ms": 0.00873666,
+              "median_ms": 0.007855000000000001,
+              "p95_ms": 0.008801499999999999,
+              "p99_ms": 0.032404400000000014
+            },
+            "total": {
+              "mean_ms": 2.83845194,
+              "median_ms": 2.840827,
+              "p95_ms": 2.878194,
+              "p99_ms": 2.8962792
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.0300466,
+              "compute_input_ms": 0.021356838095238095,
+              "compute_infer_ms": 1.819696457142857,
+              "compute_output_ms": 0.16186721904761905
+            }
+          }
+        }
+      },
+      "bus_1080p": {
+        "B0": {
+          "request_bytes": 4915200,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 19.73377217,
+              "median_ms": 19.7062455,
+              "p95_ms": 20.04859205,
+              "p99_ms": 20.25838181
+            },
+            "infer": {
+              "mean_ms": 7.61620909,
+              "median_ms": 7.611742,
+              "p95_ms": 7.78085855,
+              "p99_ms": 7.990796710000001
+            },
+            "postprocess": {
+              "mean_ms": 0.01027315,
+              "median_ms": 0.010165,
+              "p95_ms": 0.010922,
+              "p99_ms": 0.011607200000000003
+            },
+            "total": {
+              "mean_ms": 27.36025441,
+              "median_ms": 27.336663,
+              "p95_ms": 27.7344845,
+              "p99_ms": 28.10498513
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.06261532380952381,
+              "compute_input_ms": 0.8729738476190476,
+              "compute_infer_ms": 1.8192773333333332,
+              "compute_output_ms": 0.07982843809523808
+            }
+          }
+        },
+        "B1": {
+          "request_bytes": 613103,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.0484249,
+              "median_ms": 0.046586,
+              "p95_ms": 0.06423649999999999,
+              "p99_ms": 0.07449110000000002
+            },
+            "infer": {
+              "mean_ms": 8.81103921,
+              "median_ms": 8.8007855,
+              "p95_ms": 8.947014500000002,
+              "p99_ms": 9.0980028
+            },
+            "postprocess": {
+              "mean_ms": 0.01054853,
+              "median_ms": 0.010265,
+              "p95_ms": 0.01153895,
+              "p99_ms": 0.012551700000000107
+            },
+            "total": {
+              "mean_ms": 8.87001264,
+              "median_ms": 8.8611465,
+              "p95_ms": 9.008171,
+              "p99_ms": 9.157123399999998
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.029770676190476193,
+              "compute_input_ms": 0.004772542857142858,
+              "compute_infer_ms": 5.726699085714285,
+              "compute_output_ms": 0.07926108571428571
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.04417647619047619,
+              "compute_input_ms": 0.041550666666666666,
+              "compute_infer_ms": 1.8551852857142856,
+              "compute_output_ms": 0.06537905714285715
+            }
+          }
+        },
+        "B1-gpupost": {
+          "request_bytes": 613103,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.04720604,
+              "median_ms": 0.0459605,
+              "p95_ms": 0.0556565,
+              "p99_ms": 0.07828030000000001
+            },
+            "infer": {
+              "mean_ms": 9.18109965,
+              "median_ms": 9.175450999999999,
+              "p95_ms": 9.272761449999999,
+              "p99_ms": 9.3851898
+            },
+            "postprocess": {
+              "mean_ms": 0.00366608,
+              "median_ms": 0.0033350000000000003,
+              "p95_ms": 0.0039435,
+              "p99_ms": 0.004577100000000141
+            },
+            "total": {
+              "mean_ms": 9.23197177,
+              "median_ms": 9.227087000000001,
+              "p95_ms": 9.326349949999999,
+              "p99_ms": 9.4342437
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.026412657142857145,
+              "compute_input_ms": 0.004607809523809524,
+              "compute_infer_ms": 5.696952114285714,
+              "compute_output_ms": 0.0765921619047619
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.04245131428571429,
+              "compute_input_ms": 0.04153238095238095,
+              "compute_infer_ms": 1.8515866,
+              "compute_output_ms": 0.06536472380952381
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.024073485714285716,
+              "compute_input_ms": 0.005363142857142857,
+              "compute_infer_ms": 0.23801494285714286,
+              "compute_output_ms": 0.2237792476190476
+            }
+          }
+        },
+        "V12": {
+          "request_bytes": 613103,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.0546347,
+              "median_ms": 0.053405999999999995,
+              "p95_ms": 0.06127899999999997,
+              "p99_ms": 0.07820870000000003
+            },
+            "infer": {
+              "mean_ms": 11.52804321,
+              "median_ms": 11.652693,
+              "p95_ms": 11.827913449999999,
+              "p99_ms": 11.998543609999999
+            },
+            "postprocess": {
+              "mean_ms": 0.01114776,
+              "median_ms": 0.01091,
+              "p95_ms": 0.011782500000000001,
+              "p99_ms": 0.01269440000000013
+            },
+            "total": {
+              "mean_ms": 11.59382567,
+              "median_ms": 11.725689,
+              "p95_ms": 11.8937025,
+              "p99_ms": 12.06654231
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.030572409523809525,
+              "compute_input_ms": 0.0010522095238095237,
+              "compute_infer_ms": 8.39594504761905,
+              "compute_output_ms": 0.026864714285714287
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.042492171428571424,
+              "compute_input_ms": 0.04580371428571428,
+              "compute_infer_ms": 1.8803754857142856,
+              "compute_output_ms": 0.06822279047619048
+            }
+          }
+        },
+        "V12-gpupost": {
+          "request_bytes": 613103,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.05764405,
+              "median_ms": 0.054311,
+              "p95_ms": 0.08340154999999999,
+              "p99_ms": 0.08791281000000002
+            },
+            "infer": {
+              "mean_ms": 11.97136108,
+              "median_ms": 12.085084,
+              "p95_ms": 12.4235725,
+              "p99_ms": 12.556288899999998
+            },
+            "postprocess": {
+              "mean_ms": 0.00369965,
+              "median_ms": 0.00358,
+              "p95_ms": 0.00415495,
+              "p99_ms": 0.004662100000000041
+            },
+            "total": {
+              "mean_ms": 12.03270478,
+              "median_ms": 12.14657,
+              "p95_ms": 12.482419,
+              "p99_ms": 12.62871011
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.029905676190476193,
+              "compute_input_ms": 0.0010461238095238095,
+              "compute_infer_ms": 8.305270695238095,
+              "compute_output_ms": 0.02876569523809524
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.04522205714285714,
+              "compute_input_ms": 0.04756953333333333,
+              "compute_infer_ms": 1.9376220857142856,
+              "compute_output_ms": 0.06849344761904762
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.029026209523809524,
+              "compute_input_ms": 0.008385990476190477,
+              "compute_infer_ms": 0.30130654285714287,
+              "compute_output_ms": 0.24937704761904764
+            }
+          }
+        },
+        "V13": {
+          "request_bytes": 613103,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.05644296,
+              "median_ms": 0.0536905,
+              "p95_ms": 0.07613244999999998,
+              "p99_ms": 0.08707269
+            },
+            "infer": {
+              "mean_ms": 11.42635879,
+              "median_ms": 11.650023000000001,
+              "p95_ms": 11.88391095,
+              "p99_ms": 12.081177590000012
+            },
+            "postprocess": {
+              "mean_ms": 0.01100986,
+              "median_ms": 0.01098,
+              "p95_ms": 0.0115535,
+              "p99_ms": 0.011969000000000011
+            },
+            "total": {
+              "mean_ms": 11.49381161,
+              "median_ms": 11.722098500000001,
+              "p95_ms": 11.94829305,
+              "p99_ms": 12.15112839000001
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.030184009523809525,
+              "compute_input_ms": 0.0010541904761904761,
+              "compute_infer_ms": 8.135212390476191,
+              "compute_output_ms": 0.02704802857142857
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.047793857142857145,
+              "compute_input_ms": 0.06879900952380952,
+              "compute_infer_ms": 1.9628512285714286,
+              "compute_output_ms": 0.06786299047619047
+            }
+          }
+        },
+        "V13-gpupost": {
+          "request_bytes": 613103,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.05692794,
+              "median_ms": 0.055280499999999996,
+              "p95_ms": 0.076838,
+              "p99_ms": 0.08521510000000002
+            },
+            "infer": {
+              "mean_ms": 11.72916636,
+              "median_ms": 11.968328,
+              "p95_ms": 12.29062055,
+              "p99_ms": 12.35732221
+            },
+            "postprocess": {
+              "mean_ms": 0.00393907,
+              "median_ms": 0.0035954999999999997,
+              "p95_ms": 0.004254,
+              "p99_ms": 0.004911900000000139
+            },
+            "total": {
+              "mean_ms": 11.79003337,
+              "median_ms": 12.024253000000002,
+              "p95_ms": 12.35050105,
+              "p99_ms": 12.413947910000001
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.03157349523809524,
+              "compute_input_ms": 0.0010487809523809523,
+              "compute_infer_ms": 8.045250723809524,
+              "compute_output_ms": 0.026776904761904762
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.048130714285714284,
+              "compute_input_ms": 0.06959958095238096,
+              "compute_infer_ms": 1.9601499333333334,
+              "compute_output_ms": 0.0692898
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.03331995238095238,
+              "compute_input_ms": 0.00831162857142857,
+              "compute_infer_ms": 0.29938304761904766,
+              "compute_output_ms": 0.24580894285714286
+            }
+          }
+        },
+        "V2": {
+          "request_bytes": 0,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.58700494,
+              "median_ms": 0.5855635,
+              "p95_ms": 0.6109395,
+              "p99_ms": 0.6191113000000001
+            },
+            "infer": {
+              "mean_ms": 2.47852141,
+              "median_ms": 2.473992,
+              "p95_ms": 2.516934,
+              "p99_ms": 2.533608
+            },
+            "postprocess": {
+              "mean_ms": 0.00887576,
+              "median_ms": 0.00857,
+              "p95_ms": 0.009663999999999999,
+              "p99_ms": 0.015096600000000049
+            },
+            "total": {
+              "mean_ms": 3.07440211,
+              "median_ms": 3.0704355,
+              "p95_ms": 3.1206185,
+              "p99_ms": 3.1483097
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03692421904761904,
+              "compute_input_ms": 0.02104469523809524,
+              "compute_infer_ms": 1.817414219047619,
+              "compute_output_ms": 0.1627835333333333
+            }
+          }
+        }
+      },
+      "bus_2160p": {
+        "B0": {
+          "request_bytes": 4915200,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 12.92162262,
+              "median_ms": 12.884701,
+              "p95_ms": 13.2682795,
+              "p99_ms": 13.39758922
+            },
+            "infer": {
+              "mean_ms": 7.49730773,
+              "median_ms": 7.483916000000001,
+              "p95_ms": 7.664367,
+              "p99_ms": 7.73640198000001
+            },
+            "postprocess": {
+              "mean_ms": 0.0112406,
+              "median_ms": 0.010535,
+              "p95_ms": 0.01156445,
+              "p99_ms": 0.04187450000000001
+            },
+            "total": {
+              "mean_ms": 20.43017095,
+              "median_ms": 20.361202,
+              "p95_ms": 20.896583500000002,
+              "p99_ms": 21.012835200000005
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.05982644761904762,
+              "compute_input_ms": 0.8673543714285714,
+              "compute_infer_ms": 1.8210425142857143,
+              "compute_output_ms": 0.08187998095238096
+            }
+          }
+        },
+        "B1": {
+          "request_bytes": 1577368,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.15488211,
+              "median_ms": 0.150732,
+              "p95_ms": 0.17914149999999998,
+              "p99_ms": 0.19068259
+            },
+            "infer": {
+              "mean_ms": 15.68847869,
+              "median_ms": 15.6597025,
+              "p95_ms": 15.872239050000001,
+              "p99_ms": 16.116578420000003
+            },
+            "postprocess": {
+              "mean_ms": 0.01138122,
+              "median_ms": 0.011035,
+              "p95_ms": 0.012131949999999999,
+              "p99_ms": 0.014090310000000108
+            },
+            "total": {
+              "mean_ms": 15.85474202,
+              "median_ms": 15.82282,
+              "p95_ms": 16.035179,
+              "p99_ms": 16.27448363
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.033981057142857145,
+              "compute_input_ms": 0.007089571428571429,
+              "compute_infer_ms": 11.562676752380952,
+              "compute_output_ms": 0.09142973333333333
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.04860692380952381,
+              "compute_input_ms": 0.047208514285714286,
+              "compute_infer_ms": 1.9996179904761906,
+              "compute_output_ms": 0.06691498095238095
+            }
+          }
+        },
+        "B1-gpupost": {
+          "request_bytes": 1577368,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.15032515999999999,
+              "median_ms": 0.14601750000000002,
+              "p95_ms": 0.17867249999999998,
+              "p99_ms": 0.1881958
+            },
+            "infer": {
+              "mean_ms": 16.03446512,
+              "median_ms": 16.0205625,
+              "p95_ms": 16.178954,
+              "p99_ms": 16.230616219999998
+            },
+            "postprocess": {
+              "mean_ms": 0.00366216,
+              "median_ms": 0.00362,
+              "p95_ms": 0.0040820000000000006,
+              "p99_ms": 0.004302400000000001
+            },
+            "total": {
+              "mean_ms": 16.18845244,
+              "median_ms": 16.173595,
+              "p95_ms": 16.329381,
+              "p99_ms": 16.4216972
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.032757238095238096,
+              "compute_input_ms": 0.006010495238095238,
+              "compute_infer_ms": 11.515251542857142,
+              "compute_output_ms": 0.09161245714285714
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.05341809523809524,
+              "compute_input_ms": 0.04769581904761905,
+              "compute_infer_ms": 1.999822819047619,
+              "compute_output_ms": 0.06558682857142857
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.025354095238095238,
+              "compute_input_ms": 0.006594257142857143,
+              "compute_infer_ms": 0.2714769238095238,
+              "compute_output_ms": 0.26507800952380955
+            }
+          }
+        },
+        "V12": {
+          "request_bytes": 1577368,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.16645445,
+              "median_ms": 0.1622075,
+              "p95_ms": 0.19061550000000002,
+              "p99_ms": 0.1967885
+            },
+            "infer": {
+              "mean_ms": 27.77688187,
+              "median_ms": 28.033951000000002,
+              "p95_ms": 28.4241755,
+              "p99_ms": 28.64603001
+            },
+            "postprocess": {
+              "mean_ms": 0.01183629,
+              "median_ms": 0.011545,
+              "p95_ms": 0.01225805,
+              "p99_ms": 0.01413070000000014
+            },
+            "total": {
+              "mean_ms": 27.955172609999998,
+              "median_ms": 28.2120585,
+              "p95_ms": 28.6221095,
+              "p99_ms": 28.82339033
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.038043466666666664,
+              "compute_input_ms": 0.0014145047619047617,
+              "compute_infer_ms": 23.838285895238094,
+              "compute_output_ms": 0.049164
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.05432176190476191,
+              "compute_input_ms": 0.05549447619047619,
+              "compute_infer_ms": 1.9496759523809524,
+              "compute_output_ms": 0.0651916761904762
+            }
+          }
+        },
+        "V12-gpupost": {
+          "request_bytes": 1577368,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.16610724,
+              "median_ms": 0.1612425,
+              "p95_ms": 0.19023800000000002,
+              "p99_ms": 0.20144710000000005
+            },
+            "infer": {
+              "mean_ms": 28.04350507,
+              "median_ms": 28.382656500000003,
+              "p95_ms": 28.68229095,
+              "p99_ms": 28.78062554
+            },
+            "postprocess": {
+              "mean_ms": 0.00392485,
+              "median_ms": 0.00376,
+              "p95_ms": 0.0044925,
+              "p99_ms": 0.0047641000000000575
+            },
+            "total": {
+              "mean_ms": 28.21353716,
+              "median_ms": 28.549259,
+              "p95_ms": 28.838410999999997,
+              "p99_ms": 28.99445903
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03645148571428571,
+              "compute_input_ms": 0.0015646190476190478,
+              "compute_infer_ms": 23.479647266666667,
+              "compute_output_ms": 0.050443914285714285
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.05697927619047619,
+              "compute_input_ms": 0.054238266666666674,
+              "compute_infer_ms": 1.9499977238095236,
+              "compute_output_ms": 0.06525689523809523
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.032102285714285715,
+              "compute_input_ms": 0.009540333333333335,
+              "compute_infer_ms": 0.3160659047619047,
+              "compute_output_ms": 0.30016834285714283
+            }
+          }
+        },
+        "V13": {
+          "request_bytes": 1577368,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.1648236,
+              "median_ms": 0.1613575,
+              "p95_ms": 0.189462,
+              "p99_ms": 0.20773609999999998
+            },
+            "infer": {
+              "mean_ms": 28.26117644,
+              "median_ms": 28.420942,
+              "p95_ms": 28.81821795,
+              "p99_ms": 28.86986652
+            },
+            "postprocess": {
+              "mean_ms": 0.01160247,
+              "median_ms": 0.011235,
+              "p95_ms": 0.01237405,
+              "p99_ms": 0.013500000000000149
+            },
+            "total": {
+              "mean_ms": 28.43760251,
+              "median_ms": 28.590624,
+              "p95_ms": 28.991769500000004,
+              "p99_ms": 29.07649921
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.03759963809523809,
+              "compute_input_ms": 0.001467247619047619,
+              "compute_infer_ms": 24.012051323809523,
+              "compute_output_ms": 0.05054627619047619
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.05491252380952381,
+              "compute_input_ms": 0.15525441904761905,
+              "compute_infer_ms": 2.1775598285714284,
+              "compute_output_ms": 0.07101427619047619
+            }
+          }
+        },
+        "V13-gpupost": {
+          "request_bytes": 1577368,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.16700349,
+              "median_ms": 0.1616225,
+              "p95_ms": 0.19891299999999998,
+              "p99_ms": 0.20341900000000004
+            },
+            "infer": {
+              "mean_ms": 28.54641217,
+              "median_ms": 28.826293,
+              "p95_ms": 29.117302499999997,
+              "p99_ms": 29.23500221
+            },
+            "postprocess": {
+              "mean_ms": 0.00391952,
+              "median_ms": 0.003925,
+              "p95_ms": 0.004331,
+              "p99_ms": 0.0045005999999999996
+            },
+            "total": {
+              "mean_ms": 28.71733518,
+              "median_ms": 29.0034,
+              "p95_ms": 29.28871545,
+              "p99_ms": 29.4068226
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.036008114285714286,
+              "compute_input_ms": 0.002257457142857143,
+              "compute_infer_ms": 23.67385552380952,
+              "compute_output_ms": 0.050422161904761904
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.05531687619047619,
+              "compute_input_ms": 0.15768745714285715,
+              "compute_infer_ms": 2.1776475238095236,
+              "compute_output_ms": 0.07295140952380952
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.029343942857142858,
+              "compute_input_ms": 0.009446619047619047,
+              "compute_infer_ms": 0.30608658095238095,
+              "compute_output_ms": 0.3018244476190476
+            }
+          }
+        },
+        "V2": {
+          "request_bytes": 0,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 2.09857666,
+              "median_ms": 2.0920259999999997,
+              "p95_ms": 2.13502305,
+              "p99_ms": 2.1874505100000006
+            },
+            "infer": {
+              "mean_ms": 2.8583627000000003,
+              "median_ms": 2.8611269999999998,
+              "p95_ms": 2.9368165500000005,
+              "p99_ms": 2.9552245100000003
+            },
+            "postprocess": {
+              "mean_ms": 0.01054185,
+              "median_ms": 0.009935,
+              "p95_ms": 0.010688549999999998,
+              "p99_ms": 0.024502200000000078
+            },
+            "total": {
+              "mean_ms": 4.96748121,
+              "median_ms": 4.9608135,
+              "p95_ms": 5.0625374999999995,
+              "p99_ms": 5.13035201
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.05199705714285714,
+              "compute_input_ms": 0.020644838095238094,
+              "compute_infer_ms": 1.9204480571428573,
+              "compute_output_ms": 0.1619660380952381
+            }
+          }
+        }
+      }
+    },
+    "http": {
+      "bus": {
+        "B0": {
+          "request_bytes": 4915200,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 21.71849626,
+              "median_ms": 21.700977,
+              "p95_ms": 21.95527455,
+              "p99_ms": 22.1197329
+            },
+            "infer": {
+              "mean_ms": 8.73162576,
+              "median_ms": 8.721494499999999,
+              "p95_ms": 8.870526450000002,
+              "p99_ms": 8.966502240000002
+            },
+            "postprocess": {
+              "mean_ms": 0.011579560000000001,
+              "median_ms": 0.01084,
+              "p95_ms": 0.012158499999999997,
+              "p99_ms": 0.0375915
+            },
+            "total": {
+              "mean_ms": 30.46170158,
+              "median_ms": 30.4219565,
+              "p95_ms": 30.7955514,
+              "p99_ms": 30.974635300000003
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.06282415238095237,
+              "compute_input_ms": 0.8557203333333334,
+              "compute_infer_ms": 1.8188774761904762,
+              "compute_output_ms": 0.07724144761904761
+            }
+          }
+        },
+        "B1": {
+          "request_bytes": 487438,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.03430827,
+              "median_ms": 0.032321,
+              "p95_ms": 0.044205499999999995,
+              "p99_ms": 0.060368900000000045
+            },
+            "infer": {
+              "mean_ms": 9.8372537,
+              "median_ms": 9.858107,
+              "p95_ms": 10.187656500000001,
+              "p99_ms": 10.341632950000001
+            },
+            "postprocess": {
+              "mean_ms": 0.01034857,
+              "median_ms": 0.00964,
+              "p95_ms": 0.011856,
+              "p99_ms": 0.02751581000000002
+            },
+            "total": {
+              "mean_ms": 9.88191054,
+              "median_ms": 9.8987325,
+              "p95_ms": 10.23723895,
+              "p99_ms": 10.395943350000001
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.02981808571428571,
+              "compute_input_ms": 0.004616171428571429,
+              "compute_infer_ms": 6.837797523809524,
+              "compute_output_ms": 0.07706759047619048
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.0384028,
+              "compute_input_ms": 0.03979777142857143,
+              "compute_infer_ms": 1.8488561904761904,
+              "compute_output_ms": 0.06724952380952381
+            }
+          }
+        },
+        "B1-gpupost": {
+          "request_bytes": 487438,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.03377104,
+              "median_ms": 0.0327905,
+              "p95_ms": 0.042880049999999996,
+              "p99_ms": 0.048317300000000084
+            },
+            "infer": {
+              "mean_ms": 10.06036443,
+              "median_ms": 10.053564999999999,
+              "p95_ms": 10.48796445,
+              "p99_ms": 10.924151150000002
+            },
+            "postprocess": {
+              "mean_ms": 0.00335785,
+              "median_ms": 0.00332,
+              "p95_ms": 0.003831,
+              "p99_ms": 0.0040213900000000006
+            },
+            "total": {
+              "mean_ms": 10.09749332,
+              "median_ms": 10.097241,
+              "p95_ms": 10.52914005,
+              "p99_ms": 10.961654960000002
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03848974285714285,
+              "compute_input_ms": 0.004299685714285714,
+              "compute_infer_ms": 6.6592366,
+              "compute_output_ms": 0.07834134285714285
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.04480326666666667,
+              "compute_input_ms": 0.04145345714285714,
+              "compute_infer_ms": 1.8488757142857144,
+              "compute_output_ms": 0.06842243809523808
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.02772058095238095,
+              "compute_input_ms": 0.005302561904761905,
+              "compute_infer_ms": 0.24598329523809526,
+              "compute_output_ms": 0.15487179047619049
+            }
+          }
+        },
+        "V12": {
+          "request_bytes": 487438,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.0295571,
+              "median_ms": 0.028585,
+              "p95_ms": 0.03491599999999999,
+              "p99_ms": 0.04957230000000001
+            },
+            "infer": {
+              "mean_ms": 8.8047797,
+              "median_ms": 8.927437999999999,
+              "p95_ms": 9.07972245,
+              "p99_ms": 9.15391769
+            },
+            "postprocess": {
+              "mean_ms": 0.01001835,
+              "median_ms": 0.00955,
+              "p95_ms": 0.0107655,
+              "p99_ms": 0.022610310000000078
+            },
+            "total": {
+              "mean_ms": 8.84435515,
+              "median_ms": 8.965998500000001,
+              "p95_ms": 9.1251655,
+              "p99_ms": 9.193126600000001
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.0356054380952381,
+              "compute_input_ms": 0.0009335333333333333,
+              "compute_infer_ms": 5.861088723809524,
+              "compute_output_ms": 0.02331387619047619
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.034727666666666664,
+              "compute_input_ms": 0.03694095238095238,
+              "compute_infer_ms": 1.8303359142857143,
+              "compute_output_ms": 0.06692311428571428
+            }
+          }
+        },
+        "V12-gpupost": {
+          "request_bytes": 487438,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.03316486,
+              "median_ms": 0.030985,
+              "p95_ms": 0.049036999999999976,
+              "p99_ms": 0.064222
+            },
+            "infer": {
+              "mean_ms": 9.22716584,
+              "median_ms": 9.353169000000001,
+              "p95_ms": 9.477874,
+              "p99_ms": 10.12353934
+            },
+            "postprocess": {
+              "mean_ms": 0.00361648,
+              "median_ms": 0.00307,
+              "p95_ms": 0.004121999999999999,
+              "p99_ms": 0.02482521000000004
+            },
+            "total": {
+              "mean_ms": 9.26394718,
+              "median_ms": 9.386285,
+              "p95_ms": 9.512899,
+              "p99_ms": 10.17576775
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03479199047619048,
+              "compute_input_ms": 0.0009665809523809523,
+              "compute_infer_ms": 5.855596247619048,
+              "compute_output_ms": 0.024294123809523806
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03768163809523809,
+              "compute_input_ms": 0.03926910476190476,
+              "compute_infer_ms": 1.8510696095238095,
+              "compute_output_ms": 0.06636288571428571
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.03190219047619048,
+              "compute_input_ms": 0.005992447619047619,
+              "compute_infer_ms": 0.2547561047619048,
+              "compute_output_ms": 0.15079681904761905
+            }
+          }
+        },
+        "V13": {
+          "request_bytes": 487438,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.03066789,
+              "median_ms": 0.028345000000000002,
+              "p95_ms": 0.042996049999999994,
+              "p99_ms": 0.06692680000000002
+            },
+            "infer": {
+              "mean_ms": 8.64646909,
+              "median_ms": 8.618529,
+              "p95_ms": 9.179556,
+              "p99_ms": 9.39542412
+            },
+            "postprocess": {
+              "mean_ms": 0.00964273,
+              "median_ms": 0.00946,
+              "p95_ms": 0.011081,
+              "p99_ms": 0.011645100000000002
+            },
+            "total": {
+              "mean_ms": 8.68677971,
+              "median_ms": 8.655464,
+              "p95_ms": 9.219334,
+              "p99_ms": 9.450343420000001
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.03382866666666667,
+              "compute_input_ms": 0.0009721047619047618,
+              "compute_infer_ms": 5.584824599999999,
+              "compute_output_ms": 0.02349075238095238
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.04146792380952381,
+              "compute_input_ms": 0.04077352380952381,
+              "compute_infer_ms": 1.9573107714285713,
+              "compute_output_ms": 0.07374996190476191
+            }
+          }
+        },
+        "V13-gpupost": {
+          "request_bytes": 487438,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.03286395,
+              "median_ms": 0.0313005,
+              "p95_ms": 0.03736104999999998,
+              "p99_ms": 0.06099960000000002
+            },
+            "infer": {
+              "mean_ms": 9.06048473,
+              "median_ms": 9.0672605,
+              "p95_ms": 9.46907255,
+              "p99_ms": 9.6399449
+            },
+            "postprocess": {
+              "mean_ms": 0.00274492,
+              "median_ms": 0.0027150000000000004,
+              "p95_ms": 0.0032010000000000003,
+              "p99_ms": 0.0034301
+            },
+            "total": {
+              "mean_ms": 9.0960936,
+              "median_ms": 9.100656,
+              "p95_ms": 9.50746005,
+              "p99_ms": 9.6746906
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.03542027619047619,
+              "compute_input_ms": 0.0010358380952380953,
+              "compute_infer_ms": 5.529160876190476,
+              "compute_output_ms": 0.023603095238095236
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.04756102857142857,
+              "compute_input_ms": 0.040686285714285716,
+              "compute_infer_ms": 1.9476355619047618,
+              "compute_output_ms": 0.07605347619047619
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.029149790476190474,
+              "compute_input_ms": 0.006314761904761905,
+              "compute_infer_ms": 0.2608905619047619,
+              "compute_output_ms": 0.15108846666666667
+            }
+          }
+        },
+        "V2": {
+          "request_bytes": 0,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.30123954,
+              "median_ms": 0.2973245,
+              "p95_ms": 0.324665,
+              "p99_ms": 0.331573
+            },
+            "infer": {
+              "mean_ms": 2.29191118,
+              "median_ms": 2.2877039999999997,
+              "p95_ms": 2.3312924999999995,
+              "p99_ms": 2.3542574000000003
+            },
+            "postprocess": {
+              "mean_ms": 0.00778678,
+              "median_ms": 0.00765,
+              "p95_ms": 0.0080445,
+              "p99_ms": 0.009780200000000025
+            },
+            "total": {
+              "mean_ms": 2.6009375,
+              "median_ms": 2.5994634999999997,
+              "p95_ms": 2.637545,
+              "p99_ms": 2.6603745100000005
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03925688571428572,
+              "compute_input_ms": 0.021112980952380952,
+              "compute_infer_ms": 1.8193941809523808,
+              "compute_output_ms": 0.16352124761904763
+            }
+          }
+        }
+      },
+      "horses": {
+        "B0": {
+          "request_bytes": 4915200,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 19.99751033,
+              "median_ms": 19.971293000000003,
+              "p95_ms": 20.349507000000003,
+              "p99_ms": 20.46881231
+            },
+            "infer": {
+              "mean_ms": 8.75694267,
+              "median_ms": 8.743855,
+              "p95_ms": 8.93939805,
+              "p99_ms": 9.0503844
+            },
+            "postprocess": {
+              "mean_ms": 0.01050608,
+              "median_ms": 0.01028,
+              "p95_ms": 0.011295,
+              "p99_ms": 0.01245120000000006
+            },
+            "total": {
+              "mean_ms": 28.76495908,
+              "median_ms": 28.712003000000003,
+              "p95_ms": 29.126286999999998,
+              "p99_ms": 29.346999020000002
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.073863,
+              "compute_input_ms": 0.8269786,
+              "compute_infer_ms": 1.8192968285714286,
+              "compute_output_ms": 0.07719146666666667
+            }
+          }
+        },
+        "B1": {
+          "request_bytes": 133495,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00880137,
+              "median_ms": 0.008235,
+              "p95_ms": 0.0126035,
+              "p99_ms": 0.013319400000000006
+            },
+            "infer": {
+              "mean_ms": 5.35739462,
+              "median_ms": 5.3164940000000005,
+              "p95_ms": 5.823787,
+              "p99_ms": 5.9347989
+            },
+            "postprocess": {
+              "mean_ms": 0.00932866,
+              "median_ms": 0.00884,
+              "p95_ms": 0.010624999999999999,
+              "p99_ms": 0.011982400000000113
+            },
+            "total": {
+              "mean_ms": 5.37552465,
+              "median_ms": 5.341670000000001,
+              "p95_ms": 5.843914,
+              "p99_ms": 5.958278
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03137154285714286,
+              "compute_input_ms": 0.004101419047619048,
+              "compute_infer_ms": 2.738354361904762,
+              "compute_output_ms": 0.07209285714285714
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.030116438095238098,
+              "compute_input_ms": 0.035963942857142855,
+              "compute_infer_ms": 1.8402735714285714,
+              "compute_output_ms": 0.07031314285714285
+            }
+          }
+        },
+        "B1-gpupost": {
+          "request_bytes": 133495,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00870702,
+              "median_ms": 0.00842,
+              "p95_ms": 0.010298499999999999,
+              "p99_ms": 0.01154990000000005
+            },
+            "infer": {
+              "mean_ms": 5.6620021,
+              "median_ms": 5.616814,
+              "p95_ms": 5.9045085,
+              "p99_ms": 5.934120520000001
+            },
+            "postprocess": {
+              "mean_ms": 0.00283586,
+              "median_ms": 0.0028,
+              "p95_ms": 0.00324,
+              "p99_ms": 0.003482200000000001
+            },
+            "total": {
+              "mean_ms": 5.67354498,
+              "median_ms": 5.627864000000001,
+              "p95_ms": 5.91745995,
+              "p99_ms": 5.94513362
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.029148819047619047,
+              "compute_input_ms": 0.003865380952380952,
+              "compute_infer_ms": 2.6982058571428573,
+              "compute_output_ms": 0.06987024761904762
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.032103314285714286,
+              "compute_input_ms": 0.03563207619047619,
+              "compute_infer_ms": 1.833339638095238,
+              "compute_output_ms": 0.0674451238095238
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.034207914285714285,
+              "compute_input_ms": 0.0049005523809523815,
+              "compute_infer_ms": 0.22758579999999998,
+              "compute_output_ms": 0.15305160952380953
+            }
+          }
+        },
+        "V12": {
+          "request_bytes": 133495,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.0066418,
+              "median_ms": 0.00636,
+              "p95_ms": 0.007315499999999999,
+              "p99_ms": 0.011047890000000084
+            },
+            "infer": {
+              "mean_ms": 4.29767223,
+              "median_ms": 4.316834,
+              "p95_ms": 4.5014105,
+              "p99_ms": 4.5201063
+            },
+            "postprocess": {
+              "mean_ms": 0.00831516,
+              "median_ms": 0.0079455,
+              "p95_ms": 0.008740999999999995,
+              "p99_ms": 0.022053310000000003
+            },
+            "total": {
+              "mean_ms": 4.31262919,
+              "median_ms": 4.3310445,
+              "p95_ms": 4.51634095,
+              "p99_ms": 4.5349745
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.034710038095238094,
+              "compute_input_ms": 0.0010011619047619047,
+              "compute_infer_ms": 1.7980975142857143,
+              "compute_output_ms": 0.022625638095238095
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.031145038095238095,
+              "compute_input_ms": 0.03585610476190476,
+              "compute_infer_ms": 1.8402736000000002,
+              "compute_output_ms": 0.06819515238095238
+            }
+          }
+        },
+        "V12-gpupost": {
+          "request_bytes": 133495,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00724227,
+              "median_ms": 0.006575,
+              "p95_ms": 0.008433999999999999,
+              "p99_ms": 0.029069000000000015
+            },
+            "infer": {
+              "mean_ms": 4.6864498,
+              "median_ms": 4.7008305,
+              "p95_ms": 4.8417509999999995,
+              "p99_ms": 4.872363550000001
+            },
+            "postprocess": {
+              "mean_ms": 0.00219702,
+              "median_ms": 0.002125,
+              "p95_ms": 0.0025575,
+              "p99_ms": 0.003189200000000005
+            },
+            "total": {
+              "mean_ms": 4.69588909,
+              "median_ms": 4.7097555,
+              "p95_ms": 4.850808549999999,
+              "p99_ms": 4.881161950000002
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03933670476190476,
+              "compute_input_ms": 0.0009837333333333332,
+              "compute_infer_ms": 1.7867639428571427,
+              "compute_output_ms": 0.022451
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.028521819047619048,
+              "compute_input_ms": 0.036179114285714284,
+              "compute_infer_ms": 1.8577891142857141,
+              "compute_output_ms": 0.07275546666666666
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.03459258095238095,
+              "compute_input_ms": 0.005118066666666666,
+              "compute_infer_ms": 0.24516462857142857,
+              "compute_output_ms": 0.14514300952380954
+            }
+          }
+        },
+        "V13": {
+          "request_bytes": 133495,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00687013,
+              "median_ms": 0.006615,
+              "p95_ms": 0.007855,
+              "p99_ms": 0.00844740000000008
+            },
+            "infer": {
+              "mean_ms": 4.34745796,
+              "median_ms": 4.3992805,
+              "p95_ms": 4.47330695,
+              "p99_ms": 4.5144596
+            },
+            "postprocess": {
+              "mean_ms": 0.00840834,
+              "median_ms": 0.007895,
+              "p95_ms": 0.009220999999999998,
+              "p99_ms": 0.022836610000000073
+            },
+            "total": {
+              "mean_ms": 4.36273643,
+              "median_ms": 4.41428,
+              "p95_ms": 4.48758895,
+              "p99_ms": 4.5319215999999996
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.03427344761904762,
+              "compute_input_ms": 0.0010038285714285714,
+              "compute_infer_ms": 1.8136476666666668,
+              "compute_output_ms": 0.022484609523809523
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.035985914285714286,
+              "compute_input_ms": 0.03175282857142857,
+              "compute_infer_ms": 1.911113619047619,
+              "compute_output_ms": 0.06755011428571428
+            }
+          }
+        },
+        "V13-gpupost": {
+          "request_bytes": 133495,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00707918,
+              "median_ms": 0.006935,
+              "p95_ms": 0.008326049999999998,
+              "p99_ms": 0.010653800000000001
+            },
+            "infer": {
+              "mean_ms": 4.8310664,
+              "median_ms": 4.853102,
+              "p95_ms": 4.915903,
+              "p99_ms": 4.94126151
+            },
+            "postprocess": {
+              "mean_ms": 0.00193623,
+              "median_ms": 0.00187,
+              "p95_ms": 0.0023104999999999996,
+              "p99_ms": 0.0030405000000000007
+            },
+            "total": {
+              "mean_ms": 4.84008181,
+              "median_ms": 4.862062,
+              "p95_ms": 4.9248544999999995,
+              "p99_ms": 4.9493214100000005
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.030703180952380952,
+              "compute_input_ms": 0.000886,
+              "compute_infer_ms": 1.8898700857142858,
+              "compute_output_ms": 0.021313752380952383
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.037731495238095235,
+              "compute_input_ms": 0.034872485714285716,
+              "compute_infer_ms": 1.9106153904761904,
+              "compute_output_ms": 0.06671256190476191
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.03483732380952381,
+              "compute_input_ms": 0.004841133333333333,
+              "compute_infer_ms": 0.24021029523809526,
+              "compute_output_ms": 0.14489019047619048
+            }
+          }
+        },
+        "V2": {
+          "request_bytes": 0,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.19804818,
+              "median_ms": 0.19076300000000002,
+              "p95_ms": 0.2297365,
+              "p99_ms": 0.24300470000000005
+            },
+            "infer": {
+              "mean_ms": 2.29057545,
+              "median_ms": 2.271439,
+              "p95_ms": 2.43299355,
+              "p99_ms": 2.4911198
+            },
+            "postprocess": {
+              "mean_ms": 0.00780689,
+              "median_ms": 0.007294999999999999,
+              "p95_ms": 0.0092,
+              "p99_ms": 0.018398700000000004
+            },
+            "total": {
+              "mean_ms": 2.49643052,
+              "median_ms": 2.473057,
+              "p95_ms": 2.66452095,
+              "p99_ms": 2.7032774900000005
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03214495238095238,
+              "compute_input_ms": 0.020800857142857142,
+              "compute_infer_ms": 1.8253237714285713,
+              "compute_output_ms": 0.1709932
+            }
+          }
+        }
+      },
+      "person": {
+        "B0": {
+          "request_bytes": 4915200,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 19.7684746,
+              "median_ms": 19.7171025,
+              "p95_ms": 20.02949905,
+              "p99_ms": 22.36872173
+            },
+            "infer": {
+              "mean_ms": 9.1671523,
+              "median_ms": 9.425395,
+              "p95_ms": 9.564513499999999,
+              "p99_ms": 9.68541735
+            },
+            "postprocess": {
+              "mean_ms": 0.01055446,
+              "median_ms": 0.01017,
+              "p95_ms": 0.01153555,
+              "p99_ms": 0.013653810000000136
+            },
+            "total": {
+              "mean_ms": 28.94618136,
+              "median_ms": 28.941839,
+              "p95_ms": 29.471266500000002,
+              "p99_ms": 31.246036380000003
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.06198770476190476,
+              "compute_input_ms": 0.8263662761904761,
+              "compute_infer_ms": 1.8196868952380951,
+              "compute_output_ms": 0.08457719047619047
+            }
+          }
+        },
+        "B1": {
+          "request_bytes": 113880,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.0071877,
+              "median_ms": 0.00675,
+              "p95_ms": 0.010266,
+              "p99_ms": 0.011085900000000003
+            },
+            "infer": {
+              "mean_ms": 5.07333271,
+              "median_ms": 5.0688154999999995,
+              "p95_ms": 5.346844,
+              "p99_ms": 5.607946920000002
+            },
+            "postprocess": {
+              "mean_ms": 0.00918278,
+              "median_ms": 0.0084255,
+              "p95_ms": 0.01201505,
+              "p99_ms": 0.01976639000000007
+            },
+            "total": {
+              "mean_ms": 5.08970319,
+              "median_ms": 5.083871,
+              "p95_ms": 5.369888550000001,
+              "p99_ms": 5.629858920000001
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.028233809523809522,
+              "compute_input_ms": 0.004507504761904762,
+              "compute_infer_ms": 2.500346247619048,
+              "compute_output_ms": 0.07290856190476191
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.031290790476190475,
+              "compute_input_ms": 0.03578860952380952,
+              "compute_infer_ms": 1.8716667428571427,
+              "compute_output_ms": 0.07627169523809524
+            }
+          }
+        },
+        "B1-gpupost": {
+          "request_bytes": 113880,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00700905,
+              "median_ms": 0.0066055,
+              "p95_ms": 0.008230999999999999,
+              "p99_ms": 0.011094500000000115
+            },
+            "infer": {
+              "mean_ms": 5.32906054,
+              "median_ms": 5.3201540000000005,
+              "p95_ms": 5.5084159999999995,
+              "p99_ms": 5.55866332
+            },
+            "postprocess": {
+              "mean_ms": 0.00243472,
+              "median_ms": 0.00238,
+              "p95_ms": 0.0028959499999999996,
+              "p99_ms": 0.003642000000000001
+            },
+            "total": {
+              "mean_ms": 5.33850431,
+              "median_ms": 5.329689,
+              "p95_ms": 5.516536,
+              "p99_ms": 5.56726982
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03677179047619048,
+              "compute_input_ms": 0.004180238095238095,
+              "compute_infer_ms": 2.393520761904762,
+              "compute_output_ms": 0.07275155238095239
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.0353438380952381,
+              "compute_input_ms": 0.03613890476190476,
+              "compute_infer_ms": 1.8304918285714284,
+              "compute_output_ms": 0.07520972380952382
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.031904904761904766,
+              "compute_input_ms": 0.00505512380952381,
+              "compute_infer_ms": 0.24564012380952382,
+              "compute_output_ms": 0.1495694
+            }
+          }
+        },
+        "V12": {
+          "request_bytes": 113880,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00607276,
+              "median_ms": 0.00546,
+              "p95_ms": 0.009654,
+              "p99_ms": 0.010590200000000001
+            },
+            "infer": {
+              "mean_ms": 3.99242827,
+              "median_ms": 4.014099,
+              "p95_ms": 4.1607375499999995,
+              "p99_ms": 4.36889572
+            },
+            "postprocess": {
+              "mean_ms": 0.00835782,
+              "median_ms": 0.007975,
+              "p95_ms": 0.010306499999999998,
+              "p99_ms": 0.010931010000000001
+            },
+            "total": {
+              "mean_ms": 4.00685885,
+              "median_ms": 4.028595,
+              "p95_ms": 4.17751905,
+              "p99_ms": 4.386750620000001
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03366458095238095,
+              "compute_input_ms": 0.0010221142857142857,
+              "compute_infer_ms": 1.5018764761904762,
+              "compute_output_ms": 0.023013761904761905
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.035656038095238096,
+              "compute_input_ms": 0.036580904761904766,
+              "compute_infer_ms": 1.8370261238095238,
+              "compute_output_ms": 0.06969641904761904
+            }
+          }
+        },
+        "V12-gpupost": {
+          "request_bytes": 113880,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.006746,
+              "median_ms": 0.00639,
+              "p95_ms": 0.00738305,
+              "p99_ms": 0.008119010000000157
+            },
+            "infer": {
+              "mean_ms": 4.26594098,
+              "median_ms": 4.241168,
+              "p95_ms": 4.4381125500000005,
+              "p99_ms": 4.473192310000001
+            },
+            "postprocess": {
+              "mean_ms": 0.00196635,
+              "median_ms": 0.001915,
+              "p95_ms": 0.0022909999999999996,
+              "p99_ms": 0.0025105000000000006
+            },
+            "total": {
+              "mean_ms": 4.2746533300000005,
+              "median_ms": 4.249753,
+              "p95_ms": 4.4461625,
+              "p99_ms": 4.481093120000001
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.029734952380952383,
+              "compute_input_ms": 0.0010222857142857143,
+              "compute_infer_ms": 1.4522286476190476,
+              "compute_output_ms": 0.02212891428571429
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.037194123809523805,
+              "compute_input_ms": 0.035535809523809525,
+              "compute_infer_ms": 1.8298871523809523,
+              "compute_output_ms": 0.06587195238095238
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.02320358095238095,
+              "compute_input_ms": 0.004532809523809524,
+              "compute_infer_ms": 0.23371088571428572,
+              "compute_output_ms": 0.14361482857142857
+            }
+          }
+        },
+        "V13": {
+          "request_bytes": 113880,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00614924,
+              "median_ms": 0.005600000000000001,
+              "p95_ms": 0.006983999999999999,
+              "p99_ms": 0.02834630000000003
+            },
+            "infer": {
+              "mean_ms": 4.02369486,
+              "median_ms": 4.0256595,
+              "p95_ms": 4.11535495,
+              "p99_ms": 4.1240063000000005
+            },
+            "postprocess": {
+              "mean_ms": 0.00808821,
+              "median_ms": 0.0077304999999999995,
+              "p95_ms": 0.009052499999999998,
+              "p99_ms": 0.010079810000000118
+            },
+            "total": {
+              "mean_ms": 4.03793231,
+              "median_ms": 4.0392545,
+              "p95_ms": 4.12835295,
+              "p99_ms": 4.1368817
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.03684607619047619,
+              "compute_input_ms": 0.0010029714285714286,
+              "compute_infer_ms": 1.4957111523809523,
+              "compute_output_ms": 0.023943257142857142
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.03492198095238095,
+              "compute_input_ms": 0.03270953333333333,
+              "compute_infer_ms": 1.9111794666666666,
+              "compute_output_ms": 0.08096954285714286
+            }
+          }
+        },
+        "V13-gpupost": {
+          "request_bytes": 113880,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.00592109,
+              "median_ms": 0.005804999999999999,
+              "p95_ms": 0.006724,
+              "p99_ms": 0.0081442
+            },
+            "infer": {
+              "mean_ms": 4.38531423,
+              "median_ms": 4.398321,
+              "p95_ms": 4.513306999999999,
+              "p99_ms": 4.55649829
+            },
+            "postprocess": {
+              "mean_ms": 0.00187782,
+              "median_ms": 0.00185,
+              "p95_ms": 0.002204,
+              "p99_ms": 0.0023702
+            },
+            "total": {
+              "mean_ms": 4.39311314,
+              "median_ms": 4.405611,
+              "p95_ms": 4.5203345,
+              "p99_ms": 4.56385229
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.034327676190476185,
+              "compute_input_ms": 0.0009939333333333334,
+              "compute_infer_ms": 1.4747037047619047,
+              "compute_output_ms": 0.022764990476190475
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.040247980952380955,
+              "compute_input_ms": 0.03247594285714286,
+              "compute_infer_ms": 1.9097371809523809,
+              "compute_output_ms": 0.0717491619047619
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.036087961904761906,
+              "compute_input_ms": 0.004887990476190476,
+              "compute_infer_ms": 0.24049148571428572,
+              "compute_output_ms": 0.14172679047619047
+            }
+          }
+        },
+        "V2": {
+          "request_bytes": 0,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.16880254,
+              "median_ms": 0.1673625,
+              "p95_ms": 0.17298054999999998,
+              "p99_ms": 0.19520789
+            },
+            "infer": {
+              "mean_ms": 2.27100991,
+              "median_ms": 2.2692690000000004,
+              "p95_ms": 2.30183355,
+              "p99_ms": 2.3187554
+            },
+            "postprocess": {
+              "mean_ms": 0.00738136,
+              "median_ms": 0.00713,
+              "p95_ms": 0.007528499999999998,
+              "p99_ms": 0.014921710000000022
+            },
+            "total": {
+              "mean_ms": 2.44719381,
+              "median_ms": 2.4438065,
+              "p95_ms": 2.4811595,
+              "p99_ms": 2.49283631
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.030102095238095237,
+              "compute_input_ms": 0.02052777142857143,
+              "compute_infer_ms": 1.8214130666666666,
+              "compute_output_ms": 0.16544022857142857
+            }
+          }
+        }
+      },
+      "mug": {
+        "B0": {
+          "request_bytes": 4915200,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 22.08588506,
+              "median_ms": 22.0787025,
+              "p95_ms": 22.505996,
+              "p99_ms": 22.592498420000002
+            },
+            "infer": {
+              "mean_ms": 8.74400703,
+              "median_ms": 8.7365745,
+              "p95_ms": 8.826963500000002,
+              "p99_ms": 9.02032952
+            },
+            "postprocess": {
+              "mean_ms": 0.0098342,
+              "median_ms": 0.009784999999999999,
+              "p95_ms": 0.010532,
+              "p99_ms": 0.011234490000000001
+            },
+            "total": {
+              "mean_ms": 30.83972629,
+              "median_ms": 30.8163225,
+              "p95_ms": 31.2736855,
+              "p99_ms": 31.479922570000003
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.06758891428571429,
+              "compute_input_ms": 0.8223943523809524,
+              "compute_infer_ms": 1.8214520952380953,
+              "compute_output_ms": 0.08336193333333333
+            }
+          }
+        },
+        "B1": {
+          "request_bytes": 156774,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.01518877,
+              "median_ms": 0.0147155,
+              "p95_ms": 0.016492,
+              "p99_ms": 0.03289420000000002
+            },
+            "infer": {
+              "mean_ms": 10.62445549,
+              "median_ms": 10.623982999999999,
+              "p95_ms": 10.76147745,
+              "p99_ms": 10.79827311
+            },
+            "postprocess": {
+              "mean_ms": 0.00991047,
+              "median_ms": 0.009795,
+              "p95_ms": 0.010441450000000001,
+              "p99_ms": 0.011834310000000039
+            },
+            "total": {
+              "mean_ms": 10.64955473,
+              "median_ms": 10.648803000000001,
+              "p95_ms": 10.786209549999999,
+              "p99_ms": 10.82168221
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03115405714285714,
+              "compute_input_ms": 0.005165285714285714,
+              "compute_infer_ms": 7.869365876190476,
+              "compute_output_ms": 0.08372467619047619
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.04524402857142857,
+              "compute_input_ms": 0.04231590476190476,
+              "compute_infer_ms": 1.8457547619047618,
+              "compute_output_ms": 0.06719365714285715
+            }
+          }
+        },
+        "B1-gpupost": {
+          "request_bytes": 156774,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.0160037,
+              "median_ms": 0.01466,
+              "p95_ms": 0.01750044999999998,
+              "p99_ms": 0.045006390000000014
+            },
+            "infer": {
+              "mean_ms": 11.16810819,
+              "median_ms": 11.1124395,
+              "p95_ms": 11.6441271,
+              "p99_ms": 12.089915660000003
+            },
+            "postprocess": {
+              "mean_ms": 0.00355898,
+              "median_ms": 0.00358,
+              "p95_ms": 0.003961,
+              "p99_ms": 0.0041603000000000005
+            },
+            "total": {
+              "mean_ms": 11.18767087,
+              "median_ms": 11.13762,
+              "p95_ms": 11.663808549999999,
+              "p99_ms": 12.110067670000003
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.02928410476190476,
+              "compute_input_ms": 0.004070742857142857,
+              "compute_infer_ms": 7.937933790476191,
+              "compute_output_ms": 0.08664104761904762
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.04236813333333333,
+              "compute_input_ms": 0.04320840952380953,
+              "compute_infer_ms": 1.9013237333333335,
+              "compute_output_ms": 0.06499024761904762
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.028772533333333333,
+              "compute_input_ms": 0.0066004571428571425,
+              "compute_infer_ms": 0.268320780952381,
+              "compute_output_ms": 0.17074757142857142
+            }
+          }
+        },
+        "V12": {
+          "request_bytes": 156774,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.014798799999999999,
+              "median_ms": 0.01328,
+              "p95_ms": 0.018042049999999976,
+              "p99_ms": 0.040813400000000014
+            },
+            "infer": {
+              "mean_ms": 9.44110625,
+              "median_ms": 9.383749,
+              "p95_ms": 9.9474425,
+              "p99_ms": 10.047578320000001
+            },
+            "postprocess": {
+              "mean_ms": 0.00980172,
+              "median_ms": 0.00957,
+              "p95_ms": 0.010742499999999999,
+              "p99_ms": 0.01183449000000004
+            },
+            "total": {
+              "mean_ms": 9.46570677,
+              "median_ms": 9.4064745,
+              "p95_ms": 9.973721999999999,
+              "p99_ms": 10.07383112
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03360506666666666,
+              "compute_input_ms": 0.001482895238095238,
+              "compute_infer_ms": 6.7538643714285715,
+              "compute_output_ms": 0.02911642857142857
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.04573860952380952,
+              "compute_input_ms": 0.04258604761904762,
+              "compute_infer_ms": 1.8609490666666666,
+              "compute_output_ms": 0.06967374285714287
+            }
+          }
+        },
+        "V12-gpupost": {
+          "request_bytes": 156774,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.01434647,
+              "median_ms": 0.013614999999999999,
+              "p95_ms": 0.0156125,
+              "p99_ms": 0.03138251000000009
+            },
+            "infer": {
+              "mean_ms": 9.83427174,
+              "median_ms": 9.816575,
+              "p95_ms": 9.988491049999999,
+              "p99_ms": 10.15789247
+            },
+            "postprocess": {
+              "mean_ms": 0.0035592700000000002,
+              "median_ms": 0.00355,
+              "p95_ms": 0.004030499999999999,
+              "p99_ms": 0.004252300000000001
+            },
+            "total": {
+              "mean_ms": 9.85217748,
+              "median_ms": 9.834146,
+              "p95_ms": 10.006822500000002,
+              "p99_ms": 10.175338060000003
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03905741904761905,
+              "compute_input_ms": 0.0011360190476190476,
+              "compute_infer_ms": 6.7325197999999995,
+              "compute_output_ms": 0.02907547619047619
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.04469706666666667,
+              "compute_input_ms": 0.04423178095238096,
+              "compute_infer_ms": 1.844331,
+              "compute_output_ms": 0.07137947619047619
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.033781990476190474,
+              "compute_input_ms": 0.007650514285714285,
+              "compute_infer_ms": 0.28737549523809525,
+              "compute_output_ms": 0.15615765714285715
+            }
+          }
+        },
+        "V13": {
+          "request_bytes": 156774,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.01354459,
+              "median_ms": 0.01319,
+              "p95_ms": 0.014502949999999999,
+              "p99_ms": 0.02927130000000002
+            },
+            "infer": {
+              "mean_ms": 9.44727068,
+              "median_ms": 9.439544999999999,
+              "p95_ms": 9.5673175,
+              "p99_ms": 9.614683600000001
+            },
+            "postprocess": {
+              "mean_ms": 0.01034173,
+              "median_ms": 0.009825,
+              "p95_ms": 0.010888499999999999,
+              "p99_ms": 0.023966990000000073
+            },
+            "total": {
+              "mean_ms": 9.471157,
+              "median_ms": 9.46413,
+              "p95_ms": 9.591809999999999,
+              "p99_ms": 9.637447600000002
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.031365028571428574,
+              "compute_input_ms": 0.0010477142857142857,
+              "compute_infer_ms": 6.6886345714285715,
+              "compute_output_ms": 0.025779504761904763
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.039503647619047615,
+              "compute_input_ms": 0.04400959047619048,
+              "compute_infer_ms": 1.9579062666666667,
+              "compute_output_ms": 0.07135140952380951
+            }
+          }
+        },
+        "V13-gpupost": {
+          "request_bytes": 156774,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.01415372,
+              "median_ms": 0.013626,
+              "p95_ms": 0.014557,
+              "p99_ms": 0.0408137
+            },
+            "infer": {
+              "mean_ms": 9.87380237,
+              "median_ms": 9.867806,
+              "p95_ms": 9.967895500000001,
+              "p99_ms": 10.012155850000003
+            },
+            "postprocess": {
+              "mean_ms": 0.00402058,
+              "median_ms": 0.0033049999999999998,
+              "p95_ms": 0.0038094999999999995,
+              "p99_ms": 0.030554900000000017
+            },
+            "total": {
+              "mean_ms": 9.89197667,
+              "median_ms": 9.885206499999999,
+              "p95_ms": 9.985995,
+              "p99_ms": 10.027969940000002
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.03107189523809524,
+              "compute_input_ms": 0.0010833619047619046,
+              "compute_infer_ms": 6.679209923809523,
+              "compute_output_ms": 0.025162866666666665
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.04313373333333333,
+              "compute_input_ms": 0.043864961904761905,
+              "compute_infer_ms": 1.9543169904761906,
+              "compute_output_ms": 0.06751811428571429
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.03328910476190476,
+              "compute_input_ms": 0.00745707619047619,
+              "compute_infer_ms": 0.28514510476190474,
+              "compute_output_ms": 0.16052933333333333
+            }
+          }
+        },
+        "V2": {
+          "request_bytes": 0,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.38365527,
+              "median_ms": 0.378241,
+              "p95_ms": 0.4128105,
+              "p99_ms": 0.4331437000000001
+            },
+            "infer": {
+              "mean_ms": 2.27801485,
+              "median_ms": 2.2705585,
+              "p95_ms": 2.331167,
+              "p99_ms": 2.3501764900000004
+            },
+            "postprocess": {
+              "mean_ms": 0.00755632,
+              "median_ms": 0.007325,
+              "p95_ms": 0.008510499999999999,
+              "p99_ms": 0.009260010000000036
+            },
+            "total": {
+              "mean_ms": 2.66922644,
+              "median_ms": 2.665044,
+              "p95_ms": 2.71597305,
+              "p99_ms": 2.79250239
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03470081904761905,
+              "compute_input_ms": 0.02103492380952381,
+              "compute_infer_ms": 1.8175118000000001,
+              "compute_output_ms": 0.15995513333333333
+            }
+          }
+        }
+      },
+      "bus_1080p": {
+        "B0": {
+          "request_bytes": 4915200,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 21.63209705,
+              "median_ms": 21.610950000000003,
+              "p95_ms": 21.890899549999997,
+              "p99_ms": 22.00342561
+            },
+            "infer": {
+              "mean_ms": 8.91566234,
+              "median_ms": 8.903262,
+              "p95_ms": 9.0930671,
+              "p99_ms": 9.31436451
+            },
+            "postprocess": {
+              "mean_ms": 0.01075656,
+              "median_ms": 0.01016,
+              "p95_ms": 0.011450499999999999,
+              "p99_ms": 0.024867000000000042
+            },
+            "total": {
+              "mean_ms": 30.55851595,
+              "median_ms": 30.5349325,
+              "p95_ms": 30.92902905,
+              "p99_ms": 31.10595042
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.06411506666666666,
+              "compute_input_ms": 0.8237784380952381,
+              "compute_infer_ms": 1.8216470857142857,
+              "compute_output_ms": 0.08209173333333333
+            }
+          }
+        },
+        "B1": {
+          "request_bytes": 613103,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.04276816,
+              "median_ms": 0.039925,
+              "p95_ms": 0.05867199999999999,
+              "p99_ms": 0.06761570000000003
+            },
+            "infer": {
+              "mean_ms": 8.89526551,
+              "median_ms": 8.854586000000001,
+              "p95_ms": 9.312344999999999,
+              "p99_ms": 9.501813620000002
+            },
+            "postprocess": {
+              "mean_ms": 0.00974162,
+              "median_ms": 0.00946,
+              "p95_ms": 0.01036995,
+              "p99_ms": 0.011173000000000093
+            },
+            "total": {
+              "mean_ms": 8.94777529,
+              "median_ms": 8.905087,
+              "p95_ms": 9.380876,
+              "p99_ms": 9.56757182
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03502162857142857,
+              "compute_input_ms": 0.004587352380952381,
+              "compute_infer_ms": 5.751100438095238,
+              "compute_output_ms": 0.07694408571428571
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.0350168380952381,
+              "compute_input_ms": 0.03846957142857143,
+              "compute_infer_ms": 1.8503481333333334,
+              "compute_output_ms": 0.06983301904761904
+            }
+          }
+        },
+        "B1-gpupost": {
+          "request_bytes": 613103,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.04515959,
+              "median_ms": 0.0406155,
+              "p95_ms": 0.06639249999999998,
+              "p99_ms": 0.08076690000000006
+            },
+            "infer": {
+              "mean_ms": 9.34007922,
+              "median_ms": 9.293287500000002,
+              "p95_ms": 9.72599305,
+              "p99_ms": 9.946097400000001
+            },
+            "postprocess": {
+              "mean_ms": 0.00359967,
+              "median_ms": 0.00341,
+              "p95_ms": 0.004154,
+              "p99_ms": 0.004577800000000071
+            },
+            "total": {
+              "mean_ms": 9.38883848,
+              "median_ms": 9.336352999999999,
+              "p95_ms": 9.7858745,
+              "p99_ms": 10.00888411
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03551474285714285,
+              "compute_input_ms": 0.004234419047619048,
+              "compute_infer_ms": 5.770768247619047,
+              "compute_output_ms": 0.07840305714285714
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.0355685619047619,
+              "compute_input_ms": 0.039386057142857145,
+              "compute_infer_ms": 1.856511780952381,
+              "compute_output_ms": 0.0696427619047619
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.03519501904761905,
+              "compute_input_ms": 0.005668180952380953,
+              "compute_infer_ms": 0.2533654476190476,
+              "compute_output_ms": 0.15653826666666668
+            }
+          }
+        },
+        "V12": {
+          "request_bytes": 613103,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.048168749999999996,
+              "median_ms": 0.0467755,
+              "p95_ms": 0.05576299999999997,
+              "p99_ms": 0.07715380000000001
+            },
+            "infer": {
+              "mean_ms": 11.50694582,
+              "median_ms": 11.692173,
+              "p95_ms": 11.9342445,
+              "p99_ms": 12.0533865
+            },
+            "postprocess": {
+              "mean_ms": 0.0103636,
+              "median_ms": 0.010145,
+              "p95_ms": 0.010784499999999999,
+              "p99_ms": 0.012003600000000099
+            },
+            "total": {
+              "mean_ms": 11.56547817,
+              "median_ms": 11.749634,
+              "p95_ms": 11.99166095,
+              "p99_ms": 12.11079901
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03868223809523809,
+              "compute_input_ms": 0.001307152380952381,
+              "compute_infer_ms": 8.263248257142857,
+              "compute_output_ms": 0.025662704761904763
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.045874276190476196,
+              "compute_input_ms": 0.04282885714285715,
+              "compute_infer_ms": 1.8715985047619048,
+              "compute_output_ms": 0.06757579047619047
+            }
+          }
+        },
+        "V12-gpupost": {
+          "request_bytes": 613103,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.05007766,
+              "median_ms": 0.049306,
+              "p95_ms": 0.053113999999999995,
+              "p99_ms": 0.08041870000000001
+            },
+            "infer": {
+              "mean_ms": 11.94582613,
+              "median_ms": 12.053892999999999,
+              "p95_ms": 12.368308449999999,
+              "p99_ms": 12.48326761
+            },
+            "postprocess": {
+              "mean_ms": 0.00415815,
+              "median_ms": 0.00361,
+              "p95_ms": 0.0043019500000000006,
+              "p99_ms": 0.026069700000000043
+            },
+            "total": {
+              "mean_ms": 12.00006194,
+              "median_ms": 12.106439,
+              "p95_ms": 12.42153795,
+              "p99_ms": 12.54617091
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03609520952380952,
+              "compute_input_ms": 0.0011380285714285715,
+              "compute_infer_ms": 8.206855209523809,
+              "compute_output_ms": 0.025662942857142858
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.0465041619047619,
+              "compute_input_ms": 0.04441867619047619,
+              "compute_infer_ms": 1.9097984666666665,
+              "compute_output_ms": 0.0629687619047619
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.03348151428571428,
+              "compute_input_ms": 0.0073241999999999995,
+              "compute_infer_ms": 0.2955258380952381,
+              "compute_output_ms": 0.16229300952380954
+            }
+          }
+        },
+        "V13": {
+          "request_bytes": 613103,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.05125688,
+              "median_ms": 0.0477905,
+              "p95_ms": 0.073752,
+              "p99_ms": 0.07630271000000008
+            },
+            "infer": {
+              "mean_ms": 11.52395497,
+              "median_ms": 11.642432,
+              "p95_ms": 11.9370621,
+              "p99_ms": 12.427949240000002
+            },
+            "postprocess": {
+              "mean_ms": 0.0107274,
+              "median_ms": 0.010275,
+              "p95_ms": 0.011536,
+              "p99_ms": 0.02584690000000003
+            },
+            "total": {
+              "mean_ms": 11.58593925,
+              "median_ms": 11.710087999999999,
+              "p95_ms": 12.007012549999999,
+              "p99_ms": 12.485172040000002
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.03557500952380952,
+              "compute_input_ms": 0.0010183142857142858,
+              "compute_infer_ms": 8.255188847619047,
+              "compute_output_ms": 0.02629885714285714
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.036180533333333334,
+              "compute_input_ms": 0.06515297142857143,
+              "compute_infer_ms": 1.963895142857143,
+              "compute_output_ms": 0.06966039047619046
+            }
+          }
+        },
+        "V13-gpupost": {
+          "request_bytes": 613103,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.04800653,
+              "median_ms": 0.047141,
+              "p95_ms": 0.05299500000000001,
+              "p99_ms": 0.07510421000000002
+            },
+            "infer": {
+              "mean_ms": 12.06855866,
+              "median_ms": 12.236420500000001,
+              "p95_ms": 12.371663550000001,
+              "p99_ms": 12.480820210000001
+            },
+            "postprocess": {
+              "mean_ms": 0.00381967,
+              "median_ms": 0.00353,
+              "p95_ms": 0.0040915,
+              "p99_ms": 0.004514210000000136
+            },
+            "total": {
+              "mean_ms": 12.12038486,
+              "median_ms": 12.296661499999999,
+              "p95_ms": 12.43017995,
+              "p99_ms": 12.537993010000001
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.03451832380952381,
+              "compute_input_ms": 0.0011332380952380951,
+              "compute_infer_ms": 8.35235438095238,
+              "compute_output_ms": 0.02469414285714286
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.041079590476190475,
+              "compute_input_ms": 0.06532668571428571,
+              "compute_infer_ms": 1.9609400666666668,
+              "compute_output_ms": 0.07035286666666667
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.03570848571428571,
+              "compute_input_ms": 0.007026466666666667,
+              "compute_infer_ms": 0.29173500952380954,
+              "compute_output_ms": 0.1615514857142857
+            }
+          }
+        },
+        "V2": {
+          "request_bytes": 0,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.57816887,
+              "median_ms": 0.573399,
+              "p95_ms": 0.6018465,
+              "p99_ms": 0.608947
+            },
+            "infer": {
+              "mean_ms": 2.28758428,
+              "median_ms": 2.2831590000000004,
+              "p95_ms": 2.3184929999999997,
+              "p99_ms": 2.3329156099999997
+            },
+            "postprocess": {
+              "mean_ms": 0.0082648,
+              "median_ms": 0.00798,
+              "p95_ms": 0.008553999999999999,
+              "p99_ms": 0.018441600000000016
+            },
+            "total": {
+              "mean_ms": 2.87401795,
+              "median_ms": 2.8725820000000004,
+              "p95_ms": 2.9081885,
+              "p99_ms": 2.9154045
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.03667078095238096,
+              "compute_input_ms": 0.020830085714285712,
+              "compute_infer_ms": 1.8181651809523809,
+              "compute_output_ms": 0.16433730476190475
+            }
+          }
+        }
+      },
+      "bus_2160p": {
+        "B0": {
+          "request_bytes": 4915200,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 13.1505473,
+              "median_ms": 13.125594,
+              "p95_ms": 13.45681545,
+              "p99_ms": 13.59275974
+            },
+            "infer": {
+              "mean_ms": 8.78255268,
+              "median_ms": 8.753144500000001,
+              "p95_ms": 8.9883541,
+              "p99_ms": 9.12376585
+            },
+            "postprocess": {
+              "mean_ms": 0.01120698,
+              "median_ms": 0.0104555,
+              "p95_ms": 0.012066999999999998,
+              "p99_ms": 0.033709110000000035
+            },
+            "total": {
+              "mean_ms": 21.94430696,
+              "median_ms": 21.8991135,
+              "p95_ms": 22.3554935,
+              "p99_ms": 22.68363131
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.06303711428571429,
+              "compute_input_ms": 0.8316026952380953,
+              "compute_infer_ms": 1.8223980666666666,
+              "compute_output_ms": 0.08413164761904762
+            }
+          }
+        },
+        "B1": {
+          "request_bytes": 1577368,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.14337509,
+              "median_ms": 0.140772,
+              "p95_ms": 0.15983849999999997,
+              "p99_ms": 0.16616781000000005
+            },
+            "infer": {
+              "mean_ms": 16.0775538,
+              "median_ms": 16.039352,
+              "p95_ms": 16.4668826,
+              "p99_ms": 16.934277620000003
+            },
+            "postprocess": {
+              "mean_ms": 0.01190631,
+              "median_ms": 0.010850499999999999,
+              "p95_ms": 0.01848744999999997,
+              "p99_ms": 0.03582680000000001
+            },
+            "total": {
+              "mean_ms": 16.2328352,
+              "median_ms": 16.194239500000002,
+              "p95_ms": 16.617113149999998,
+              "p99_ms": 17.09755062
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.039956561904761906,
+              "compute_input_ms": 0.006209,
+              "compute_infer_ms": 11.598553723809523,
+              "compute_output_ms": 0.08855342857142856
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.04703402857142857,
+              "compute_input_ms": 0.04437214285714285,
+              "compute_infer_ms": 1.9459893428571429,
+              "compute_output_ms": 0.06829254285714287
+            }
+          }
+        },
+        "B1-gpupost": {
+          "request_bytes": 1577368,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.14815227,
+              "median_ms": 0.14276250000000001,
+              "p95_ms": 0.17323355000000001,
+              "p99_ms": 0.17896359000000006
+            },
+            "infer": {
+              "mean_ms": 16.36367657,
+              "median_ms": 16.3585865,
+              "p95_ms": 16.53677895,
+              "p99_ms": 16.57280881
+            },
+            "postprocess": {
+              "mean_ms": 0.00417717,
+              "median_ms": 0.0038650000000000004,
+              "p95_ms": 0.004213499999999999,
+              "p99_ms": 0.004919610000000148
+            },
+            "total": {
+              "mean_ms": 16.51600601,
+              "median_ms": 16.507254,
+              "p95_ms": 16.691677,
+              "p99_ms": 16.7196082
+            }
+          },
+          "server": {
+            "yolo26det_dali_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03155508571428571,
+              "compute_input_ms": 0.005126180952380953,
+              "compute_infer_ms": 11.580349104761904,
+              "compute_output_ms": 0.08584153333333334
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.049797219047619044,
+              "compute_input_ms": 0.04556177142857143,
+              "compute_infer_ms": 1.9360909428571427,
+              "compute_output_ms": 0.07024714285714286
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.027652809523809524,
+              "compute_input_ms": 0.005969780952380952,
+              "compute_infer_ms": 0.2666947619047619,
+              "compute_output_ms": 0.16279633333333335
+            }
+          }
+        },
+        "V12": {
+          "request_bytes": 1577368,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.16526648,
+              "median_ms": 0.160812,
+              "p95_ms": 0.1922975,
+              "p99_ms": 0.20047341000000007
+            },
+            "infer": {
+              "mean_ms": 28.00919219,
+              "median_ms": 28.383144,
+              "p95_ms": 28.71994755,
+              "p99_ms": 28.824838090000004
+            },
+            "postprocess": {
+              "mean_ms": 0.01204705,
+              "median_ms": 0.01123,
+              "p95_ms": 0.0124965,
+              "p99_ms": 0.041618910000000044
+            },
+            "total": {
+              "mean_ms": 28.18650572,
+              "median_ms": 28.5578115,
+              "p95_ms": 28.901219999999995,
+              "p99_ms": 29.001270780000002
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.035512190476190475,
+              "compute_input_ms": 0.001027047619047619,
+              "compute_infer_ms": 23.499001885714286,
+              "compute_output_ms": 0.048672457142857145
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.059507333333333336,
+              "compute_input_ms": 0.05331548571428572,
+              "compute_infer_ms": 1.9581703238095238,
+              "compute_output_ms": 0.06556566666666667
+            }
+          }
+        },
+        "V12-gpupost": {
+          "request_bytes": 1577368,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.16346455000000001,
+              "median_ms": 0.1611775,
+              "p95_ms": 0.185579,
+              "p99_ms": 0.19177150000000007
+            },
+            "infer": {
+              "mean_ms": 28.48199632,
+              "median_ms": 28.8192605,
+              "p95_ms": 29.1750431,
+              "p99_ms": 29.3897099
+            },
+            "postprocess": {
+              "mean_ms": 0.00397885,
+              "median_ms": 0.00398,
+              "p95_ms": 0.004351,
+              "p99_ms": 0.0048905
+            },
+            "total": {
+              "mean_ms": 28.64943972,
+              "median_ms": 28.985548,
+              "p95_ms": 29.348056550000003,
+              "p99_ms": 29.55478619
+            }
+          },
+          "server": {
+            "yolo26det_cuda_preprocess": {
+              "count": 105,
+              "queue_ms": 0.03661846666666667,
+              "compute_input_ms": 0.0010847714285714286,
+              "compute_infer_ms": 23.61893918095238,
+              "compute_output_ms": 0.04894513333333333
+            },
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.06001154285714286,
+              "compute_input_ms": 0.05453073333333333,
+              "compute_infer_ms": 1.9262703047619048,
+              "compute_output_ms": 0.06582217142857143
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.03836786666666667,
+              "compute_input_ms": 0.009392504761904763,
+              "compute_infer_ms": 0.3009378857142857,
+              "compute_output_ms": 0.17190124761904763
+            }
+          }
+        },
+        "V13": {
+          "request_bytes": 1577368,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.16154672,
+              "median_ms": 0.159198,
+              "p95_ms": 0.18074649999999998,
+              "p99_ms": 0.18967150000000002
+            },
+            "infer": {
+              "mean_ms": 28.33762924,
+              "median_ms": 28.675808500000002,
+              "p95_ms": 29.02092955,
+              "p99_ms": 29.075445419999998
+            },
+            "postprocess": {
+              "mean_ms": 0.01259676,
+              "median_ms": 0.011310500000000001,
+              "p95_ms": 0.024852949999999978,
+              "p99_ms": 0.034107100000000015
+            },
+            "total": {
+              "mean_ms": 28.51177272,
+              "median_ms": 28.852746,
+              "p95_ms": 29.19722205,
+              "p99_ms": 29.266884719999997
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.03756475238095239,
+              "compute_input_ms": 0.0014065714285714287,
+              "compute_infer_ms": 23.60048671428571,
+              "compute_output_ms": 0.0496498
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.05974594285714286,
+              "compute_input_ms": 0.15552413333333334,
+              "compute_infer_ms": 2.1790128571428573,
+              "compute_output_ms": 0.07553127619047618
+            }
+          }
+        },
+        "V13-gpupost": {
+          "request_bytes": 1577368,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 0.16714674,
+              "median_ms": 0.1613175,
+              "p95_ms": 0.19275345,
+              "p99_ms": 0.19968231000000006
+            },
+            "infer": {
+              "mean_ms": 29.02676794,
+              "median_ms": 29.263042,
+              "p95_ms": 29.58226145,
+              "p99_ms": 29.68025343
+            },
+            "postprocess": {
+              "mean_ms": 0.00427347,
+              "median_ms": 0.00411,
+              "p95_ms": 0.00447,
+              "p99_ms": 0.005406300000000075
+            },
+            "total": {
+              "mean_ms": 29.19818815,
+              "median_ms": 29.4379895,
+              "p95_ms": 29.744588,
+              "p99_ms": 29.866900420000004
+            }
+          },
+          "server": {
+            "yolo26det_nvjpeg_decode": {
+              "count": 105,
+              "queue_ms": 0.03753170476190476,
+              "compute_input_ms": 0.0011000952380952381,
+              "compute_infer_ms": 23.739695895238093,
+              "compute_output_ms": 0.04873299047619048
+            },
+            "yolo26det_trt_pre": {
+              "count": 105,
+              "queue_ms": 0.05690169523809523,
+              "compute_input_ms": 0.15658808571428573,
+              "compute_infer_ms": 2.178066942857143,
+              "compute_output_ms": 0.07318806666666666
+            },
+            "yolo26det_dali_postprocess": {
+              "count": 105,
+              "queue_ms": 0.04056911428571428,
+              "compute_input_ms": 0.009055885714285714,
+              "compute_infer_ms": 0.3206384857142857,
+              "compute_output_ms": 0.17363164761904762
+            }
+          }
+        },
+        "V2": {
+          "request_bytes": 0,
+          "timings": {
+            "preprocess": {
+              "mean_ms": 2.07254747,
+              "median_ms": 2.0714105,
+              "p95_ms": 2.0924899999999997,
+              "p99_ms": 2.107552
+            },
+            "infer": {
+              "mean_ms": 2.57488081,
+              "median_ms": 2.5691075000000003,
+              "p95_ms": 2.62108645,
+              "p99_ms": 2.6351128
+            },
+            "postprocess": {
+              "mean_ms": 0.00975071,
+              "median_ms": 0.00966,
+              "p95_ms": 0.010465,
+              "p99_ms": 0.010750599999999999
+            },
+            "total": {
+              "mean_ms": 4.65717899,
+              "median_ms": 4.6512585,
+              "p95_ms": 4.7077195000000005,
+              "p99_ms": 4.74311621
+            }
+          },
+          "server": {
+            "yolo26det_trt": {
+              "count": 105,
+              "queue_ms": 0.06652706666666666,
+              "compute_input_ms": 0.02070333333333333,
+              "compute_infer_ms": 1.9000753428571429,
+              "compute_output_ms": 0.16933325714285716
+            }
+          }
+        }
+      }
+    }
+  }
+}

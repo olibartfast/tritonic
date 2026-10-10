@@ -64,7 +64,7 @@ Chart location: `helm/triton-server/`. Key `values.yaml` overrides:
 | Value | Default | Description |
 |---|---|---|
 | `gpu.enabled` | `false` | Enable GPU variant |
-| `image.tag` | `25.12-py3` | Triton image tag |
+| `image.tag` | `26.08-py3` | Triton image tag |
 | `storage.type` | `pvc` | `pvc` or `hostPath` |
 | `storage.hostPath.path` | `/tmp/triton-models` | Model repo path (hostPath) |
 | `autoscaling.enabled` | `false` | Enable HPA |

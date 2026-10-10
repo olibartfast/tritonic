@@ -1,0 +1,12 @@
+# V-18 (R-17): run locally 2026-10-10 in nvcr.io/nvidia/tritonserver:26.08-py3-sdk without --gpus
+== default build
+100% tests passed, 0 tests failed out of 111
+== V-18: CUDA build, container started WITHOUT --gpus
+no GPU visible
+100% tests passed, 0 tests failed out of 113
+libcudart load dependencies: 0
+-- --preprocess_device=cuda:
+Fatal error: --preprocess_device=cuda needs an NVIDIA GPU and driver, but CUDA reports: CUDA driver version is insufficient for CUDA runtime version. Use --preprocess_device=cpu on this machine.
+exit code: 1
+-- --preprocess_device=cpu (no server running):
+[2026-10-09 23:43:32] [ERROR] [tritonic] Application error: Triton server is not live after 5 attempts
