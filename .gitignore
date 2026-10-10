@@ -12,6 +12,7 @@ model_repository
 !deploy/**/ensemble/dali_plugin/build_plugin.sh
 !deploy/**/ensemble/trt_pre/build_trt_pre_engine.sh
 !backends/*/build_backend.sh
+!docs/building.md
 build_test
 triton_client_libs
 3rdparty
