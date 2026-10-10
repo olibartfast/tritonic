@@ -87,7 +87,9 @@ jobs:
 
       - name: Run clang-tidy
         run: |
-          find src -type f -name '*.cpp' | \
+          # Lint the sources this configuration compiles. src/cuda/ builds only with
+          # TRITONIC_ENABLE_CUDA=ON (CUDA toolkit), which this job does not install.
+          python3 -c "import json, os; print('\n'.join(sorted({os.path.relpath(e['file']) for e in json.load(open('build/compile_commands.json'))} & {str(p) for p in __import__('pathlib').Path('src').rglob('*.cpp')})))" | \
             xargs clang-tidy -p build --header-filter='^(include|src)/'
 
   cppcheck:
