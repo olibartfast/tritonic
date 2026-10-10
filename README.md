@@ -5,7 +5,7 @@
 [![CI](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/olibartfast/tritonic/actions/workflows/ci.yml)
 [![C++](https://img.shields.io/badge/language-C++20-blue.svg)](https://en.cppreference.com/w/cpp)
 [![CMake](https://img.shields.io/badge/build%20system-CMake-blue.svg)](https://cmake.org/)
-[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/olibartfast/tritonic/releases/tag/v0.4.0)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](https://github.com/olibartfast/tritonic/releases/tag/v0.5.0)
 
 A C++20 client for computer vision on the
 [NVIDIA Triton Inference Server](https://github.com/triton-inference-server/server)
