@@ -8,6 +8,10 @@
 #include "ConfigManager.hpp"
 #include "Logger.hpp"
 #include "Triton.hpp"
+#ifdef TRITONIC_ENABLE_CUDA
+#include "tritonic/cuda/device.hpp"
+#include "tritonic/cuda/letterbox_preprocessor.hpp"
+#endif
 #include "chat/ChatBackend.hpp"
 #include "chat/ChatSession.hpp"
 #include "chat/IChatBackend.hpp"
@@ -261,14 +265,30 @@ int main(int argc, const char* argv[]) {
 
         std::string url = config->GetServerAddress() + ":" + std::to_string(port);
 
+        // CUDA shared memory is only used by client-side CUDA preprocessing (variant V2),
+        // which writes the model input in place; other paths keep the default.
+        const bool cudaPreprocess = config->GetPreprocessDevice() == "cuda";
+#ifdef TRITONIC_ENABLE_CUDA
+        if (cudaPreprocess) {
+            tritonic::cuda::RequireCudaDevice(config->GetCudaDeviceId());
+        }
+#endif
         auto triton = std::make_shared<Triton>(
             url, protocol, config->GetModelName(), config->GetModelVersion(), config->GetVerbose(),
-            SharedMemoryType::SYSTEM_SHARED_MEMORY, 0, config->GetInferenceTimeoutMs());
+            cudaPreprocess ? SharedMemoryType::CUDA_SHARED_MEMORY
+                           : SharedMemoryType::SYSTEM_SHARED_MEMORY,
+            config->GetCudaDeviceId(), config->GetInferenceTimeoutMs());
 
         // Create and run App
         std::shared_ptr<InferenceConfig> configPtr = std::move(config);
 
         App app(triton, configPtr, logger);
+#ifdef TRITONIC_ENABLE_CUDA
+        if (cudaPreprocess) {
+            app.setDevicePreprocessor(std::make_shared<tritonic::cuda::LetterboxPreprocessor>(
+                configPtr->GetCudaDeviceId()));
+        }
+#endif
         return app.run();
 
     } catch (const std::exception& e) {

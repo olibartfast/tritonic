@@ -143,7 +143,7 @@ kubectl apply -f k8s/service.yaml
 ```
 
 Notes:
-- The Kubernetes manifests use `nvcr.io/nvidia/tritonserver:25.12-py3`.
+- The Kubernetes manifests use `nvcr.io/nvidia/tritonserver:26.08-py3`.
 - GPU deployments use `strategy: Recreate` so single-node clusters with one allocatable GPU can update cleanly.
 - On minikube, if the Triton image already exists in host Docker, `k8s/scripts/check_and_deploy_triton.sh` loads it into the node before applying the deployment.
 

@@ -1,0 +1,25 @@
+{
+  "results": [
+    {
+      "variant": "V12",
+      "model": "yolo26det_cudapre_cpu_post",
+      "requests": 11000,
+      "errors": 0,
+      "served": 11000,
+      "gpu_memory_after_warmup_mib": 940.0,
+      "gpu_memory_after_mib": 940.0,
+      "passed": true
+    },
+    {
+      "variant": "V13",
+      "model": "yolo26det_trtpre_cpu_post",
+      "requests": 11000,
+      "errors": 0,
+      "served": 11000,
+      "gpu_memory_after_warmup_mib": 940.0,
+      "gpu_memory_after_mib": 940.0,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

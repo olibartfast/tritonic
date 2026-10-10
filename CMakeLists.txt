@@ -11,6 +11,9 @@ message(STATUS "${PROJECT_NAME} ${PROJECT_VERSION}")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Load centralized version pins for FetchContent and CMake caches.
+include(cmake/versions.cmake)
+
 set(TRITON_CLIENT_BUILD_DIR "$ENV{TritonClientBuild_DIR}" CACHE PATH "Path to Triton client build directory")
 
 # Set default if not provided
@@ -61,7 +64,7 @@ else()
   FetchContent_Declare(
     neuriplo-tasks
     GIT_REPOSITORY ${NEURIPLO_TASKS_REPO}
-    GIT_TAG v0.8.0
+    GIT_TAG ${NEURIPLO_TASKS_VERSION}
   )
 endif()
 FetchContent_MakeAvailable(neuriplo-tasks)
@@ -71,6 +74,9 @@ option(WITH_SHOW_FRAME "Option description" OFF)
 option(WITH_WRITE_FRAME "Option description" ON)
 option(WITH_CHAT_BACKEND "Build OpenAI-compatible chat backend (requires CURL, already a dep)" ON)
 option(TRITONIC_STRICT_WARNINGS "Enable strict compiler warnings for tritonic targets." OFF)
+option(TRITONIC_ENABLE_CUDA
+    "Build CUDA support: CUDA shared memory and client-side GPU preprocessing (needs the CUDA toolkit)"
+    OFF)
 
 function(tritonic_apply_strict_warnings target_name)
   if(NOT TRITONIC_STRICT_WARNINGS)
@@ -103,6 +109,41 @@ find_package(TritonClient REQUIRED)
 find_package(CURL REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(RapidJSON REQUIRED)
+
+# CUDA is opt-in: with TRITONIC_ENABLE_CUDA=OFF the build has no CUDA dependency.
+if(TRITONIC_ENABLE_CUDA)
+    set(CUDA_ARCH "" CACHE STRING
+        "CUDA architectures override; empty uses CUDA_ARCHITECTURES from versions.env")
+    if(CUDA_ARCH)
+        set(_tritonic_cuda_arch "${CUDA_ARCH}")
+    else()
+        set(_tritonic_cuda_arch "${CUDA_ARCHITECTURES}")
+    endif()
+    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+        set(CMAKE_CUDA_ARCHITECTURES ${_tritonic_cuda_arch})
+    endif()
+    enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
+
+    add_library(tritonic_cuda STATIC
+        ${PROJECT_SOURCE_DIR}/src/cuda/letterbox.cu
+        ${PROJECT_SOURCE_DIR}/src/cuda/letterbox_preprocessor.cpp
+        ${PROJECT_SOURCE_DIR}/src/cuda/device.cpp
+    )
+    target_include_directories(tritonic_cuda PUBLIC
+        ${PROJECT_SOURCE_DIR}/include
+        ${OpenCV_INCLUDE_DIRS}
+    )
+    target_compile_features(tritonic_cuda PUBLIC cxx_std_20)
+    # TRITON_ENABLE_GPU makes the Triton client's ipc.h use the real cudaIpcMemHandle_t,
+    # matching the GPU-enabled client libraries' RegisterCudaSharedMemory signature.
+    target_compile_definitions(tritonic_cuda PUBLIC TRITONIC_ENABLE_CUDA TRITON_ENABLE_GPU)
+    # Static cudart loads the driver (libcuda) lazily on the first CUDA call, so a CUDA-enabled
+    # binary still starts on CPU-only clients that run the default --preprocess_device=cpu.
+    target_link_libraries(tritonic_cuda PUBLIC CUDA::cudart_static ${OpenCV_LIBS})
+    set_target_properties(tritonic_cuda PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    message(STATUS "CUDA support enabled (architectures: ${CMAKE_CUDA_ARCHITECTURES})")
+endif()
 
 # Set the source files (only tritonic-specific sources)
 set(SOURCES
@@ -146,7 +187,6 @@ tritonic_apply_strict_warnings(${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME}
     PRIVATE
     ${OpenCV_INCLUDE_DIRS}
-    ${TRITON_CLIENT_BUILD_DIR}/include
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/utils
@@ -154,6 +194,10 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/src/chat
     # neuriplo-tasks includes are provided automatically through target_link_libraries
 )
+
+# Third-party headers from the Triton SDK (grpc, protobuf, abseil) are not held to
+# TRITONIC_STRICT_WARNINGS: the 26.08 abseil headers fail -Wpedantic -Werror.
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE ${TRITON_CLIENT_BUILD_DIR}/include)
 
 # Set link directories for the target
 target_link_directories(${PROJECT_NAME}
@@ -173,6 +217,27 @@ target_link_libraries(${PROJECT_NAME}
     CURL::libcurl
     ${PROTOBUF_LIBRARIES}
 )
+if(TRITONIC_ENABLE_CUDA)
+    target_link_libraries(${PROJECT_NAME} PRIVATE tritonic_cuda)
+endif()
+
+# Unoptimized builds against the 26.08+ SDK instantiate abseil CHECK helpers from the
+# bundled protobuf headers; their definitions live in this static library, which the
+# shared client libraries do not export. Release builds inline them away.
+set(TRITONIC_ABSL_CHECK_LIBS)
+foreach(absl_lib log_internal_check_op leak_check strings strings_internal int128
+        raw_logging_internal throw_delegate base spinlock_wait log_severity)
+    set(absl_path "${TRITON_CLIENT_BUILD_DIR}/lib/libabsl_${absl_lib}.a")
+    if(EXISTS "${absl_path}")
+        list(APPEND TRITONIC_ABSL_CHECK_LIBS "${absl_path}")
+    endif()
+endforeach()
+add_library(tritonic_sdk_absl INTERFACE)
+if(TRITONIC_ABSL_CHECK_LIBS)
+    target_link_libraries(tritonic_sdk_absl INTERFACE
+        -Wl,--start-group ${TRITONIC_ABSL_CHECK_LIBS} -Wl,--end-group)
+endif()
+target_link_libraries(${PROJECT_NAME} PRIVATE tritonic_sdk_absl)
 
 # Add option for testing
 option(BUILD_TESTING "Build the testing tree." OFF)
@@ -187,7 +252,7 @@ if(BUILD_TESTING)
         FetchContent_Declare(
           googletest
           GIT_REPOSITORY https://github.com/google/googletest.git
-          GIT_TAG v1.14.0
+          GIT_TAG ${GTEST_VERSION}
         )
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
         FetchContent_MakeAvailable(googletest)
@@ -205,11 +270,22 @@ if(BUILD_TESTING)
         add_executable(tritonic_unit_tests
             ${TEST_MAIN}
             ${UNIT_TEST_SOURCES}
+            src/main/App.cpp
             src/triton/Triton.cpp
             ${INFRA_SOURCES}
             ${CHAT_SOURCES}
         )
         tritonic_apply_strict_warnings(tritonic_unit_tests)
+
+        # The Triton SDK install tree ships its own gtest/gmock headers. Included through
+        # -I they shadow the googletest these tests link (googletest's own directories are
+        # -isystem, searched after every -I, and GCC drops an -I that repeats an -isystem
+        # path), and gMock expectations then crash on the header/library mismatch. So the
+        # tests take the client headers as -isystem too, linked after gtest/gmock so that
+        # googletest's directories come first. They still precede /usr/include.
+        add_library(tritonic_test_triton_client_headers INTERFACE)
+        target_include_directories(tritonic_test_triton_client_headers SYSTEM INTERFACE
+            ${TRITON_CLIENT_BUILD_DIR}/include)
 
         target_include_directories(tritonic_unit_tests PRIVATE
             ${PROJECT_SOURCE_DIR}/include
@@ -219,7 +295,6 @@ if(BUILD_TESTING)
             ${PROJECT_SOURCE_DIR}/src/common
             ${PROJECT_SOURCE_DIR}/tests
             ${PROJECT_SOURCE_DIR}/tests/mocks
-            ${TRITON_CLIENT_BUILD_DIR}/include
             ${OpenCV_INCLUDE_DIRS}
         )
 
@@ -229,6 +304,7 @@ if(BUILD_TESTING)
         
         target_link_libraries(tritonic_unit_tests PRIVATE
             gtest gtest_main gmock
+            tritonic_test_triton_client_headers
             neuriplo-tasks::neuriplo-tasks
             neuriplo-tasks::vision-opencv
             grpcclient
@@ -236,8 +312,12 @@ if(BUILD_TESTING)
             ${OpenCV_LIBS}
             CURL::libcurl
             ${PROTOBUF_LIBRARIES}
+            tritonic_sdk_absl
         )
-        
+        if(TRITONIC_ENABLE_CUDA)
+            target_link_libraries(tritonic_unit_tests PRIVATE tritonic_cuda)
+        endif()
+
         include(GoogleTest)
         gtest_discover_tests(tritonic_unit_tests
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
@@ -254,7 +334,14 @@ if(BUILD_TESTING)
         neuriplo-tasks::vision-opencv
         ${OpenCV_LIBS}
     )
-    
+
+    if(TRITONIC_ENABLE_CUDA)
+        add_executable(cuda_preprocess_dump tests/tools/cuda_preprocess_dump.cpp)
+        tritonic_apply_strict_warnings(cuda_preprocess_dump)
+        target_include_directories(cuda_preprocess_dump PRIVATE ${OpenCV_INCLUDE_DIRS})
+        target_link_libraries(cuda_preprocess_dump PRIVATE tritonic_cuda ${OpenCV_LIBS})
+    endif()
+
     # Create integration test executable if integration tests exist
     if(INTEGRATION_TEST_SOURCES)
         add_executable(tritonic_integration_tests

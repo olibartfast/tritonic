@@ -10,6 +10,8 @@ export TritonClientBuild_DIR=$(pwd)/triton_client_libs/install
 ./docker/scripts/extract_triton_libs.sh   # extract from Docker if not present
 ```
 
+**Version pins:** Dependency and container versions are centralized in `versions.env` and read by `cmake/versions.cmake` and `scripts/versions.sh`. Run `scripts/check_version_sync.sh` after editing `versions.env` to verify consistency across all configuration files.
+
 **Standard build:**
 ```bash
 mkdir build && cd build
@@ -203,7 +205,7 @@ For dynamic input sizes: `--input_sizes="c,h,w"` (e.g., `"3,640,640"` or `"3,640
 
 **Triton server (Docker):**
 ```bash
-./docker/scripts/docker_triton_run.sh /path/to/model_repository 25.06 gpu
+./docker/scripts/docker_triton_run.sh /path/to/model_repository 26.08 gpu
 ```
 
 ## Model Type Tags

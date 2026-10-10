@@ -1,0 +1,36 @@
+{
+  "gpus": [
+    {
+      "name": "NVIDIA A10G",
+      "driver": "595.91.07",
+      "memory": "23028 MiB"
+    }
+  ],
+  "client_cpu": "AMD EPYC 7R32",
+  "commit": "f84bac5",
+  "dirty_files": 0,
+  "server_image": {
+    "image": "nvcr.io/nvidia/tritonserver:26.08-py3",
+    "digest": [
+      "nvcr.io/nvidia/tritonserver@sha256:9185ba5b33d2c85c9204b208957b4bbfc6b2b89066efc9192e0f60c2ab58cec0"
+    ],
+    "cuda_version": "13.4.1.012",
+    "trt_version": "11.2.1.2+cuda13.3",
+    "nvidia_triton_server_version": "26.08",
+    "triton_server_version": "2.72.0",
+    "dali_version": "2.2.0",
+    "nvidia_build_id": "64703337"
+  },
+  "tensorrt_image": {
+    "image": "nvcr.io/nvidia/tensorrt:26.08-py3",
+    "digest": [
+      "nvcr.io/nvidia/tensorrt@sha256:3b127f45630cd56bf43d2ef70d7f50a7ee37e42bda4ba11adaaa069af2098125"
+    ],
+    "cuda_version": "13.4.1.012",
+    "trt_version": "11.2.1.2+cuda13.3",
+    "tensorrt_version": "11.2.1.2+cuda13.3",
+    "dali_version": "2.2.0",
+    "nvidia_build_id": "406036793"
+  },
+  "images_consistent": true
+}

@@ -1,22 +1,28 @@
 #!/bin/bash
 # chmod +x docker_triton_run.sh
 # ./docker_triton_run.sh <path_to_models_host> <triton_version> [cpu|gpu] [python_backend]
-# 
+#
 # Examples:
 # MODEL_REPOSITORY_HOST=$HOME/model_repository
-# TRITON_VERSION=25.06
+# TRITON_VERSION=26.08
 # ./docker_triton_run.sh $MODEL_REPOSITORY_HOST $TRITON_VERSION cpu
 # ./docker_triton_run.sh $MODEL_REPOSITORY_HOST $TRITON_VERSION gpu
 # ./docker_triton_run.sh $MODEL_REPOSITORY_HOST $TRITON_VERSION gpu python_backend
+# ALLOW_CLIENT_SHM=true ./docker_triton_run.sh $MODEL_REPOSITORY_HOST $TRITON_VERSION gpu
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/../.." && pwd)"
+source "${repo_root}/scripts/versions.sh"
+
 # Default values
 MODEL_REPO=${1:-}
-TRITON_VERSION=${2:-25.06}
+TRITON_VERSION=${2:-${NGC_CONTAINER_TAG}}
 DEVICE_TYPE=${3:-cpu}
 PYTHON_BACKEND_ARG=${4:-false}
 MODEL_CONTROL_MODE_ARG=${5:-poll}
+ALLOW_CLIENT_SHM=${ALLOW_CLIENT_SHM:-false}
 
 # Smart detection: if 4th arg is explicit/poll, treat it as model mode
 if [[ "${PYTHON_BACKEND_ARG,,}" == "explicit" || "${PYTHON_BACKEND_ARG,,}" == "poll" ]]; then
@@ -38,13 +44,13 @@ if [ $# -lt 1 ] || [ -z "$MODEL_REPO" ]; then
     echo "Usage: $0 <model_repository_path> [triton_version] [cpu|gpu] [python_backend|true] [model_control_mode]"
     echo ""
     echo "Examples:"
-    echo "  $0 \$HOME/model_repository 25.06 cpu"
-    echo "  $0 \$HOME/model_repository 25.06 gpu python_backend"
-    echo "  $0 \$HOME/model_repository 25.06 gpu true explicit"
+    echo "  $0 \$HOME/model_repository 26.08 cpu"
+    echo "  $0 \$HOME/model_repository 26.08 gpu python_backend"
+    echo "  $0 \$HOME/model_repository 26.08 gpu true explicit"
     echo ""
     echo "Parameters:"
     echo "  model_repository_path: Path to your model repository (required)"
-    echo "  triton_version: Docker image version (default: 25.06)"
+    echo "  triton_version: Docker image version (default: 26.08)"
     echo "  device_type: cpu or gpu (default: cpu)"
     echo "  python_backend: python_backend|true|1|yes to enable (default: false)"
     echo "  model_control_mode: poll or explicit (default: poll)"
@@ -91,7 +97,11 @@ case "${MODEL_CONTROL_MODE_ARG,,}" in
 esac
 
 # Determine Docker image early for GPU check
-BASE_IMAGE="nvcr.io/nvidia/tritonserver:$TRITON_VERSION-py3"
+# If TRITON_VERSION was overridden via positional arg, reconstruct the image URL
+BASE_IMAGE="${TRITON_IMAGE}"
+if [[ "$TRITON_VERSION" != "${NGC_CONTAINER_TAG}" ]]; then
+  BASE_IMAGE="nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3"
+fi
 
 # Validate GPU availability if requested
 if [ "$DEVICE_TYPE" = "gpu" ]; then
@@ -146,6 +156,12 @@ DOCKER_PORTS="-p8000:8000 -p8001:8001 -p8002:8002"
 DOCKER_VOLUME="-v \"$MODEL_REPO\":/models"
 DOCKER_IMAGE="$BASE_IMAGE"
 
+# Handle shared memory for client access
+DOCKER_IPC=""
+if [[ "${ALLOW_CLIENT_SHM,,}" == "true" ]]; then
+    DOCKER_IPC="--ipc=host"
+fi
+
 # Add GPU support if needed
 if [ "$DEVICE_TYPE" = "gpu" ]; then
     echo "🎮 Using GPU acceleration"
@@ -158,6 +174,11 @@ fi
 # Triton server arguments
 TRITON_ARGS="--model-repository=/models --model-control-mode=$MODEL_CONTROL_MODE"
 
+# Add client shared memory support if enabled
+if [[ "${ALLOW_CLIENT_SHM,,}" == "true" ]]; then
+    TRITON_ARGS="$TRITON_ARGS --allow-client-shm=true"
+fi
+
 # Add CPU-specific optimizations
 if [ "$DEVICE_TYPE" = "cpu" ]; then
     TRITON_ARGS="$TRITON_ARGS --backend-config=tensorflow,allow_soft_placement=true"
@@ -165,9 +186,9 @@ fi
 
 # Build final command
 if [ -n "$PYTHON_INSTALL_CMD" ]; then
-    FULL_CMD="$DOCKER_BASE $DOCKER_GPU $DOCKER_PORTS $DOCKER_VOLUME $DOCKER_IMAGE bash -c \"$PYTHON_INSTALL_CMD tritonserver $TRITON_ARGS\""
+    FULL_CMD="$DOCKER_BASE $DOCKER_GPU $DOCKER_IPC $DOCKER_PORTS $DOCKER_VOLUME $DOCKER_IMAGE bash -c \"$PYTHON_INSTALL_CMD tritonserver $TRITON_ARGS\""
 else
-    FULL_CMD="$DOCKER_BASE $DOCKER_GPU $DOCKER_PORTS $DOCKER_VOLUME $DOCKER_IMAGE tritonserver $TRITON_ARGS"
+    FULL_CMD="$DOCKER_BASE $DOCKER_GPU $DOCKER_IPC $DOCKER_PORTS $DOCKER_VOLUME $DOCKER_IMAGE tritonserver $TRITON_ARGS"
 fi
 
 # Display the command being executed (for debugging)

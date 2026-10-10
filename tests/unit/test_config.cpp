@@ -2,6 +2,8 @@
 #include "Config.hpp"
 #include "ConfigManager.hpp"
 
+#include <vector>
+
 // InferenceConfig defaults
 
 TEST(InferenceConfigTest, DefaultValues) {
@@ -31,6 +33,7 @@ TEST(InferenceConfigTest, DefaultValues) {
     EXPECT_TRUE(config.GetTaskModel().empty());
     EXPECT_EQ(config.GetPostprocessMode(), "cpu");
     EXPECT_EQ(config.GetSegmentationOutput(), "mask");
+    EXPECT_EQ(config.GetPreprocessDevice(), "cpu");
     EXPECT_TRUE(config.GetInputSizes().empty());
     EXPECT_FALSE(config.GetEnableMultimodal());
     EXPECT_TRUE(config.GetTextPrompt().empty());
@@ -227,6 +230,57 @@ TEST(ConfigManagerTest, ParsesEncodedImageMode) {
     ASSERT_NE(config, nullptr);
     EXPECT_EQ(config->GetInputMode(), "encoded-image");
     EXPECT_EQ(config->GetTaskModel(), "yolo_trt");
+}
+
+TEST(ConfigManagerTest, PreprocessDeviceDefaultsToCpu) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--model_type=yolo"};
+    auto config = mgr.LoadFromCommandLine(2, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetPreprocessDevice(), "cpu");
+}
+
+TEST(ConfigManagerTest, ParsesCudaPreprocessDevice) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--model_type=yolo26", "--model=yolo26det_trt",
+                          "--preprocess_device=CUDA", "--shared_memory_type=cuda"};
+    auto config = mgr.LoadFromCommandLine(5, argv);
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->GetPreprocessDevice(), "cuda");
+    EXPECT_EQ(config->GetInputMode(), "preprocessed");
+}
+
+TEST(ConfigManagerTest, RejectsUnknownPreprocessDevice) {
+    ConfigManager mgr;
+    const char* argv[] = {"tritonic", "--model_type=yolo", "--preprocess_device=gpu"};
+    EXPECT_THROW(mgr.LoadFromCommandLine(3, argv), std::invalid_argument);
+}
+
+TEST(ConfigManagerTest, CudaPreprocessRejectsUnsupportedCombinations) {
+    const std::vector<std::vector<const char*>> invalid = {
+        // CUDA shared memory is how the tensor reaches Triton.
+        {"tritonic", "--model_type=yolo", "--preprocess_device=cuda"},
+        {"tritonic", "--model_type=yolo", "--preprocess_device=cuda",
+         "--shared_memory_type=system"},
+        // Encoded-image sends JPEG bytes; there is no client tensor to produce.
+        {"tritonic", "--model_type=yolo", "--preprocess_device=cuda", "--shared_memory_type=cuda",
+         "--input_mode=encoded-image", "--task_model=yolo_trt"},
+        // Only the YOLO letterbox is implemented.
+        {"tritonic", "--model_type=vit-classifier", "--preprocess_device=cuda",
+         "--shared_memory_type=cuda"},
+        {"tritonic", "--model_type=yolo", "--preprocess_device=cuda", "--shared_memory_type=cuda",
+         "--batch_size=2"},
+        {"tritonic", "--model_type=yolo", "--preprocess_device=cuda", "--shared_memory_type=cuda",
+         "--input_sizes=3,640,640"},
+        {"tritonic", "--model_type=yolo", "--preprocess_device=cuda", "--shared_memory_type=cuda",
+         "--backend=chat"},
+    };
+    for (auto args : invalid) {
+        ConfigManager mgr;
+        EXPECT_THROW(mgr.LoadFromCommandLine(static_cast<int>(args.size()), args.data()),
+                     std::invalid_argument)
+            << args.back();
+    }
 }
 
 TEST(ConfigManagerTest, RejectsUnknownInputMode) {

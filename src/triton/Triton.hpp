@@ -12,15 +12,17 @@
 #include "Logger.hpp"
 #include "TritonModelInfo.hpp"
 
-// Include heavy Triton dependencies only where needed
+#include "tritonic/triton/device_input.hpp"
+
+#ifdef TRITONIC_ENABLE_CUDA
+#include <cuda_runtime_api.h>
+#endif
+
+// Include heavy Triton dependencies only where needed. With TRITONIC_ENABLE_CUDA, CMake also
+// defines TRITON_ENABLE_GPU so the client's ipc.h uses the real cudaIpcMemHandle_t.
 #include "grpc_client.h"
 #include "http_client.h"
 namespace tc = triton::client;
-
-#ifdef TRITONIC_ENABLE_CUDA
-#include <cuda.h>
-#include <cuda_runtime.h>
-#endif
 
 enum class SharedMemoryType {
     SYSTEM_SHARED_MEMORY,  // Host CPU shared memory (POSIX)
@@ -56,8 +58,12 @@ struct SharedMemoryRegion {
                 shm_unlink(key.c_str());
             }
         } else if (type == SharedMemoryType::CUDA_SHARED_MEMORY) {
-            // CUDA shared memory cleanup will be handled by CUDA runtime
-            // when the context is destroyed
+#ifdef TRITONIC_ENABLE_CUDA
+            if (ptr) {
+                cudaSetDevice(device_id);
+                cudaFree(ptr);
+            }
+#endif
         }
         ptr = nullptr;
         fd = -1;
@@ -76,7 +82,7 @@ union TritonClient {
 
 enum ProtocolType { HTTP = 0, GRPC = 1 };
 
-class Triton : public ITriton {
+class Triton : public ITriton, public tritonic::triton::IDeviceInputInference {
 private:
     TritonClient triton_client_;
     std::string url_;
@@ -94,6 +100,9 @@ private:
     int inference_timeout_ms_{0};
 
     void updateInputTypes();
+    // Builds the request from the registered input regions; `input_bytes[i]` is the payload
+    // size of input i. Shared by host-copy and in-place device-input inference.
+    std::vector<Tensor> inferFromInputRegions(const std::vector<size_t>& input_bytes);
 
 public:
     Triton(const std::string& url, ProtocolType protocol, std::string modelName,
@@ -204,4 +213,8 @@ public:
         const std::vector<std::vector<uint8_t>>& input_data) override;
     size_t calculateTensorSize(const std::vector<int64_t>& shape, const std::string& datatype);
     void setSharedMemoryType(SharedMemoryType type, int cuda_device = 0);
+
+    // IDeviceInputInference: CUDA shared-memory input written in place by the caller.
+    void* deviceInputBuffer(size_t bytes) override;
+    std::vector<Tensor> inferFromDeviceInput() override;
 };

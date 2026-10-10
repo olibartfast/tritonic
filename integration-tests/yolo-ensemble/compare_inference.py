@@ -62,7 +62,12 @@ def box_error(one: list[int], two: list[int]) -> int:
     return max(abs(left - right) for left, right in zip(one, two))
 
 
-def compare(reference: list[dict[str, object]], candidate: list[dict[str, object]]) -> None:
+def compare(
+    reference: list[dict[str, object]],
+    candidate: list[dict[str, object]],
+    confidence_tolerance: float = 0.03,
+    coordinate_tolerance: float = 12,
+) -> None:
     if len(reference) != len(candidate):
         raise AssertionError(f"detection count mismatch: {len(reference)} != {len(candidate)}")
 
@@ -76,8 +81,8 @@ def compare(reference: list[dict[str, object]], candidate: list[dict[str, object
         confidence_error = abs(float(expected["confidence"]) - float(match["confidence"]))
         coordinate_error = box_error(expected["box"], match["box"])
         # Resize differences are bounded separately by the tensor parity gate.
-        # Allow 12 original-image pixels here for edge boxes.
-        if confidence_error > 0.03 or coordinate_error > 12:
+        # Allow coordinate_tolerance original-image pixels here for edge boxes.
+        if confidence_error > confidence_tolerance or coordinate_error > coordinate_tolerance:
             raise AssertionError(
                 f"detection mismatch: confidence_error={confidence_error:.6f}, "
                 f"coordinate_error={coordinate_error}"
