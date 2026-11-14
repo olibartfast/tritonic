@@ -9,6 +9,7 @@ live next to the code they describe. Start from the
 | Document | What it covers |
 | --- | --- |
 | [Supported Models](models.md) | Tested models and model-type tags |
+| [Model Coverage](model_coverage.md) | Task inventory, inference paths, recorded validation, and coverage gaps |
 | [Building](building.md) | Dependencies, client library setup, build instructions, and CMake options |
 | [Running Inference](usage.md) | Command-line flags, shared memory, ensemble models, and chat backend |
 | [Deployment](deployment.md) | Model repository setup, Triton server, Docker, and Kubernetes |
