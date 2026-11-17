@@ -83,6 +83,7 @@ _tritonic_read_versions_env("${TRITONIC_VERSIONS_ENV}")
 
 tritonic_declare_version(NEURIPLO_TASKS_VERSION "neuriplo-tasks git tag")
 tritonic_declare_version(GTEST_VERSION           "GoogleTest version")
+tritonic_declare_version(VIDEOCAPTURE_VERSION    "VideoCapture git tag")
 tritonic_declare_version(NGC_CONTAINER_TAG       "NGC monthly container tag")
 tritonic_declare_version(TRITON_REPO_TAG         "triton-inference-server/{common,core,backend} tag")
 tritonic_declare_version(NGC_TENSORRT_VERSION    "TensorRT version shipped in NGC_CONTAINER_TAG")

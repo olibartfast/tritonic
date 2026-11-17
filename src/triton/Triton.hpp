@@ -5,7 +5,6 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <opencv2/opencv.hpp>
 #include <variant>
 #include "Config.hpp"
 #include "ITriton.hpp"
@@ -148,7 +147,7 @@ public:
             }
             shape_str += "]";
             logger->Info(shape_str);
-            logger->Info("      Type: " + getOpenCVTypeString(model_info.input_types[i]));
+            logger->Info("      Type: " + getInputTypeString(model_info.input_types[i]));
         }
 
         logger->Info("  Outputs:");
@@ -160,25 +159,26 @@ public:
         logger->Info("  Batch Size: " + std::to_string(model_info.batch_size_));
     }
 
-    std::string getOpenCVTypeString(int type) const {
+    static std::string getInputTypeString(TritonModelInfo::InputType type) {
         switch (type) {
-            case CV_8U:
-                return "CV_8U";
-            case CV_8S:
-                return "CV_8S";
-            case CV_16U:
-                return "CV_16U";
-            case CV_16S:
-                return "CV_16S";
-            case CV_32S:
-                return "CV_32S";
-            case CV_32F:
-                return "CV_32F";
-            case CV_64F:
-                return "CV_64F";
-            default:
-                return "Unknown";
+            case TritonModelInfo::InputType::UInt8:
+                return "UINT8";
+            case TritonModelInfo::InputType::Int8:
+                return "INT8";
+            case TritonModelInfo::InputType::UInt16:
+                return "UINT16";
+            case TritonModelInfo::InputType::Int16:
+                return "INT16";
+            case TritonModelInfo::InputType::Int32:
+                return "INT32";
+            case TritonModelInfo::InputType::Float32:
+                return "FP32";
+            case TritonModelInfo::InputType::Float64:
+                return "FP64";
+            case TritonModelInfo::InputType::String:
+                return "STRING";
         }
+        return "Unknown";
     }
 
     TritonModelInfo parseModelHttp(const std::string& modelName, const std::string& url,

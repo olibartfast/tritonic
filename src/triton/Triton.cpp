@@ -198,15 +198,15 @@ TritonModelInfo Triton::parseModelGrpc(const inference::ModelMetadataResponse& m
             datatype = datatype.substr(5);
         info.input_datatypes.push_back(datatype);
         if (datatype == "FP32") {
-            info.input_types.push_back(CV_32F);
+            info.input_types.push_back(TritonModelInfo::InputType::Float32);
         } else if (datatype == "INT32") {
-            info.input_types.push_back(CV_32S);
+            info.input_types.push_back(TritonModelInfo::InputType::Int32);
         } else if (datatype == "INT64") {
-            info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
+            info.input_types.push_back(TritonModelInfo::InputType::Int32);  // Map INT64 to INT32
         } else if (datatype == "UINT8" || datatype == "BOOL") {
-            info.input_types.push_back(CV_8U);
+            info.input_types.push_back(TritonModelInfo::InputType::UInt8);
         } else if (datatype == "BYTES" || datatype == "STRING") {
-            info.input_types.push_back(TritonModelInfo::kStringTypeSentinel);
+            info.input_types.push_back(TritonModelInfo::InputType::String);
         } else {
             throw std::runtime_error("Unsupported data type: " + datatype);
         }
@@ -316,17 +316,17 @@ TritonModelInfo Triton::parseModelHttp(const std::string& modelName, const std::
         }
         info.input_datatypes.push_back(datatype);
         if (datatype == "FP32") {
-            info.input_types.push_back(CV_32F);
+            info.input_types.push_back(TritonModelInfo::InputType::Float32);
         } else if (datatype == "INT32") {
-            info.input_types.push_back(CV_32S);
+            info.input_types.push_back(TritonModelInfo::InputType::Int32);
         } else if (datatype == "INT64") {
-            info.input_types.push_back(CV_32S);  // Map INT64 to CV_32S
+            info.input_types.push_back(TritonModelInfo::InputType::Int32);  // Map INT64 to INT32
             logger->Warn("Warning: INT64 type detected for input '" + info.input_names.back() +
-                         "'. Will be mapped to CV_32S.");
+                         "'. Will be mapped to INT32.");
         } else if (datatype == "UINT8" || datatype == "BOOL") {
-            info.input_types.push_back(CV_8U);
+            info.input_types.push_back(TritonModelInfo::InputType::UInt8);
         } else if (datatype == "BYTES" || datatype == "STRING") {
-            info.input_types.push_back(TritonModelInfo::kStringTypeSentinel);
+            info.input_types.push_back(TritonModelInfo::InputType::String);
         } else {
             throw std::runtime_error("Unsupported data type: " + datatype);
         }
@@ -421,18 +421,18 @@ void Triton::updateInputTypes() {
     for (size_t i = 0; i < model_info_.input_shapes.size(); ++i) {
         const auto& datatype = model_info_.input_datatypes[i];
         if (datatype == "BYTES" || datatype == "STRING") {
-            model_info_.input_types[i] = TritonModelInfo::kStringTypeSentinel;
+            model_info_.input_types[i] = TritonModelInfo::InputType::String;
             continue;
         }
         if (datatype == "UINT8" || datatype == "BOOL") {
-            model_info_.input_types[i] = CV_8U;
+            model_info_.input_types[i] = TritonModelInfo::InputType::UInt8;
             continue;
         }
 
         const auto& shape = model_info_.input_shapes[i];
         const auto& format = model_info_.input_formats[i];
 
-        int inputType;
+        TritonModelInfo::InputType inputType = TritonModelInfo::InputType::Float32;
 
         if (format == "FORMAT_NCHW" || format == "FORMAT_NHWC") {
             if (shape.size() == 4) {
@@ -442,15 +442,15 @@ void Triton::updateInputTypes() {
                 } else if (channels == 3) {
                     inputType = model_info_.type3_;
                 } else {
-                    inputType = CV_32F;
+                    inputType = TritonModelInfo::InputType::Float32;
                 }
             } else if (shape.size() == 2) {
                 inputType = model_info_.type1_;
             } else {
-                inputType = CV_32F;
+                inputType = TritonModelInfo::InputType::Float32;
             }
         } else {
-            inputType = CV_32F;
+            inputType = TritonModelInfo::InputType::Float32;
         }
 
         model_info_.input_types[i] = inputType;
