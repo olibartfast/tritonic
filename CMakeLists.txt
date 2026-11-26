@@ -52,6 +52,8 @@ else()
   set(VIDEOCAPTURE_REPO "https://github.com/olibartfast/videocapture.git")
 endif()
 
+set(NEURIPLO_TASKS_WITH_OPENCV ON CACHE BOOL "" FORCE)
+
 set(TRITONIC_NEURIPLO_TASKS_SOURCE_DIR "" CACHE PATH
     "Optional local neuriplo-tasks checkout used instead of the pinned release")
 if(TRITONIC_NEURIPLO_TASKS_SOURCE_DIR)
@@ -115,6 +117,7 @@ set(TritonClient_DIR "${TRITON_CLIENT_BUILD_DIR}/lib/cmake/TritonClient")
 set(TritonCommon_DIR "${TRITON_CLIENT_BUILD_DIR}/lib/cmake/TritonCommon")
 
 
+find_package(OpenCV REQUIRED)
 find_package(TritonCommon REQUIRED)
 find_package(TritonClient REQUIRED)
 find_package(CURL REQUIRED)
@@ -144,6 +147,7 @@ if(TRITONIC_ENABLE_CUDA)
     )
     target_include_directories(tritonic_cuda PUBLIC
         ${PROJECT_SOURCE_DIR}/include
+        ${OpenCV_INCLUDE_DIRS}
     )
     target_compile_features(tritonic_cuda PUBLIC cxx_std_20)
     # TRITON_ENABLE_GPU makes the Triton client's ipc.h use the real cudaIpcMemHandle_t,
@@ -151,7 +155,7 @@ if(TRITONIC_ENABLE_CUDA)
     target_compile_definitions(tritonic_cuda PUBLIC TRITONIC_ENABLE_CUDA TRITON_ENABLE_GPU)
     # Static cudart loads the driver (libcuda) lazily on the first CUDA call, so a CUDA-enabled
     # binary still starts on CPU-only clients that run the default --preprocess_device=cpu.
-    target_link_libraries(tritonic_cuda PUBLIC CUDA::cudart_static)
+    target_link_libraries(tritonic_cuda PUBLIC CUDA::cudart_static ${OpenCV_LIBS})
     set_target_properties(tritonic_cuda PROPERTIES POSITION_INDEPENDENT_CODE ON)
     message(STATUS "CUDA support enabled (architectures: ${CMAKE_CUDA_ARCHITECTURES})")
 endif()
@@ -197,6 +201,7 @@ tritonic_apply_strict_warnings(${PROJECT_NAME})
 # Set include directories for the target
 target_include_directories(${PROJECT_NAME}
     PRIVATE
+    ${OpenCV_INCLUDE_DIRS}
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/utils
@@ -220,11 +225,13 @@ target_link_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
     neuriplo-tasks::neuriplo-tasks
+    neuriplo-tasks::vision-opencv
     neuriplo-tasks::vision-stb
     VideoCapture
     JPEG::JPEG
     grpcclient
     httpclient
+    ${OpenCV_LIBS}
     CURL::libcurl
     ${PROTOBUF_LIBRARIES}
 )
@@ -236,7 +243,7 @@ endif()
 # bundled protobuf headers; their definitions live in this static library, which the
 # shared client libraries do not export. Release builds inline them away.
 set(TRITONIC_ABSL_CHECK_LIBS)
-foreach(absl_lib log_internal_check_op leak_check strings strings_internal int128
+foreach(absl_lib log_internal_check_op log_internal_nullguard leak_check strings strings_internal int128
         raw_logging_internal throw_delegate base spinlock_wait log_severity)
     set(absl_path "${TRITON_CLIENT_BUILD_DIR}/lib/libabsl_${absl_lib}.a")
     if(EXISTS "${absl_path}")
@@ -306,6 +313,7 @@ if(BUILD_TESTING)
             ${PROJECT_SOURCE_DIR}/src/common
             ${PROJECT_SOURCE_DIR}/tests
             ${PROJECT_SOURCE_DIR}/tests/mocks
+            ${OpenCV_INCLUDE_DIRS}
         )
 
         target_link_directories(tritonic_unit_tests PRIVATE
@@ -316,11 +324,13 @@ if(BUILD_TESTING)
             gtest gtest_main gmock
             tritonic_test_triton_client_headers
             neuriplo-tasks::neuriplo-tasks
+            neuriplo-tasks::vision-opencv
             neuriplo-tasks::vision-stb
             VideoCapture
             JPEG::JPEG
             grpcclient
             httpclient
+            ${OpenCV_LIBS}
             CURL::libcurl
             ${PROTOBUF_LIBRARIES}
             tritonic_sdk_absl
@@ -342,12 +352,15 @@ if(BUILD_TESTING)
     tritonic_apply_strict_warnings(yolo_preprocess_baseline)
     target_link_libraries(yolo_preprocess_baseline PRIVATE
         neuriplo-tasks::neuriplo-tasks
+        neuriplo-tasks::vision-opencv
+        ${OpenCV_LIBS}
     )
 
     if(TRITONIC_ENABLE_CUDA)
         add_executable(cuda_preprocess_dump tests/tools/cuda_preprocess_dump.cpp)
         tritonic_apply_strict_warnings(cuda_preprocess_dump)
-        target_link_libraries(cuda_preprocess_dump PRIVATE tritonic_cuda)
+        target_include_directories(cuda_preprocess_dump PRIVATE ${OpenCV_INCLUDE_DIRS})
+        target_link_libraries(cuda_preprocess_dump PRIVATE tritonic_cuda ${OpenCV_LIBS})
     endif()
 
     # Create integration test executable if integration tests exist
@@ -367,10 +380,12 @@ if(BUILD_TESTING)
             ${PROJECT_SOURCE_DIR}/src/common
             ${PROJECT_SOURCE_DIR}/tests
             ${PROJECT_SOURCE_DIR}/tests/mocks
+            ${OpenCV_INCLUDE_DIRS}
         )
 
         target_link_libraries(tritonic_integration_tests PRIVATE
             gtest gtest_main gmock
+            ${OpenCV_LIBS}
             CURL::libcurl
         )
         

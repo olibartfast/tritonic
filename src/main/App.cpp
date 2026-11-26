@@ -35,13 +35,13 @@ neuriplo_tasks::vision::Size ToTaskSize(const cv::Mat& image) {
     return {image.cols, image.rows};
 }
 
-neuriplo_tasks::vision::PixelType ToTaskPixelType(int cv_type) {
-    switch (cv_type) {
-        case CV_8U:
+neuriplo_tasks::vision::PixelType ToTaskPixelType(TritonModelInfo::InputType input_type) {
+    switch (input_type) {
+        case TritonModelInfo::InputType::UInt8:
             return neuriplo_tasks::vision::PixelType::UInt8;
-        case CV_32F:
+        case TritonModelInfo::InputType::Float32:
             return neuriplo_tasks::vision::PixelType::Float32;
-        case CV_32S:
+        case TritonModelInfo::InputType::Int32:
             return neuriplo_tasks::vision::PixelType::Int32;
         default:
             throw std::invalid_argument("Unsupported Triton input type for neuriplo-tasks");
@@ -381,7 +381,7 @@ neuriplo_tasks::ModelInfo App::convertToNeuriploTasksModelInfo(const TritonModel
     model_info.output_names = triton_info.output_names;
     model_info.output_shapes = triton_info.output_shapes;
     model_info.input_types.reserve(triton_info.input_types.size());
-    for (const int input_type : triton_info.input_types) {
+    for (const TritonModelInfo::InputType input_type : triton_info.input_types) {
         model_info.input_types.push_back(ToTaskPixelType(input_type));
     }
     model_info.max_batch_size_ = triton_info.max_batch_size_;

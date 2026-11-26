@@ -47,12 +47,12 @@ TEST(TritonInterfaceTest, TritonModelInfoStoresOutputMetadata) {
     modelInfo.output_datatypes = {"BYTES"};
     modelInfo.output_shapes = {{-1}};
     modelInfo.input_datatypes = {"BYTES", "BOOL"};
-    modelInfo.input_types = {TritonModelInfo::kStringTypeSentinel, CV_8U};
+    modelInfo.input_types = {TritonModelInfo::InputType::String, TritonModelInfo::InputType::UInt8};
 
     EXPECT_EQ(modelInfo.output_datatypes[0], "BYTES");
     EXPECT_EQ(modelInfo.output_shapes[0][0], -1);
-    EXPECT_EQ(modelInfo.input_types[0], TritonModelInfo::kStringTypeSentinel);
-    EXPECT_EQ(modelInfo.input_types[1], CV_8U);
+    EXPECT_EQ(modelInfo.input_types[0], TritonModelInfo::InputType::String);
+    EXPECT_EQ(modelInfo.input_types[1], TritonModelInfo::InputType::UInt8);
 }
 
 TEST(TensorElementTest, SupportsStringVariant) {

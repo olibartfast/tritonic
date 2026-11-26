@@ -38,7 +38,7 @@ TritonModelInfo Yolo26DetectionModel() {
     info.input_shapes = {{1, 3, 640, 640}};
     info.input_formats = {"FORMAT_NCHW"};
     info.input_datatypes = {"FP32"};
-    info.input_types = {CV_32F};
+    info.input_types = {TritonModelInfo::InputType::Float32};
     info.output_names = {"output0"};
     info.output_datatypes = {"FP32"};
     info.output_shapes = {{1, 300, 6}};
