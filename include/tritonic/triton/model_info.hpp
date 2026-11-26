@@ -1,13 +1,24 @@
 #pragma once
 
-#include <opencv2/core.hpp>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 namespace tritonic::triton {
 
+enum class InputType : int {
+    UInt8 = 0,
+    Int8,
+    UInt16,
+    Int16,
+    Int32,
+    Float32,
+    Float64,
+    String,
+};
+
 struct ModelInfo {
-    static constexpr int kStringTypeSentinel = -1;
+    using InputType = tritonic::triton::InputType;
 
     std::vector<std::string> output_names;
     std::vector<std::string> output_datatypes;
@@ -16,10 +27,10 @@ struct ModelInfo {
     std::vector<std::vector<int64_t>> input_shapes;
     std::vector<std::string> input_formats;
     std::vector<std::string> input_datatypes;
-    std::vector<int> input_types;
+    std::vector<InputType> input_types;
 
-    int type1_{CV_32FC1};
-    int type3_{CV_32FC3};
+    InputType type1_{InputType::Float32};
+    InputType type3_{InputType::Float32};
     int max_batch_size_{0};
     int batch_size_{1};
 };
